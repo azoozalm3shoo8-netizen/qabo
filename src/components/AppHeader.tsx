@@ -2,6 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications'
 
 export function AppHeader({
   title,
@@ -12,29 +13,43 @@ export function AppHeader({
   showBrand?: boolean
   rightSlot?: React.ReactNode
 }) {
-  const [unread, setUnread] = useState(0)
+  const [pollUnread, setPollUnread] = useState(0)
+  const [headerUserId, setHeaderUserId] = useState<string | null>(null)
+  const { realtimeUnread, resetUnread } = useRealtimeNotifications(headerUserId)
 
   useEffect(() => {
     const stored = localStorage.getItem('qabo_user')
-    if (!stored) return
-    let uid: string
-    try {
-      uid = JSON.parse(stored).user_id
-    } catch {
+    if (!stored) {
+      setHeaderUserId(null)
       return
     }
+    try {
+      const uid = JSON.parse(stored).user_id as string
+      setHeaderUserId(uid)
+    } catch {
+      setHeaderUserId(null)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!headerUserId) return
     const load = () => {
-      fetch('/api/notifications?user_id=' + uid)
+      fetch('/api/notifications?user_id=' + encodeURIComponent(headerUserId))
         .then((r) => r.json())
-        .then((d) => {
-          if (typeof d.unread_count === 'number') setUnread(d.unread_count)
+        .then((d: { unread_count?: number }) => {
+          if (typeof d.unread_count === 'number') {
+            setPollUnread(d.unread_count)
+            resetUnread()
+          }
         })
         .catch(() => {})
     }
     load()
     const t = setInterval(load, 60000)
     return () => clearInterval(t)
-  }, [])
+  }, [headerUserId, resetUnread])
+
+  const totalUnread = pollUnread + realtimeUnread
 
   return (
     <div className="flex items-center justify-between gap-2 mb-3">
@@ -53,9 +68,9 @@ export function AppHeader({
           aria-label="الإشعارات"
         >
           🔔
-          {unread > 0 && (
+          {totalUnread > 0 && (
             <span className="absolute -top-0.5 -left-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
-              {unread > 99 ? '99+' : unread}
+              {totalUnread > 99 ? '99+' : totalUnread}
             </span>
           )}
         </Link>

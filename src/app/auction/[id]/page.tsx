@@ -7,6 +7,7 @@ import { AuctionCountdown } from '@/components/AuctionCountdown'
 import { AuctionImageGallery } from '@/components/AuctionImageGallery'
 import { BottomNav } from '@/components/BottomNav'
 import { FavoriteHeart } from '@/components/FavoriteHeart'
+import { OrderStatusTracker } from '@/components/OrderStatusTracker'
 import { ReviewModal } from '@/components/ReviewModal'
 import { useToast } from '@/components/Toast'
 import { sameUserId } from '@/lib/ids'
@@ -19,6 +20,12 @@ type Seller = {
 }
 
 type HighestBidder = { full_name: string } | null
+
+type AuctionOrderRow = {
+  id: string
+  auction_id: string
+  status: string
+}
 
 type AuctionDetail = {
   id: string
@@ -67,6 +74,7 @@ export default function AuctionDetailPage() {
   const [reportDetails, setReportDetails] = useState('')
   const [reportSubmitting, setReportSubmitting] = useState(false)
   const [reportError, setReportError] = useState('')
+  const [auctionOrder, setAuctionOrder] = useState<AuctionOrderRow | null>(null)
 
   const loadAuction = useCallback(async () => {
     if (!id) return
@@ -103,6 +111,41 @@ export default function AuctionDetailPage() {
     setLoading(true)
     loadAuction().finally(() => setLoading(false))
   }, [id, loadAuction])
+
+  useEffect(() => {
+    if (!auction?.id || !user?.user_id) {
+      setAuctionOrder(null)
+      return
+    }
+    let cancelled = false
+    fetch('/api/orders?user_id=' + encodeURIComponent(user.user_id))
+      .then((r) => r.json())
+      .then((data: unknown) => {
+        if (cancelled) return
+        if (!Array.isArray(data)) {
+          setAuctionOrder(null)
+          return
+        }
+        const found = data.find(
+          (o: { auction_id?: string; id?: string; status?: string }) => o.auction_id === auction.id
+        )
+        if (found && typeof found.id === 'string' && typeof found.status === 'string') {
+          setAuctionOrder({
+            id: found.id,
+            auction_id: String(found.auction_id),
+            status: found.status,
+          })
+        } else {
+          setAuctionOrder(null)
+        }
+      })
+      .catch(() => {
+        if (!cancelled) setAuctionOrder(null)
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [auction?.id, user?.user_id])
 
   useEffect(() => {
     if (!id) return
@@ -483,6 +526,20 @@ export default function AuctionDetailPage() {
               </div>
             )}
 
+            {auctionClosed && isWinner && auctionOrder && (
+              <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm space-y-3">
+                <p className="text-sm font-bold text-gray-900 text-center">حالة الطلب</p>
+                <OrderStatusTracker currentStatus={auctionOrder.status} />
+                <button
+                  type="button"
+                  onClick={() => router.push('/orders/' + auctionOrder.id)}
+                  className="w-full py-3 rounded-xl border-2 border-amber-500 text-amber-600 font-bold bg-amber-50/50"
+                >
+                  عرض تفاصيل الطلب
+                </button>
+              </div>
+            )}
+
             {auctionClosed &&
               isSeller &&
               auction.highest_bidder_id &&
@@ -495,6 +552,20 @@ export default function AuctionDetailPage() {
                   </p>
                 </div>
               )}
+
+            {auctionClosed && auctionOrder && isSeller && (
+              <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm space-y-3">
+                <p className="text-sm font-bold text-gray-900 text-center">إدارة الشحن</p>
+                <OrderStatusTracker currentStatus={auctionOrder.status} />
+                <button
+                  type="button"
+                  onClick={() => router.push('/orders/' + auctionOrder.id)}
+                  className="w-full py-3 rounded-xl bg-amber-500 text-white font-bold shadow-md"
+                >
+                  إدارة الطلب
+                </button>
+              </div>
+            )}
 
             {auctionClosed &&
               !isWinner &&

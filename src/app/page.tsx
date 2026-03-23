@@ -3,13 +3,14 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { AppHeader } from '@/components/AppHeader'
 import { BottomNav } from '@/components/BottomNav'
 import { FavoriteHeart } from '@/components/FavoriteHeart'
 import { PullToRefresh } from '@/components/PullToRefresh'
+import { PushPermissionBanner } from '@/components/PushPermissionBanner'
 import { HomeGridSkeleton } from '@/components/Skeleton'
 import { normalizeAuctionImages } from '@/lib/auction-images'
-import { SAUDI_CITIES } from '@/lib/constants'
 import { auctionCountdownParts } from '@/lib/time'
 
 function AuctionListingThumb({ src }: { src: string | null }) {
@@ -36,12 +37,22 @@ function AuctionListingThumb({ src }: { src: string | null }) {
 }
 
 export default function HomePage() {
-  const [auctions, setAuctions] = useState<any[]>([])
+  const router = useRouter()
+  const [auctions, setAuctions] = useState<
+    {
+      id: string
+      title: string
+      images?: unknown
+      city?: string | null
+      current_bid: number
+      bid_count: number
+      ends_at: string
+      status: string
+    }[]
+  >([])
   const [loading, setLoading] = useState(true)
   const [category, setCategory] = useState('الكل')
-  const [user, setUser] = useState<any>(null)
-  const [search, setSearch] = useState('')
-  const [city, setCity] = useState('')
+  const [user, setUser] = useState<{ user_id: string; phone: string } | null>(null)
   const [tick, setTick] = useState(0)
 
   const categories = useMemo(
@@ -51,12 +62,10 @@ export default function HomePage() {
 
   const buildUrl = useCallback(() => {
     const p = new URLSearchParams()
-    if (search.trim()) p.set('q', search.trim())
-    if (city) p.set('city', city)
     if (category !== 'الكل') p.set('category', category)
     const qs = p.toString()
     return '/api/auctions' + (qs ? '?' + qs : '')
-  }, [search, city, category])
+  }, [category])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -76,7 +85,7 @@ export default function HomePage() {
     const stored = localStorage.getItem('qabo_user')
     if (stored) {
       try {
-        setUser(JSON.parse(stored))
+        setUser(JSON.parse(stored) as { user_id: string; phone: string })
       } catch {
         setUser(null)
       }
@@ -116,34 +125,22 @@ export default function HomePage() {
               )
             }
           />
+          {user && <PushPermissionBanner />}
           <div className="flex flex-col gap-2 mb-3">
             <div className="relative">
               <span
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm z-[1]"
                 aria-hidden
               >
                 🔍
               </span>
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="ابحث في عنوان المزاد..."
-                className="w-full pr-10 pl-4 py-2.5 bg-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500 shadow-inner"
-              />
+              <Link
+                href="/search"
+                className="block w-full pr-10 pl-4 py-2.5 bg-gray-100 rounded-xl text-sm text-gray-400 shadow-inner"
+              >
+                ابحث في المزادات...
+              </Link>
             </div>
-            <select
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="w-full px-4 py-2.5 bg-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500"
-            >
-              <option value="">كل المدن</option>
-              {SAUDI_CITIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
           </div>
           <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
             {categories.map((c) => (
@@ -195,60 +192,59 @@ export default function HomePage() {
             <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-gray-100">
               <p className="text-5xl mb-4">📭</p>
               <p className="text-gray-600 font-medium mb-1">لا توجد مزادات مطابقة</p>
-              <p className="text-gray-400 text-sm mb-6">جرّب تغيير البحث أو التصنيف</p>
-              {user && (
-                <Link
-                  href="/create"
-                  className="inline-block px-6 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-medium shadow-md"
-                >
-                  أنشئ مزاداً جديداً
-                </Link>
-              )}
+              <p className="text-gray-400 text-sm mb-6">جرّب تغيير التصنيف أو استخدم البحث المتقدم</p>
+              <button
+                type="button"
+                onClick={() => router.push('/search')}
+                className="inline-block px-6 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-medium shadow-md"
+              >
+                بحث متقدم
+              </button>
             </div>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3">
                 {auctions.slice(0, 6).map((a) => {
-                const parts = auctionCountdownParts(a.ends_at, a.status)
-                const label = parts.ended
-                  ? 'انتهى'
-                  : `${parts.hours}س ${parts.minutes}د ${parts.seconds}ث`
-                const imgs = normalizeAuctionImages(a.images)
-                const firstImg = imgs[0] ?? null
-                return (
-                  <Link
-                    key={a.id}
-                    href={'/auction/' + a.id}
-                    className="bg-white rounded-xl overflow-hidden shadow-md border border-gray-100/80 relative group hover:shadow-lg transition-shadow duration-200"
-                  >
-                    <div className="absolute top-2 left-2 z-10">
-                      <FavoriteHeart auctionId={a.id} userId={user?.user_id ?? null} />
-                    </div>
-                    <div className="relative aspect-square w-full bg-gray-100 overflow-hidden rounded-t-lg">
-                      <AuctionListingThumb src={firstImg} />
-                    </div>
-                    <div className="p-3">
-                      <h3 className="font-medium text-sm truncate leading-snug">{a.title}</h3>
-                      <p className="text-amber-600 font-bold mt-1">
-                        {Number(a.current_bid).toLocaleString()} ر.س
-                      </p>
-                      <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
-                        <span>{a.city || 'غير محدد'}</span>
-                        <span
-                          className={
-                            parts.ended
-                              ? 'text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded-md'
-                              : ''
-                          }
-                        >
-                          {label}
-                        </span>
+                  const parts = auctionCountdownParts(a.ends_at, a.status)
+                  const label = parts.ended
+                    ? 'انتهى'
+                    : `${parts.hours}س ${parts.minutes}د ${parts.seconds}ث`
+                  const imgs = normalizeAuctionImages(a.images)
+                  const firstImg = imgs[0] ?? null
+                  return (
+                    <Link
+                      key={a.id}
+                      href={'/auction/' + a.id}
+                      className="bg-white rounded-xl overflow-hidden shadow-md border border-gray-100/80 relative group hover:shadow-lg transition-shadow duration-200"
+                    >
+                      <div className="absolute top-2 left-2 z-10">
+                        <FavoriteHeart auctionId={a.id} userId={user?.user_id ?? null} />
                       </div>
-                      <p className="text-xs text-gray-400 mt-1">{a.bid_count} مزايدة</p>
-                    </div>
-                  </Link>
-                )
-              })}
+                      <div className="relative aspect-square w-full bg-gray-100 overflow-hidden rounded-t-lg">
+                        <AuctionListingThumb src={firstImg} />
+                      </div>
+                      <div className="p-3">
+                        <h3 className="font-medium text-sm truncate leading-snug">{a.title}</h3>
+                        <p className="text-amber-600 font-bold mt-1">
+                          {Number(a.current_bid).toLocaleString()} ر.س
+                        </p>
+                        <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                          <span>{a.city || 'غير محدد'}</span>
+                          <span
+                            className={
+                              parts.ended
+                                ? 'text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded-md'
+                                : ''
+                            }
+                          >
+                            {label}
+                          </span>
+                        </div>
+                        <p className="text-xs text-gray-400 mt-1">{a.bid_count} مزايدة</p>
+                      </div>
+                    </Link>
+                  )
+                })}
               </div>
               {auctions.length > 6 && (
                 <Link

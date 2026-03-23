@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { BottomNav } from '@/components/BottomNav'
 import { OrderStatusTracker } from '@/components/OrderStatusTracker'
+import { PullToRefresh } from '@/components/PullToRefresh'
 import { useToast } from '@/components/Toast'
 import { normalizeAuctionImages } from '@/lib/auction-images'
 import { format } from 'date-fns'
@@ -34,6 +35,22 @@ type OrderWithAuction = {
   auction: AuctionEmbed
 }
 
+const STATUS_FILTERS: { value: string; label: string; cls: string }[] = [
+  { value: 'all', label: 'الكل', cls: 'bg-gray-100' },
+  { value: 'pending', label: 'بانتظار الدفع', cls: 'bg-yellow-100' },
+  { value: 'captured', label: 'تم الدفع', cls: 'bg-green-100' },
+  { value: 'shipped', label: 'تم الشحن', cls: 'bg-blue-100' },
+  { value: 'delivered', label: 'تم التوصيل', cls: 'bg-emerald-100' },
+  { value: 'cancelled', label: 'ملغي', cls: 'bg-red-100' },
+]
+
+function statusMatchesFilter(orderStatus: string, filter: string): boolean {
+  if (filter === 'all') return true
+  const s = orderStatus.toLowerCase()
+  if (filter === 'captured') return s === 'captured' || s === 'paid'
+  return s === filter
+}
+
 function statusBadge(status: string) {
   const s = status.toLowerCase()
   if (s === 'pending')
@@ -50,6 +67,7 @@ export default function OrdersPage() {
   const router = useRouter()
   const { show } = useToast()
   const [tab, setTab] = useState<Tab>('buy')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
   const [userId, setUserId] = useState<string | null>(null)
   const [orders, setOrders] = useState<OrderWithAuction[]>([])
   const [loading, setLoading] = useState(true)
@@ -62,7 +80,7 @@ export default function OrdersPage() {
     try {
       const res = await fetch('/api/orders?user_id=' + encodeURIComponent(uid))
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'تعذر التحميل')
+      if (!res.ok) throw new Error((data as { error?: string }).error || 'تعذر التحميل')
       setOrders(Array.isArray(data) ? data : [])
     } catch {
       setOrders([])
@@ -83,10 +101,21 @@ export default function OrdersPage() {
     void load(uid)
   }, [load])
 
+  const buyCount = useMemo(
+    () => (userId ? orders.filter((o) => o.buyer_id === userId).length : 0),
+    [orders, userId]
+  )
+  const sellCount = useMemo(
+    () => (userId ? orders.filter((o) => o.seller_id === userId).length : 0),
+    [orders, userId]
+  )
+
   const filtered = useMemo(() => {
     if (!userId) return []
-    return orders.filter((o) => (tab === 'buy' ? o.buyer_id === userId : o.seller_id === userId))
-  }, [orders, tab, userId])
+    const roleFiltered = orders.filter((o) => (tab === 'buy' ? o.buyer_id === userId : o.seller_id === userId))
+    if (statusFilter === 'all') return roleFiltered
+    return roleFiltered.filter((o) => statusMatchesFilter(o.status, statusFilter))
+  }, [orders, tab, userId, statusFilter])
 
   const submitShip = async (orderId: string) => {
     if (!userId) return
@@ -103,7 +132,7 @@ export default function OrdersPage() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'فشل التحديث')
+      if (!res.ok) throw new Error((data as { error?: string }).error || 'فشل التحديث')
       show('تم تأكيد الشحن', 'success')
       setShipForId(null)
       setTrackingInput('')
@@ -129,7 +158,7 @@ export default function OrdersPage() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'فشل التأكيد')
+      if (!res.ok) throw new Error((data as { error?: string }).error || 'فشل التأكيد')
       show('تم تأكيد استلام الطلب', 'success')
       await load(userId)
     } catch (e: unknown) {
@@ -145,156 +174,204 @@ export default function OrdersPage() {
         <h1 className="font-bold text-lg text-center text-gray-900">طلباتي</h1>
       </header>
 
-      <div className="px-4 mt-3 flex gap-2">
-        <button
-          type="button"
-          onClick={() => setTab('buy')}
-          className={
-            'flex-1 py-2.5 rounded-xl text-sm font-bold shadow-sm ' +
-            (tab === 'buy' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 border border-gray-100')
-          }
-        >
-          مشترياتي
-        </button>
-        <button
-          type="button"
-          onClick={() => setTab('sell')}
-          className={
-            'flex-1 py-2.5 rounded-xl text-sm font-bold shadow-sm ' +
-            (tab === 'sell' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 border border-gray-100')
-          }
-        >
-          مبيعاتي
-        </button>
-      </div>
+      <PullToRefresh
+        onRefresh={() => {
+          if (userId) void load(userId)
+        }}
+      >
+        <div className="px-4 mt-3 flex gap-2">
+          <button
+            type="button"
+            onClick={() => setTab('buy')}
+            className={
+              'flex-1 py-2.5 rounded-xl text-sm font-bold shadow-sm ' +
+              (tab === 'buy' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 border border-gray-100')
+            }
+          >
+            مشترياتي ({buyCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setTab('sell')}
+            className={
+              'flex-1 py-2.5 rounded-xl text-sm font-bold shadow-sm ' +
+              (tab === 'sell' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 border border-gray-100')
+            }
+          >
+            مبيعاتي ({sellCount})
+          </button>
+        </div>
 
-      <div className="px-4 mt-4 space-y-3">
-        {loading ? (
-          <div className="space-y-3">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="h-24 bg-white rounded-2xl shadow-sm border border-gray-100 animate-pulse" />
-            ))}
-          </div>
-        ) : filtered.length === 0 ? (
-          <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-gray-100">
-            <p className="text-5xl mb-3">📦</p>
-            <p className="text-gray-600 font-medium">لا توجد طلبات</p>
-            <Link href="/" className="inline-block mt-4 text-amber-600 font-medium text-sm">
-              تصفح المزادات
-            </Link>
-          </div>
-        ) : (
-          filtered.map((o) => {
-            const auc = o.auction
-            const title = (auc?.title && String(auc.title)) || 'مزاد'
-            const imgs = normalizeAuctionImages(auc?.images)
-            const thumb = imgs[0] ?? null
-            const badge = statusBadge(o.status)
-            const dateSrc = o.created_at || o.updated_at || new Date().toISOString()
-            const isBuyer = userId === o.buyer_id
-            const isSeller = userId === o.seller_id
-            const st = o.status.toLowerCase()
-
+        <div className="px-4 mt-3 flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
+          {STATUS_FILTERS.map((f) => {
+            const active = statusFilter === f.value
             return (
-              <div
-                key={o.id}
-                className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex gap-3"
+              <button
+                key={f.value}
+                type="button"
+                onClick={() => setStatusFilter(f.value)}
+                className={
+                  'shrink-0 rounded-xl px-3 py-1.5 text-xs shadow-sm border border-transparent ' +
+                  f.cls +
+                  (active
+                    ? ' ring-2 ring-amber-600 ring-offset-1 font-extrabold brightness-95'
+                    : ' font-bold opacity-90')
+                }
               >
-                <div className="relative w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-100">
-                  {thumb ? (
-                    <Image src={thumb} alt="" fill className="object-cover" sizes="80px" />
-                  ) : (
-                    <div className="absolute inset-0 flex items-center justify-center text-2xl">📦</div>
-                  )}
-                </div>
-                <div className="flex-1 min-w-0 text-right">
-                  <div className="flex items-start justify-between gap-2">
-                    <h3 className="font-bold text-sm truncate flex-1">{title}</h3>
-                    <span className={'text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ' + badge.cls}>
-                      {badge.label}
-                    </span>
-                  </div>
-                  <p className="text-amber-600 font-bold text-sm mt-1">
-                    {Number(o.product_amount).toLocaleString()} ر.س
-                  </p>
-                  <OrderStatusTracker currentStatus={o.status} />
-                  <p className="text-xs text-gray-400 mt-1">
-                    {format(new Date(dateSrc), 'd MMM yyyy — HH:mm', { locale: arSA })}
-                  </p>
-
-                  {isBuyer && st === 'pending' && (
-                    <button
-                      type="button"
-                      onClick={() => router.push('/checkout/' + o.auction_id)}
-                      className="mt-2 w-full py-2 rounded-xl bg-amber-500 text-white text-sm font-bold"
-                    >
-                      ادفع الآن
-                    </button>
-                  )}
-
-                  {isBuyer && st === 'shipped' && (
-                    <button
-                      type="button"
-                      disabled={actionLoading}
-                      onClick={() => void submitConfirm(o.id)}
-                      className="mt-2 w-full py-2 rounded-xl bg-green-600 text-white text-sm font-bold disabled:opacity-50"
-                    >
-                      تأكيد الاستلام
-                    </button>
-                  )}
-
-                  {isSeller && ['pending', 'captured', 'paid'].includes(st) && (
-                    <div className="mt-2 space-y-2">
-                      {shipForId === o.id ? (
-                        <>
-                          <input
-                            type="text"
-                            value={trackingInput}
-                            onChange={(e) => setTrackingInput(e.target.value)}
-                            placeholder="رقم التتبع (اختياري)"
-                            className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm"
-                          />
-                          <div className="flex gap-2">
-                            <button
-                              type="button"
-                              disabled={actionLoading}
-                              onClick={() => void submitShip(o.id)}
-                              className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold disabled:opacity-50"
-                            >
-                              إرسال
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setShipForId(null)
-                                setTrackingInput('')
-                              }}
-                              className="py-2 px-3 rounded-xl bg-gray-100 text-sm"
-                            >
-                              إلغاء
-                            </button>
-                          </div>
-                        </>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setShipForId(o.id)
-                            setTrackingInput(o.tracking_number || '')
-                          }}
-                          className="w-full py-2 rounded-xl bg-blue-600 text-white text-sm font-bold"
-                        >
-                          تأكيد الشحن
-                        </button>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+                {f.label}
+              </button>
             )
-          })
-        )}
-      </div>
+          })}
+        </div>
+
+        <div className="px-4 mt-4 space-y-3">
+          {loading ? (
+            <div className="space-y-3">
+              {[1, 2, 3].map((i) => (
+                <div key={i} className="h-24 bg-white rounded-2xl shadow-sm border border-gray-100 animate-pulse" />
+              ))}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-gray-100">
+              {tab === 'buy' ? (
+                <>
+                  <p className="text-5xl mb-3">🛒</p>
+                  <p className="text-gray-600 font-medium">لم تفز بأي مزاد بعد</p>
+                  <Link href="/" className="inline-block mt-4 text-amber-600 font-medium text-sm">
+                    تصفح المزادات
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p className="text-5xl mb-3">📢</p>
+                  <p className="text-gray-600 font-medium">لم تبع شيئاً بعد</p>
+                  <Link href="/create" className="inline-block mt-4 text-amber-600 font-medium text-sm">
+                    أنشئ مزادك الأول
+                  </Link>
+                </>
+              )}
+            </div>
+          ) : (
+            filtered.map((o) => {
+              const auc = o.auction
+              const title = (auc?.title && String(auc.title)) || 'مزاد'
+              const imgs = normalizeAuctionImages(auc?.images)
+              const thumb = imgs[0] ?? null
+              const badge = statusBadge(o.status)
+              const dateSrc = o.created_at || o.updated_at || new Date().toISOString()
+              const isBuyer = userId === o.buyer_id
+              const isSeller = userId === o.seller_id
+              const st = o.status.toLowerCase()
+
+              return (
+                <div
+                  key={o.id}
+                  className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3 flex gap-3"
+                >
+                  <Link
+                    href={'/orders/' + o.id}
+                    className="relative w-20 h-20 shrink-0 rounded-xl overflow-hidden bg-gray-100 block"
+                  >
+                    {thumb ? (
+                      <Image src={thumb} alt="" fill className="object-cover" sizes="80px" />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center text-2xl">📦</div>
+                    )}
+                  </Link>
+                  <div className="flex-1 min-w-0 text-right">
+                    <div className="flex items-start justify-between gap-2">
+                      <Link
+                        href={'/orders/' + o.id}
+                        className="font-bold text-sm truncate flex-1 hover:text-amber-600 text-right"
+                      >
+                        {title}
+                      </Link>
+                      <span className={'text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ' + badge.cls}>
+                        {badge.label}
+                      </span>
+                    </div>
+                    <p className="text-amber-600 font-bold text-sm mt-1">
+                      {Number(o.product_amount).toLocaleString()} ر.س
+                    </p>
+                    <OrderStatusTracker currentStatus={o.status} />
+                    <p className="text-xs text-gray-400 mt-1">
+                      {format(new Date(dateSrc), 'd MMM yyyy — HH:mm', { locale: arSA })}
+                    </p>
+
+                    {isBuyer && st === 'pending' && (
+                      <button
+                        type="button"
+                        onClick={() => router.push('/checkout/' + o.auction_id)}
+                        className="mt-2 w-full py-2 rounded-xl bg-amber-500 text-white text-sm font-bold"
+                      >
+                        ادفع الآن
+                      </button>
+                    )}
+
+                    {isBuyer && st === 'shipped' && (
+                      <button
+                        type="button"
+                        disabled={actionLoading}
+                        onClick={() => void submitConfirm(o.id)}
+                        className="mt-2 w-full py-2 rounded-xl bg-green-600 text-white text-sm font-bold disabled:opacity-50"
+                      >
+                        تأكيد الاستلام
+                      </button>
+                    )}
+
+                    {isSeller && ['captured', 'paid'].includes(st) && (
+                      <div className="mt-2 space-y-2">
+                        {shipForId === o.id ? (
+                          <>
+                            <input
+                              type="text"
+                              value={trackingInput}
+                              onChange={(e) => setTrackingInput(e.target.value)}
+                              placeholder="رقم التتبع (اختياري)"
+                              className="w-full px-3 py-2 rounded-xl border border-gray-200 text-sm"
+                            />
+                            <div className="flex gap-2">
+                              <button
+                                type="button"
+                                disabled={actionLoading}
+                                onClick={() => void submitShip(o.id)}
+                                className="flex-1 py-2 rounded-xl bg-blue-600 text-white text-sm font-bold disabled:opacity-50"
+                              >
+                                إرسال
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setShipForId(null)
+                                  setTrackingInput('')
+                                }}
+                                className="py-2 px-3 rounded-xl bg-gray-100 text-sm"
+                              >
+                                إلغاء
+                              </button>
+                            </div>
+                          </>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              setShipForId(o.id)
+                              setTrackingInput(o.tracking_number || '')
+                            }}
+                            className="w-full py-2 rounded-xl bg-blue-600 text-white text-sm font-bold"
+                          >
+                            تأكيد الشحن
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )
+            })
+          )}
+        </div>
+      </PullToRefresh>
 
       <BottomNav active="orders" />
     </div>

@@ -16,6 +16,64 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: 'معرّف المستخدم غير صالح' }, { status: 400 })
   }
 
+  const orderIdParam = req.nextUrl.searchParams.get('order_id')
+  if (orderIdParam) {
+    const { data: singleOrder, error: singleErr } = await supabase
+      .from('orders')
+      .select('*')
+      .eq('id', orderIdParam)
+      .maybeSingle()
+
+    if (singleErr) {
+      return NextResponse.json({ error: 'تعذر تحميل الطلب: ' + singleErr.message }, { status: 500 })
+    }
+    if (!singleOrder) {
+      return NextResponse.json({ error: 'الطلب غير موجود' }, { status: 404 })
+    }
+    if (singleOrder.buyer_id !== userId && singleOrder.seller_id !== userId) {
+      return NextResponse.json({ error: 'غير مصرّح بعرض هذا الطلب' }, { status: 403 })
+    }
+
+    const { data: auctionRow, error: auctionErr } = await supabase
+      .from('auctions')
+      .select('id, title, images, city, category, condition')
+      .eq('id', singleOrder.auction_id as string)
+      .maybeSingle()
+
+    if (auctionErr) {
+      return NextResponse.json({ error: 'تعذر تحميل المزاد: ' + auctionErr.message }, { status: 500 })
+    }
+
+    const { data: sellerProf, error: spErr } = await supabase
+      .from('profiles')
+      .select('full_name, city')
+      .eq('id', singleOrder.seller_id as string)
+      .maybeSingle()
+
+    if (spErr) {
+      return NextResponse.json({ error: 'تعذر تحميل بيانات البائع: ' + spErr.message }, { status: 500 })
+    }
+
+    const { data: buyerProf, error: bpErr } = await supabase
+      .from('profiles')
+      .select('full_name')
+      .eq('id', singleOrder.buyer_id as string)
+      .maybeSingle()
+
+    if (bpErr) {
+      return NextResponse.json({ error: 'تعذر تحميل بيانات المشتري: ' + bpErr.message }, { status: 500 })
+    }
+
+    return NextResponse.json({
+      ...singleOrder,
+      auction: auctionRow ?? null,
+      seller_profile: sellerProf
+        ? { full_name: sellerProf.full_name as string, city: (sellerProf.city as string | null) ?? null }
+        : null,
+      buyer_profile: buyerProf ? { full_name: buyerProf.full_name as string } : null,
+    })
+  }
+
   const { data: orders, error } = await supabase
     .from('orders')
     .select('*')
@@ -79,8 +137,8 @@ export async function PATCH(req: NextRequest) {
     if (order.seller_id !== user_id) {
       return NextResponse.json({ error: 'فقط البائع يمكنه تأكيد الشحن' }, { status: 403 })
     }
-    if (!['pending', 'captured', 'paid'].includes(status)) {
-      return NextResponse.json({ error: 'لا يمكن الشحن في هذه الحالة' }, { status: 400 })
+    if (!['captured', 'paid'].includes(status)) {
+      return NextResponse.json({ error: 'لا يمكن الشحن إلا بعد اكتمال الدفع' }, { status: 400 })
     }
 
     const { data: updated, error: uErr } = await supabase
