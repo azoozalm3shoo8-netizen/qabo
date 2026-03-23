@@ -117,13 +117,21 @@ export default function HomePage() {
             }
           />
           <div className="flex flex-col gap-2 mb-3">
-            <input
-              type="search"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="ابحث في عنوان المزاد..."
-              className="w-full px-4 py-2.5 bg-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500 shadow-inner"
-            />
+            <div className="relative">
+              <span
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm"
+                aria-hidden
+              >
+                🔍
+              </span>
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="ابحث في عنوان المزاد..."
+                className="w-full pr-10 pl-4 py-2.5 bg-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500 shadow-inner"
+              />
+            </div>
             <select
               value={city}
               onChange={(e) => setCity(e.target.value)}
@@ -154,8 +162,33 @@ export default function HomePage() {
           </div>
         </div>
 
+        {!user && (
+          <div className="px-4 mt-4">
+            <h3 className="font-bold text-sm text-gray-700 mb-2">كيف يعمل قبو؟</h3>
+            <div className="flex gap-3 overflow-x-auto pb-2">
+              <div className="flex-shrink-0 w-28 bg-amber-50 rounded-xl p-3 text-center border border-amber-100">
+                <span className="text-2xl block mb-1">📝</span>
+                <span className="text-xs font-medium text-gray-700">سجّل حسابك</span>
+              </div>
+              <div className="flex-shrink-0 w-28 bg-amber-50 rounded-xl p-3 text-center border border-amber-100">
+                <span className="text-2xl block mb-1">🏷️</span>
+                <span className="text-xs font-medium text-gray-700">زايد على ما تحب</span>
+              </div>
+              <div className="flex-shrink-0 w-28 bg-amber-50 rounded-xl p-3 text-center border border-amber-100">
+                <span className="text-2xl block mb-1">🏆</span>
+                <span className="text-xs font-medium text-gray-700">اربح وادفع</span>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="px-4 mt-4">
-          <h2 className="font-bold text-lg mb-3">مزادات حية 🔴</h2>
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="font-bold text-lg">مزادات حية 🔴</h2>
+            <Link href="/auction" className="text-sm text-amber-600 font-medium">
+              عرض الكل ←
+            </Link>
+          </div>
           {loading ? (
             <HomeGridSkeleton />
           ) : auctions.length === 0 ? (
@@ -173,21 +206,20 @@ export default function HomePage() {
               )}
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-3">
-              {auctions.map((a) => {
+            <>
+              <div className="grid grid-cols-2 gap-3">
+                {auctions.slice(0, 6).map((a) => {
                 const parts = auctionCountdownParts(a.ends_at, a.status)
                 const label = parts.ended
                   ? 'انتهى'
                   : `${parts.hours}س ${parts.minutes}د ${parts.seconds}ث`
-                const firstImg =
-                  Array.isArray(a.images) && a.images.length > 0 && a.images[0]
-                    ? String(a.images[0])
-                    : null
+                const imgs = normalizeAuctionImages(a.images)
+                const firstImg = imgs[0] ?? null
                 return (
                   <Link
                     key={a.id}
                     href={'/auction/' + a.id}
-                    className="bg-white rounded-xl overflow-hidden shadow-md border border-gray-100/80 relative group"
+                    className="bg-white rounded-xl overflow-hidden shadow-md border border-gray-100/80 relative group hover:shadow-lg transition-shadow duration-200"
                   >
                     <div className="absolute top-2 left-2 z-10">
                       <FavoriteHeart auctionId={a.id} userId={user?.user_id ?? null} />
@@ -217,7 +249,16 @@ export default function HomePage() {
                   </Link>
                 )
               })}
-            </div>
+              </div>
+              {auctions.length > 6 && (
+                <Link
+                  href="/auction"
+                  className="block text-center py-3 mt-3 bg-white rounded-xl shadow-sm border border-gray-100 text-amber-600 font-medium text-sm"
+                >
+                  عرض المزيد ({auctions.length - 6}+)
+                </Link>
+              )}
+            </>
           )}
         </div>
 

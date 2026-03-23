@@ -62,6 +62,11 @@ export default function AuctionDetailPage() {
   const [msgLoading, setMsgLoading] = useState(false)
   const [reviewExists, setReviewExists] = useState<boolean | null>(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
+  const [showReportModal, setShowReportModal] = useState(false)
+  const [reportReason, setReportReason] = useState('')
+  const [reportDetails, setReportDetails] = useState('')
+  const [reportSubmitting, setReportSubmitting] = useState(false)
+  const [reportError, setReportError] = useState('')
 
   const loadAuction = useCallback(async () => {
     if (!id) return
@@ -281,6 +286,39 @@ export default function AuctionDetailPage() {
     auction?.seller?.full_name?.trim() ||
     (auction ? 'بائع' : '')
 
+  const submitReport = async () => {
+    if (!auction || !user) return
+    if (!reportReason) {
+      setReportError('اختر سبب البلاغ')
+      return
+    }
+    setReportSubmitting(true)
+    setReportError('')
+    try {
+      const res = await fetch('/api/reports', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.user_id,
+          auction_id: auction.id,
+          reported_user_id: auction.seller_id,
+          reason: reportReason,
+          details: reportDetails.trim() || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'فشل الإرسال')
+      show('تم إرسال البلاغ، شكراً لك', 'success')
+      setShowReportModal(false)
+      setReportReason('')
+      setReportDetails('')
+    } catch (e: unknown) {
+      setReportError(e instanceof Error ? e.message : 'حدث خطأ')
+    } finally {
+      setReportSubmitting(false)
+    }
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24" dir="rtl">
       <header className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
@@ -499,6 +537,69 @@ export default function AuctionDetailPage() {
           userId={user.user_id}
           onSubmitted={() => setReviewExists(true)}
         />
+      )}
+
+      {showReportModal && auction && (
+        <div
+          className="fixed inset-0 z-[55] flex items-end sm:items-center justify-center bg-black/50 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="report-modal-title"
+        >
+          <div className="w-full max-w-md bg-white rounded-2xl shadow-xl overflow-hidden max-h-[90vh] overflow-y-auto">
+            <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+              <h2 id="report-modal-title" className="font-bold text-lg text-gray-900">
+                الإبلاغ عن هذا المزاد
+              </h2>
+              <button
+                type="button"
+                onClick={() => setShowReportModal(false)}
+                className="w-9 h-9 rounded-full bg-gray-100 text-gray-600"
+                aria-label="إغلاق"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-4 space-y-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">سبب البلاغ</label>
+                <select
+                  value={reportReason}
+                  onChange={(e) => setReportReason(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-white text-sm"
+                >
+                  <option value="">— اختر —</option>
+                  <option value="محتوى مخالف">محتوى مخالف</option>
+                  <option value="منتج ممنوع">منتج ممنوع</option>
+                  <option value="احتيال محتمل">احتيال محتمل</option>
+                  <option value="سعر غير واقعي">سعر غير واقعي</option>
+                  <option value="أخرى">أخرى</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">تفاصيل إضافية (اختياري)</label>
+                <textarea
+                  value={reportDetails}
+                  onChange={(e) => setReportDetails(e.target.value)}
+                  placeholder="تفاصيل إضافية (اختياري)"
+                  rows={3}
+                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none"
+                />
+              </div>
+              {reportError && (
+                <p className="text-sm text-red-600 bg-red-50 rounded-lg px-3 py-2">{reportError}</p>
+              )}
+              <button
+                type="button"
+                onClick={() => void submitReport()}
+                disabled={reportSubmitting}
+                className="w-full py-3 rounded-xl bg-amber-500 text-white font-bold disabled:opacity-50"
+              >
+                {reportSubmitting ? 'جاري الإرسال...' : 'إرسال البلاغ'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
 
       {showBidModal && auction && (

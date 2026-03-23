@@ -181,6 +181,25 @@ export default function ProfilePage() {
           </div>
         </div>
       </div>
+      <div className="mt-4 px-4 mb-4">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
+          <Link
+            href="/terms"
+            className="flex items-center justify-between text-sm text-gray-700 hover:text-amber-600"
+          >
+            <span>الشروط والأحكام</span>
+            <span className="text-gray-400">←</span>
+          </Link>
+          <div className="border-t border-gray-100" />
+          <Link
+            href="/privacy"
+            className="flex items-center justify-between text-sm text-gray-700 hover:text-amber-600"
+          >
+            <span>سياسة الخصوصية</span>
+            <span className="text-gray-400">←</span>
+          </Link>
+        </div>
+      </div>
       <BottomNav active="profile" />
     </div>
   )

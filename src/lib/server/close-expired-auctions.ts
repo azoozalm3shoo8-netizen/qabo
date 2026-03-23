@@ -1,4 +1,5 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
+import { ensurePendingOrderForAuction } from '@/lib/server/ensure-order-for-auction'
 
 /** Only touches this auction row — use on detail GET instead of scanning all auctions */
 export async function closeAuctionIfExpiredForId(supabase: SupabaseClient, auctionId: string) {
@@ -9,7 +10,7 @@ export async function closeAuctionIfExpiredForId(supabase: SupabaseClient, aucti
     .eq('id', auctionId)
     .eq('status', 'active')
     .lt('ends_at', now)
-    .select('id, seller_id, highest_bidder_id, title')
+    .select('id, seller_id, highest_bidder_id, title, current_bid')
     .maybeSingle()
 
   if (error || !updated) return
@@ -40,6 +41,13 @@ export async function closeAuctionIfExpiredForId(supabase: SupabaseClient, aucti
   }
   const { error: nErr } = await supabase.from('notifications').insert(notifications)
   if (nErr) console.error('closeAuctionIfExpiredForId notifications:', nErr.message)
+
+  await ensurePendingOrderForAuction(supabase, {
+    id: updated.id,
+    seller_id: updated.seller_id,
+    highest_bidder_id: updated.highest_bidder_id,
+    current_bid: updated.current_bid,
+  })
 }
 
 export async function closeExpiredAuctions(supabase: SupabaseClient) {
@@ -49,7 +57,7 @@ export async function closeExpiredAuctions(supabase: SupabaseClient) {
     .update({ status: 'ended' })
     .eq('status', 'active')
     .lt('ends_at', now)
-    .select('id, seller_id, highest_bidder_id, title')
+    .select('id, seller_id, highest_bidder_id, title, current_bid')
 
   if (error || !ended?.length) return
 
@@ -83,5 +91,14 @@ export async function closeExpiredAuctions(supabase: SupabaseClient) {
   if (notifications.length) {
     const { error: nErr } = await supabase.from('notifications').insert(notifications)
     if (nErr) console.error('closeExpiredAuctions notifications:', nErr.message)
+  }
+
+  for (const a of ended) {
+    await ensurePendingOrderForAuction(supabase, {
+      id: a.id,
+      seller_id: a.seller_id,
+      highest_bidder_id: a.highest_bidder_id,
+      current_bid: a.current_bid,
+    })
   }
 }

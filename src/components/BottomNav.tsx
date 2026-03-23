@@ -6,6 +6,7 @@ export type BottomNavKey =
   | 'home'
   | 'categories'
   | 'favorites'
+  | 'orders'
   | 'messages'
   | 'profile'
 
@@ -35,6 +36,10 @@ export function BottomNav({ active }: { active: BottomNavKey }) {
       <Link href="/favorites" className={cls('favorites')}>
         <span className="text-lg sm:text-xl">❤️</span>
         المفضلة
+      </Link>
+      <Link href="/orders" className={cls('orders')}>
+        <span className="text-lg sm:text-xl">📦</span>
+        طلباتي
       </Link>
       <Link href="/messages" className={cls('messages')}>
         <span className="text-lg sm:text-xl">💬</span>

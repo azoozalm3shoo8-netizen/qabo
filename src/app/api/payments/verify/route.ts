@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { round2 } from '@/lib/payment-breakdown'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -9,6 +8,10 @@ const supabase = createClient(
 
 const TAP_API = 'https://api.tap.company/v2/charges'
 
+/**
+ * يؤكد الدفع ويحدّث حالة الطلب إلى captured.
+ * إضافة رصيد البائع تتم عند تأكيد الاستلام (PATCH orders confirm_delivery).
+ */
 export async function GET(req: NextRequest) {
   const secret = process.env.TAP_SECRET_KEY
   if (!secret) {
@@ -57,40 +60,9 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ success: false, status: 'order_not_found' })
   }
 
-  if (order.status === 'captured') {
+  if (order.status === 'captured' || order.status === 'paid') {
     return NextResponse.json({ success: true, status: 'CAPTURED' })
   }
-
-  const { data: seller, error: sErr } = await supabase
-    .from('profiles')
-    .select('wallet_balance')
-    .eq('id', order.seller_id)
-    .maybeSingle()
-
-  if (sErr) return NextResponse.json({ success: false, status: 'seller_fetch_failed', error: sErr.message })
-
-  const prevBal = Number(seller?.wallet_balance ?? 0)
-  const credit = round2(Number(order.product_amount))
-  const newBal = round2(prevBal + credit)
-
-  const { error: tErr } = await supabase.from('wallet_transactions').insert({
-    user_id: order.seller_id,
-    amount: credit,
-    balance_after: newBal,
-    type: 'credit',
-    description: 'عائدات مزاد (بعد الدفع)',
-    auction_id: order.auction_id,
-    tap_charge_id: tapId,
-  })
-
-  if (tErr) return NextResponse.json({ success: false, status: 'tx_insert_failed', error: tErr.message })
-
-  const { error: wErr } = await supabase
-    .from('profiles')
-    .update({ wallet_balance: newBal })
-    .eq('id', order.seller_id)
-
-  if (wErr) return NextResponse.json({ success: false, status: 'wallet_update_failed', error: wErr.message })
 
   const { error: ordErr } = await supabase
     .from('orders')
