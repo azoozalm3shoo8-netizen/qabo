@@ -69,7 +69,7 @@ export default function ProfileEditPage() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50" dir="rtl">
-        <div className="animate-spin w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full" />
+        <div className="animate-spin w-10 h-10 border-4 border-[#1B7F7A] border-t-transparent rounded-full" />
       </div>
     )
   }
@@ -98,7 +98,7 @@ export default function ProfileEditPage() {
                 onClick={() => setAvatar(a)}
                 className={
                   'w-12 h-12 rounded-xl text-2xl flex items-center justify-center border-2 ' +
-                  (avatar === a ? 'border-amber-500 bg-amber-50' : 'border-gray-100 bg-gray-50')
+                  (avatar === a ? 'border-[#1B7F7A] bg-[#E6F4F3]' : 'border-gray-100 bg-gray-50')
                 }
               >
                 {a}
@@ -113,7 +113,7 @@ export default function ProfileEditPage() {
             type="text"
             value={fullName}
             onChange={(e) => setFullName(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#1B7F7A]"
           />
         </div>
 
@@ -122,7 +122,7 @@ export default function ProfileEditPage() {
           <select
             value={city}
             onChange={(e) => setCity(e.target.value)}
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#1B7F7A] bg-white"
           >
             <option value="">اختر المدينة</option>
             {SAUDI_CITIES.map((c) => (
@@ -139,7 +139,7 @@ export default function ProfileEditPage() {
             value={bio}
             onChange={(e) => setBio(e.target.value)}
             rows={4}
-            className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+            className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#1B7F7A] resize-none"
             placeholder="اكتب نبذة قصيرة..."
           />
         </div>
@@ -148,7 +148,7 @@ export default function ProfileEditPage() {
           type="button"
           onClick={() => void save()}
           disabled={saving || !fullName.trim()}
-          className="w-full py-3.5 bg-amber-500 text-white rounded-xl font-bold shadow-md disabled:opacity-50"
+          className="w-full py-3.5 bg-[#1B7F7A] text-white rounded-xl font-bold shadow-md disabled:opacity-50"
         >
           {saving ? 'جاري الحفظ...' : 'حفظ التغييرات'}
         </button>

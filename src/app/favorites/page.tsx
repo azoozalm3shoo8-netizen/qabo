@@ -1,11 +1,38 @@
 'use client'
 
+import { Heart, Image as ImageIcon } from '@phosphor-icons/react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { BottomNav } from '@/components/BottomNav'
+import { EmptyState } from '@/components/EmptyState'
 import { FavoriteHeart } from '@/components/FavoriteHeart'
 import { HomeGridSkeleton } from '@/components/Skeleton'
+import { normalizeAuctionImages } from '@/lib/auction-images'
 import { auctionCountdownParts } from '@/lib/time'
+
+function FavThumb({ src }: { src: string | null }) {
+  const [failed, setFailed] = useState(false)
+  if (!src || failed) {
+    return (
+      <div className="flex h-32 items-center justify-center bg-[#F3F4F6] text-[#1B7F7A]">
+        <ImageIcon className="h-12 w-12 opacity-50" weight="duotone" />
+      </div>
+    )
+  }
+  return (
+    <div className="relative h-32 w-full bg-gray-100">
+      <Image
+        src={src}
+        alt=""
+        fill
+        className="object-cover"
+        sizes="50vw"
+        onError={() => setFailed(true)}
+      />
+    </div>
+  )
+}
 
 export default function FavoritesPage() {
   const [rows, setRows] = useState<any[]>([])
@@ -46,21 +73,25 @@ export default function FavoritesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20" dir="rtl">
-      <div className="bg-white border-b border-gray-100 px-4 py-3 shadow-sm rounded-b-2xl">
-        <h1 className="font-bold text-lg text-center text-gray-900">مفضلتي ❤️</h1>
+      <div className="rounded-b-2xl border-b border-gray-100 bg-white px-4 py-3 shadow-sm">
+        <h1 className="flex items-center justify-center gap-2 text-center text-lg font-bold text-gray-900">
+          <Heart className="h-6 w-6 text-red-500" weight="fill" />
+          مفضلتي
+        </h1>
       </div>
 
-      <div className="px-4 mt-4">
+      <div className="mt-4 px-4">
         {loading ? (
           <HomeGridSkeleton />
         ) : rows.length === 0 ? (
-          <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100 mt-4">
-            <p className="text-6xl mb-4">❤️</p>
-            <p className="text-gray-700 font-medium mb-2">لا توجد مفضلات</p>
-            <p className="text-gray-400 text-sm mb-6">أضف مزادات من الصفحة الرئيسية</p>
-            <Link href="/" className="text-amber-600 font-semibold">
-              تصفح المزادات
-            </Link>
+          <div className="mt-4 rounded-2xl border border-gray-100 bg-white shadow-sm">
+            <EmptyState
+              icon={<Heart className="h-14 w-14 text-red-500" weight="fill" />}
+              title="لا توجد مفضلات"
+              subtitle="أضف مزادات من الصفحة الرئيسية"
+              actionLabel="تصفح المزادات"
+              actionHref="/"
+            />
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-3">
@@ -71,27 +102,29 @@ export default function FavoritesPage() {
               const label = parts.ended
                 ? 'انتهى'
                 : `${parts.hours}س ${parts.minutes}د ${parts.seconds}ث`
+              const imgs = normalizeAuctionImages(a.images)
+              const firstImg = imgs[0] ?? null
               return (
                 <Link
                   key={r.favorite_id}
                   href={'/auction/' + a.id}
-                  className="bg-white rounded-xl overflow-hidden shadow-md border border-gray-100 relative"
+                  className="relative overflow-hidden rounded-xl border border-gray-100 bg-white shadow-md transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg"
                 >
-                  <div className="absolute top-2 left-2 z-10">
+                  <div className="absolute top-2 left-2 z-10 rounded-full bg-white p-1 shadow-md ring-1 ring-white/80">
                     <FavoriteHeart auctionId={a.id} userId={user?.user_id ?? null} />
                   </div>
-                  <div className="h-32 bg-gray-100 flex items-center justify-center text-3xl">📦</div>
+                  <FavThumb src={firstImg} />
                   <div className="p-3">
-                    <h3 className="font-medium text-sm truncate">{a.title}</h3>
-                    <p className="text-amber-600 font-bold mt-1">
+                    <h3 className="truncate text-sm font-medium">{a.title}</h3>
+                    <p className="mt-1 text-base font-bold text-[#1B7F7A]">
                       {Number(a.current_bid).toLocaleString()} ر.س
                     </p>
-                    <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                    <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
                       <span>{a.city || 'غير محدد'}</span>
                       <span
                         className={
                           parts.ended
-                            ? 'text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded-md'
+                            ? 'rounded-md bg-red-50 px-2 py-0.5 font-semibold text-red-600'
                             : ''
                         }
                       >

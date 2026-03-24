@@ -28,7 +28,7 @@ export function AuctionImageGallery({ images }: { images: string[] | null | unde
   if (list.length === 0) {
     return (
       <div
-        className="aspect-[4/3] max-h-80 bg-gray-100 flex flex-col items-center justify-center gap-2 rounded-2xl text-gray-400 px-4 text-center"
+        className="aspect-[4/3] max-h-80 bg-gray-100 flex flex-col items-center justify-center gap-2 rounded-b-2xl text-gray-400 px-4 text-center"
         dir="rtl"
       >
         <span className="text-5xl" aria-hidden>
@@ -41,7 +41,7 @@ export function AuctionImageGallery({ images }: { images: string[] | null | unde
 
   if (list.length === 1) {
     return (
-      <div className="relative aspect-[4/3] max-h-80 w-full rounded-2xl overflow-hidden bg-gray-100">
+      <div className="relative aspect-[4/3] max-h-80 w-full overflow-hidden rounded-b-2xl bg-gray-100">
         <Image
           src={list[0]}
           alt=""
@@ -59,7 +59,7 @@ export function AuctionImageGallery({ images }: { images: string[] | null | unde
       <div
         ref={scrollerRef}
         dir="ltr"
-        className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide rounded-2xl gap-0"
+        className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-0 rounded-b-2xl"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {list.map((src, i) => (
@@ -91,7 +91,7 @@ export function AuctionImageGallery({ images }: { images: string[] | null | unde
             }}
             className={
               'w-2 h-2 rounded-full transition-colors ' +
-              (i === index ? 'bg-amber-500' : 'bg-gray-300')
+              (i === index ? 'bg-[#1B7F7A]' : 'bg-gray-300')
             }
             aria-label={'صورة ' + (i + 1)}
           />

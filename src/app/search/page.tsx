@@ -1,10 +1,12 @@
 'use client'
 
+import { MagnifyingGlass } from '@phosphor-icons/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BottomNav } from '@/components/BottomNav'
+import { EmptyState } from '@/components/EmptyState'
 import { FavoriteHeart } from '@/components/FavoriteHeart'
 import { CATEGORY_CATALOG, SAUDI_CITIES } from '@/lib/constants'
 import { normalizeAuctionImages } from '@/lib/auction-images'
@@ -33,10 +35,8 @@ function AuctionListingThumb({ src }: { src: string | null }) {
   const [failed, setFailed] = useState(false)
   if (!src || failed) {
     return (
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-100 text-gray-400">
-        <span className="text-4xl" aria-hidden>
-          📷
-        </span>
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-[#F3F4F6] text-[#1B7F7A]">
+        <MagnifyingGlass className="h-10 w-10 opacity-40" weight="duotone" />
       </div>
     )
   }
@@ -254,7 +254,7 @@ export default function SearchPage() {
               }
             }}
             placeholder="ابحث في المزادات..."
-            className="w-full pr-10 pl-10 py-3 bg-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-amber-500 shadow-inner"
+            className="w-full pr-10 pl-10 py-3 bg-gray-100 rounded-xl text-sm outline-none focus:ring-2 focus:ring-[#1B7F7A] shadow-inner"
           />
           {query && (
             <button
@@ -272,7 +272,7 @@ export default function SearchPage() {
           <div className="bg-white rounded-2xl p-3 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-2">
               <span className="text-xs font-bold text-gray-600">عمليات بحث سابقة</span>
-              <button type="button" onClick={clearHistory} className="text-xs text-amber-600 font-medium">
+              <button type="button" onClick={clearHistory} className="text-xs text-[#1B7F7A] font-medium">
                 مسح التاريخ
               </button>
             </div>
@@ -315,7 +315,7 @@ export default function SearchPage() {
                       onClick={() => setCategory(c.value)}
                       className={
                         'shrink-0 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ' +
-                        (active ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-700')
+                        (active ? 'bg-[#1B7F7A] text-white' : 'bg-gray-100 text-gray-700')
                       }
                     >
                       {c.name}
@@ -381,7 +381,7 @@ export default function SearchPage() {
               <button
                 type="button"
                 onClick={() => void applyFiltersClick()}
-                className="flex-1 py-2.5 rounded-xl bg-amber-500 text-white text-sm font-bold"
+                className="flex-1 py-2.5 rounded-xl bg-[#1B7F7A] text-white text-sm font-bold transition-transform active:scale-95 hover:bg-[#156661]"
               >
                 تطبيق الفلاتر
               </button>
@@ -418,10 +418,12 @@ export default function SearchPage() {
             ))}
           </div>
         ) : results.length === 0 && !loading ? (
-          <div className="bg-white rounded-2xl p-12 text-center shadow-sm border border-gray-100">
-            <p className="text-6xl mb-4">🔍</p>
-            <p className="text-gray-800 font-bold mb-2">لا توجد نتائج مطابقة</p>
-            <p className="text-gray-500 text-sm">جرّب تغيير كلمة البحث أو الفلاتر</p>
+          <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
+            <EmptyState
+              icon={<MagnifyingGlass className="h-14 w-14" weight="duotone" />}
+              title="لا توجد نتائج مطابقة"
+              subtitle="جرّب تغيير كلمة البحث أو الفلاتر"
+            />
           </div>
         ) : (
           <>
@@ -447,7 +449,7 @@ export default function SearchPage() {
                     </div>
                     <div className="p-3">
                       <h3 className="font-medium text-sm truncate leading-snug">{a.title}</h3>
-                      <p className="text-amber-600 font-bold mt-1">
+                      <p className="text-[#1B7F7A] font-bold mt-1">
                         {Number(a.current_bid).toLocaleString()} ر.س
                       </p>
                       <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
@@ -471,7 +473,7 @@ export default function SearchPage() {
                 type="button"
                 disabled={loading}
                 onClick={() => void loadMore()}
-                className="w-full py-3 mt-3 rounded-2xl bg-white border border-gray-200 text-amber-600 font-bold text-sm shadow-sm disabled:opacity-50"
+                className="w-full py-3 mt-3 rounded-2xl bg-white border border-gray-200 text-[#1B7F7A] font-bold text-sm shadow-sm disabled:opacity-50"
               >
                 {loading ? 'جاري التحميل...' : 'عرض المزيد'}
               </button>

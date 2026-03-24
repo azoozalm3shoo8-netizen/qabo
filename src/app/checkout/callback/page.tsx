@@ -78,7 +78,7 @@ function CallbackInner() {
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center relative z-10">
         {phase === 'loading' && (
           <>
-            <div className="animate-spin w-12 h-12 border-4 border-amber-500 border-t-transparent rounded-full mx-auto mb-4" />
+            <div className="animate-spin w-12 h-12 border-4 border-[#1B7F7A] border-t-transparent rounded-full mx-auto mb-4" />
             <p className="text-gray-700 font-medium">جاري التحقق من الدفع...</p>
           </>
         )}
@@ -90,7 +90,7 @@ function CallbackInner() {
             <p className="text-sm text-gray-500 mb-6">شكراً لك. تم تأكيد عملية الدفع.</p>
             <Link
               href="/"
-              className="inline-block w-full py-3.5 rounded-xl bg-amber-500 text-white font-bold shadow-md"
+              className="inline-block w-full py-3.5 rounded-xl bg-[#1B7F7A] text-white font-bold shadow-md hover:bg-[#156661]"
             >
               العودة للرئيسية
             </Link>
@@ -109,7 +109,7 @@ function CallbackInner() {
             >
               حاول مرة أخرى
             </button>
-            <Link href="/" className="block mt-3 text-sm text-amber-700 font-medium">
+            <Link href="/" className="block mt-3 text-sm text-[#1B7F7A] font-medium">
               الرئيسية
             </Link>
           </>
@@ -124,7 +124,7 @@ export default function CheckoutCallbackPage() {
     <Suspense
       fallback={
         <div className="min-h-screen flex items-center justify-center bg-gray-50" dir="rtl">
-          <div className="animate-spin w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full" />
+          <div className="animate-spin w-10 h-10 border-4 border-[#1B7F7A] border-t-transparent rounded-full" />
         </div>
       }
     >

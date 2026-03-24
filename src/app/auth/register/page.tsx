@@ -116,12 +116,12 @@ export default function RegisterPage() {
 
   return (
     <div
-      className="min-h-screen flex items-center justify-center bg-gradient-to-b from-amber-50 to-white p-4"
+      className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#E6F4F3] to-white p-4"
       dir="rtl"
     >
       <div className="w-full max-w-sm bg-white rounded-2xl shadow-lg p-6 border border-gray-100">
         <div className="text-center mb-6">
-          <h1 className="text-4xl font-bold text-amber-500 mb-2">قبو</h1>
+          <h1 className="text-4xl font-bold text-[#1B7F7A] mb-2">قبو</h1>
           <p className="text-gray-500 text-sm">إنشاء حساب جديد</p>
         </div>
 
@@ -139,7 +139,7 @@ export default function RegisterPage() {
                 placeholder="5xxxxxxxx"
                 value={phone}
                 onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none"
+                className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#1B7F7A] outline-none"
                 maxLength={9}
               />
             </div>
@@ -148,7 +148,7 @@ export default function RegisterPage() {
                 type="checkbox"
                 checked={devMode}
                 onChange={(e) => setDevMode(e.target.checked)}
-                className="accent-amber-500"
+                className="accent-[#1B7F7A]"
               />
               وضع التطوير (بدون OTP)
             </label>
@@ -156,7 +156,7 @@ export default function RegisterPage() {
               type="button"
               onClick={() => (devMode ? void devRegister() : void sendOtp())}
               disabled={phone.length < 9 || loading}
-              className="w-full py-3 bg-amber-500 text-white rounded-xl font-medium disabled:opacity-50"
+              className="w-full py-3 bg-[#1B7F7A] text-white rounded-xl font-medium disabled:opacity-50"
             >
               {loading ? 'جاري...' : devMode ? 'متابعة' : 'إرسال رمز التحقق'}
             </button>
@@ -171,14 +171,14 @@ export default function RegisterPage() {
               inputMode="numeric"
               value={otp}
               onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-center text-2xl tracking-widest focus:ring-2 focus:ring-amber-500 outline-none"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-center text-2xl tracking-widest focus:ring-2 focus:ring-[#1B7F7A] outline-none"
               maxLength={6}
             />
             <button
               type="button"
               onClick={() => void verifyOtp()}
               disabled={otp.length < 4 || loading}
-              className="w-full py-3 bg-amber-500 text-white rounded-xl font-medium disabled:opacity-50"
+              className="w-full py-3 bg-[#1B7F7A] text-white rounded-xl font-medium disabled:opacity-50"
             >
               {loading ? 'جاري التحقق...' : 'تأكيد'}
             </button>
@@ -201,7 +201,7 @@ export default function RegisterPage() {
                 type="text"
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-amber-500 outline-none"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#1B7F7A] outline-none"
                 placeholder="الاسم كما يظهر للآخرين"
               />
             </div>
@@ -210,7 +210,7 @@ export default function RegisterPage() {
               <select
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-amber-500 outline-none"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl bg-white focus:ring-2 focus:ring-[#1B7F7A] outline-none"
               >
                 <option value="">اختر المدينة</option>
                 {SAUDI_CITIES.map((c) => (
@@ -224,7 +224,7 @@ export default function RegisterPage() {
               type="button"
               onClick={() => void completeProfile()}
               disabled={loading}
-              className="w-full py-3 bg-amber-500 text-white rounded-xl font-medium disabled:opacity-50"
+              className="w-full py-3 bg-[#1B7F7A] text-white rounded-xl font-medium disabled:opacity-50"
             >
               {loading ? 'جاري الحفظ...' : 'إنهاء التسجيل'}
             </button>
@@ -233,7 +233,7 @@ export default function RegisterPage() {
 
         <p className="text-center text-sm text-gray-500 mt-6">
           لديك حساب؟{' '}
-          <Link href="/auth/login" className="text-amber-500 font-medium hover:underline">
+          <Link href="/auth/login" className="text-[#1B7F7A] font-medium hover:underline">
             سجل دخول
           </Link>
         </p>

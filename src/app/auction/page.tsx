@@ -63,7 +63,7 @@ export default function AuctionPage() {
         </div>
         <div className="flex gap-2 p-3">
           {[0, 1, 2].map((i) => (
-            <button key={i} onClick={() => setSelectedImage(i)} className={'w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center border-2 ' + (selectedImage === i ? 'border-amber-500' : 'border-transparent')}>
+            <button key={i} onClick={() => setSelectedImage(i)} className={'w-16 h-16 rounded-lg bg-gray-200 flex items-center justify-center border-2 ' + (selectedImage === i ? 'border-primary' : 'border-transparent')}>
               <span className="text-2xl">📱</span>
             </button>
           ))}
@@ -97,11 +97,11 @@ export default function AuctionPage() {
           </div>
         </div>
 
-        <div className="bg-amber-50 rounded-xl p-4 mb-4">
+        <div className="bg-primary-light rounded-xl p-4 mb-4">
           <div className="flex justify-between items-center">
             <div>
               <p className="text-sm text-gray-500">أعلى مزايدة حالياً</p>
-              <p className="text-3xl font-bold text-amber-600">{auction.currentBid.toLocaleString()} <span className="text-base">ر.س</span></p>
+              <p className="text-3xl font-bold text-primary-dark">{auction.currentBid.toLocaleString()} <span className="text-base">ر.س</span></p>
             </div>
             <div className="text-left">
               <p className="text-sm text-gray-500">سعر البدء</p>
@@ -114,12 +114,12 @@ export default function AuctionPage() {
           <div className="flex items-center gap-2">
             <button onClick={() => setBidAmount(Math.max(auction.currentBid + auction.bidIncrement, bidAmount - auction.bidIncrement))} className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-xl font-bold text-gray-600">-</button>
             <div className="flex-1 text-center">
-              <input type="number" value={bidAmount} onChange={e => setBidAmount(Number(e.target.value))} className="w-full text-center text-2xl font-bold py-2 border rounded-lg focus:ring-2 focus:ring-amber-500 outline-none" />
+              <input type="number" value={bidAmount} onChange={e => setBidAmount(Number(e.target.value))} className="w-full text-center text-2xl font-bold py-2 border rounded-lg focus:ring-2 focus:ring-primary outline-none" />
               <p className="text-xs text-gray-400 mt-1">الحد الأدنى: {(auction.currentBid + auction.bidIncrement).toLocaleString()} ر.س</p>
             </div>
             <button onClick={() => setBidAmount(bidAmount + auction.bidIncrement)} className="w-10 h-10 rounded-lg bg-gray-100 flex items-center justify-center text-xl font-bold text-gray-600">+</button>
           </div>
-          <button onClick={handleBid} disabled={bidAmount < auction.currentBid + auction.bidIncrement} className="w-full py-4 bg-amber-500 text-white rounded-xl font-bold text-lg hover:bg-amber-600 disabled:opacity-50 transition-colors">
+          <button onClick={handleBid} disabled={bidAmount < auction.currentBid + auction.bidIncrement} className="w-full py-4 bg-primary text-white rounded-xl font-bold text-lg hover:bg-primary-dark disabled:opacity-50 transition-colors">
             {bidPlaced ? '✓ تم تقديم مزايدتك!' : 'زايد الآن'}
           </button>
         </div>
@@ -134,13 +134,13 @@ export default function AuctionPage() {
         <h3 className="font-bold text-lg mb-3">البائع</h3>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-amber-100 flex items-center justify-center text-xl">👤</div>
+            <div className="w-12 h-12 rounded-full bg-primary-light flex items-center justify-center text-xl">👤</div>
             <div>
               <p className="font-medium">{auction.seller.name}</p>
               <p className="text-sm text-gray-500">⭐ {auction.seller.rating} | {auction.seller.sales} عملية بيع</p>
             </div>
           </div>
-          <button className="px-4 py-2 border border-amber-500 text-amber-500 rounded-lg text-sm hover:bg-amber-50">تواصل</button>
+          <button className="px-4 py-2 border border-primary text-primary rounded-lg text-sm hover:bg-primary-light">تواصل</button>
         </div>
       </div>
 
@@ -152,9 +152,9 @@ export default function AuctionPage() {
         {showBids && (
           <div className="mt-3 space-y-2">
             {auction.bids.map((bid, i) => (
-              <div key={i} className={'flex items-center justify-between py-2 px-3 rounded-lg ' + (i === 0 ? 'bg-amber-50' : 'bg-gray-50')}>
+              <div key={i} className={'flex items-center justify-between py-2 px-3 rounded-lg ' + (i === 0 ? 'bg-primary-light' : 'bg-gray-50')}>
                 <div className="flex items-center gap-2">
-                  {i === 0 && <span className="text-amber-500">👑</span>}
+                  {i === 0 && <span className="text-primary">👑</span>}
                   <span className="text-sm">{bid.user}</span>
                 </div>
                 <div className="text-left">

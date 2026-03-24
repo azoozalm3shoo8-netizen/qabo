@@ -123,7 +123,7 @@ export default function CheckoutPage() {
       <div className="px-4 py-4 max-w-lg mx-auto space-y-4">
         {loading && (
           <div className="flex justify-center py-16">
-            <div className="animate-spin w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full" />
+            <div className="animate-spin w-10 h-10 border-4 border-[#1B7F7A] border-t-transparent rounded-full" />
           </div>
         )}
 
@@ -146,7 +146,7 @@ export default function CheckoutPage() {
               <div className="p-4">
                 <h2 className="font-bold text-lg text-gray-900 leading-snug">{auction.title}</h2>
                 <p className="text-sm text-gray-500 mt-1">سعر الفوز (المنتج)</p>
-                <p className="text-2xl font-extrabold text-amber-600">
+                <p className="text-2xl font-extrabold text-[#1B7F7A]">
                   {breakdown?.productAmount.toLocaleString()} <span className="text-base">ر.س</span>
                 </p>
               </div>
@@ -173,13 +173,13 @@ export default function CheckoutPage() {
                 </div>
                 <div className="border-t border-gray-100 pt-3 flex justify-between text-base font-bold text-gray-900">
                   <span>الإجمالي</span>
-                  <span className="text-amber-600 tabular-nums">{breakdown.total.toLocaleString()} ر.س</span>
+                  <span className="text-[#1B7F7A] tabular-nums">{breakdown.total.toLocaleString()} ر.س</span>
                 </div>
               </div>
             )}
 
             {!canPay && (
-              <div className="bg-amber-50 border border-amber-200 text-amber-900 rounded-xl p-4 text-sm text-center">
+              <div className="rounded-xl border border-[#1B7F7A]/20 bg-[#E6F4F3] p-4 text-center text-sm text-[#156661]">
                 لا يمكن إتمام الدفع من هذا الحساب لهذا المزاد.
               </div>
             )}
@@ -192,14 +192,14 @@ export default function CheckoutPage() {
               type="button"
               onClick={() => void pay()}
               disabled={!canPay || paying}
-              className="w-full py-4 rounded-2xl bg-amber-500 text-white font-bold text-lg shadow-md hover:bg-amber-600 disabled:opacity-45 disabled:cursor-not-allowed"
+              className="w-full rounded-2xl bg-[#FF8C42] py-4 text-lg font-bold text-white shadow-md transition-transform active:scale-95 hover:bg-[#E87A35] disabled:cursor-not-allowed disabled:opacity-45"
             >
               {paying ? 'جاري التحويل لبوابة الدفع...' : 'ادفع الآن 💳'}
             </button>
 
             <Link
               href={'/auction/' + id}
-              className="block text-center text-sm text-amber-700 font-medium py-2"
+              className="block text-center text-sm text-[#1B7F7A] font-medium py-2"
             >
               العودة لتفاصيل المزاد
             </Link>

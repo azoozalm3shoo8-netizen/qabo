@@ -44,10 +44,6 @@ export default function CreatePage() {
     setUser(JSON.parse(stored))
   }, [])
 
-  useEffect(() => {
-    console.log('Images state:', imageUrls)
-  }, [imageUrls])
-
   const goStep3 = () => {
     if (imageUrls.length < 1) {
       setError('يرجى رفع صورة واحدة على الأقل للمنتج')
@@ -104,14 +100,14 @@ export default function CreatePage() {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4" dir="rtl">
         <div className="bg-white rounded-2xl p-8 text-center max-w-sm w-full shadow-lg border border-gray-100">
-          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-4xl text-green-500">✓</span>
+          <div className="w-20 h-20 bg-[#10B981]/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <span className="text-4xl text-[#1B7F7A]">✓</span>
           </div>
-          <h1 className="text-xl font-bold mb-2">تم نشر مزادك بنجاح!</h1>
+          <h1 className="text-xl font-bold mb-2 text-[#1B7F7A]">تم نشر مزادك بنجاح!</h1>
           <p className="text-gray-500 mb-6">يمكنك متابعة المزايدات من صفحة حسابي</p>
           <a
             href="/"
-            className="block w-full py-3 bg-amber-500 text-white rounded-xl font-medium"
+            className="block w-full py-3 bg-[#1B7F7A] text-white rounded-xl font-medium transition-transform active:scale-95 hover:bg-[#156661]"
           >
             العودة للرئيسية
           </a>
@@ -134,7 +130,7 @@ export default function CreatePage() {
             <div
               key={s}
               className={
-                'h-1 flex-1 rounded-full ' + (step >= s ? 'bg-amber-500' : 'bg-gray-200')
+                'h-1 flex-1 rounded-full ' + (step >= s ? 'bg-[#1B7F7A]' : 'bg-gray-200')
               }
             />
           ))}
@@ -156,7 +152,7 @@ export default function CreatePage() {
                 className={
                   'p-4 rounded-xl border-2 text-center transition-colors ' +
                   (category === c
-                    ? 'border-amber-500 bg-amber-50'
+                    ? 'border-[#1B7F7A] bg-[#E6F4F3]'
                     : 'border-gray-200 bg-white')
                 }
               >
@@ -169,7 +165,7 @@ export default function CreatePage() {
             type="button"
             onClick={() => setStep(2)}
             disabled={!category}
-            className="w-full py-3 bg-amber-500 text-white rounded-xl font-medium disabled:opacity-50 mt-4"
+            className="w-full py-3 bg-[#1B7F7A] text-white rounded-xl font-medium disabled:opacity-50 mt-4 transition-transform active:scale-95 hover:bg-[#156661]"
           >
             التالي
           </button>
@@ -187,7 +183,7 @@ export default function CreatePage() {
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="مثال: ايفون 15 برو ماكس 256GB"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#1B7F7A]"
             />
           </div>
           <div>
@@ -197,7 +193,7 @@ export default function CreatePage() {
               onChange={(e) => setDescription(e.target.value)}
               placeholder="اكتب وصف تفصيلي..."
               rows={4}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 resize-none"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#1B7F7A] resize-none"
             />
           </div>
           <div>
@@ -215,7 +211,7 @@ export default function CreatePage() {
                   className={
                     'flex-1 py-2 rounded-lg text-sm border-2 ' +
                     (condition === o.v
-                      ? 'border-amber-500 bg-amber-50 text-amber-700'
+                      ? 'border-[#1B7F7A] bg-[#E6F4F3] text-[#1B7F7A]'
                       : 'border-gray-200')
                   }
                 >
@@ -229,7 +225,7 @@ export default function CreatePage() {
             <select
               value={city}
               onChange={(e) => setCity(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500 bg-white"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#1B7F7A] bg-white"
             >
               <option value="">اختر المدينة</option>
               {CITIES.map((c) => (
@@ -251,7 +247,7 @@ export default function CreatePage() {
               type="button"
               onClick={goStep3}
               disabled={!title}
-              className="flex-1 py-3 bg-amber-500 text-white rounded-xl font-medium disabled:opacity-50"
+              className="flex-1 py-3 bg-[#1B7F7A] text-white rounded-xl font-medium disabled:opacity-50 transition-transform active:scale-95 hover:bg-[#156661]"
             >
               التالي
             </button>
@@ -269,7 +265,7 @@ export default function CreatePage() {
               value={startPrice}
               onChange={(e) => setStartPrice(e.target.value)}
               placeholder="0"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#1B7F7A]"
             />
           </div>
           <div>
@@ -281,7 +277,7 @@ export default function CreatePage() {
               value={buyNow}
               onChange={(e) => setBuyNow(e.target.value)}
               placeholder="0"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#1B7F7A]"
             />
           </div>
           <div>
@@ -293,7 +289,7 @@ export default function CreatePage() {
               value={increment}
               onChange={(e) => setIncrement(e.target.value)}
               placeholder="100"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-amber-500"
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#1B7F7A]"
             />
           </div>
           <div>
@@ -307,7 +303,7 @@ export default function CreatePage() {
                   className={
                     'py-2 rounded-lg text-sm border-2 ' +
                     (duration === d.value
-                      ? 'border-amber-500 bg-amber-50 text-amber-700'
+                      ? 'border-[#1B7F7A] bg-[#E6F4F3] text-[#1B7F7A]'
                       : 'border-gray-200')
                   }
                 >
@@ -328,7 +324,7 @@ export default function CreatePage() {
               type="button"
               onClick={() => void handlePublish()}
               disabled={!startPrice || loading}
-              className="flex-1 py-3 bg-amber-500 text-white rounded-xl font-medium disabled:opacity-50"
+              className="flex-1 py-3 bg-[#FF8C42] text-white rounded-xl font-medium disabled:opacity-50 transition-transform active:scale-95 hover:bg-[#E87A35]"
             >
               {loading ? 'جاري النشر...' : 'نشر المزاد'}
             </button>

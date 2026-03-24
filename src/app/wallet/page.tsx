@@ -45,7 +45,7 @@ export default function WalletPage() {
       <header className="bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
         <Link
           href="/profile"
-          className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-lg"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-[#1F2937] shadow-sm backdrop-blur-sm"
           aria-label="رجوع"
         >
           →
@@ -55,8 +55,8 @@ export default function WalletPage() {
       </header>
 
       <div className="px-4 pt-6 max-w-lg mx-auto space-y-4">
-        <div className="bg-gradient-to-br from-amber-500 to-amber-600 rounded-2xl p-6 text-white shadow-lg">
-          <p className="text-amber-100 text-sm mb-1">الرصيد الحالي</p>
+        <div className="bg-gradient-to-br from-[#1B7F7A] to-[#156661] rounded-2xl p-6 text-white shadow-lg">
+          <p className="text-white/70 text-sm mb-1">الرصيد الحالي</p>
           {loading ? (
             <div className="h-10 w-40 bg-white/20 rounded-lg animate-pulse mt-2" />
           ) : (
@@ -90,7 +90,7 @@ export default function WalletPage() {
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm min-h-[120px]">
             {loading ? (
               <div className="p-8 flex justify-center">
-                <div className="animate-spin w-8 h-8 border-4 border-amber-500 border-t-transparent rounded-full" />
+                <div className="animate-spin w-8 h-8 border-4 border-[#1B7F7A] border-t-transparent rounded-full" />
               </div>
             ) : transactions.length === 0 ? (
               <p className="text-center text-gray-500 text-sm py-10 px-4">لا توجد معاملات بعد</p>
@@ -110,7 +110,7 @@ export default function WalletPage() {
                       <span
                         className={
                           'font-bold tabular-nums shrink-0 ' +
-                          (t.type === 'credit' ? 'text-green-600' : 'text-red-600')
+                          (t.type === 'credit' ? 'text-[#10B981]' : 'text-[#EF4444]')
                         }
                       >
                         {t.type === 'credit' ? '+' : '-'}

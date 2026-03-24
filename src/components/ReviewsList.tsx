@@ -54,7 +54,7 @@ export function ReviewsList({ userId }: { userId: string }) {
           className="bg-white rounded-xl border border-gray-100 p-4 shadow-sm"
         >
           <div className="flex items-start justify-between gap-2">
-            <div className="text-amber-500 text-sm" aria-hidden>
+            <div className="text-yellow-500 text-sm" aria-hidden>
               {'⭐'.repeat(r.rating)}
               <span className="text-gray-300">{'☆'.repeat(5 - r.rating)}</span>
             </div>
@@ -63,7 +63,7 @@ export function ReviewsList({ userId }: { userId: string }) {
             </span>
           </div>
           <p className="font-semibold text-gray-900 text-sm mt-2">{r.reviewer_name}</p>
-          <p className="text-xs text-amber-700/80 mt-0.5">{r.auction_title}</p>
+          <p className="text-xs text-[#156661]/80 mt-0.5">{r.auction_title}</p>
           {r.comment && (
             <p className="text-sm text-gray-600 mt-2 leading-relaxed">{r.comment}</p>
           )}

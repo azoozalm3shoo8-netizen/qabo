@@ -1,5 +1,15 @@
 'use client'
 
+import {
+  CaretLeft,
+  ChatCircle,
+  Heart,
+  MapPin,
+  Package,
+  Plus,
+  UserCircle,
+  Wallet,
+} from '@phosphor-icons/react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { BottomNav } from '@/components/BottomNav'
@@ -61,56 +71,71 @@ export default function ProfilePage() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 pb-20" dir="rtl">
-        <div className="h-40 bg-amber-200 animate-pulse rounded-b-3xl" />
-        <div className="px-4 -mt-16 space-y-3">
-          <div className="h-28 bg-white rounded-2xl shadow animate-pulse" />
-          <div className="h-40 bg-white rounded-2xl shadow animate-pulse" />
+        <div className="h-40 animate-pulse rounded-b-3xl bg-[#1B7F7A]/30" />
+        <div className="-mt-16 space-y-3 px-4">
+          <div className="h-28 animate-pulse rounded-2xl bg-white shadow" />
+          <div className="h-40 animate-pulse rounded-2xl bg-white shadow" />
         </div>
       </div>
     )
   }
 
   const p = profile || {}
-  const avatar = p.avatar_url && String(p.avatar_url).length <= 4 ? p.avatar_url : '👤'
+  const shortEmojiAvatar = p.avatar_url && String(p.avatar_url).length <= 4
+  const avatarUrl =
+    !shortEmojiAvatar && p.avatar_url && String(p.avatar_url).startsWith('http')
+      ? String(p.avatar_url)
+      : null
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20" dir="rtl">
-      <div className="bg-amber-500 pt-8 pb-16 px-4 rounded-b-3xl shadow-md">
-        <div className="flex items-center justify-between mb-6">
-          <h1 className="text-white font-bold text-lg">حسابي</h1>
+      <div className="rounded-b-3xl bg-gradient-to-br from-[#1B7F7A] to-[#156661] px-4 pt-8 pb-16 shadow-md">
+        <div className="mb-6 flex items-center justify-between">
+          <h1 className="text-lg font-bold text-white">حسابي</h1>
           <div className="flex items-center gap-2">
             <Link
               href="/profile/edit"
-              className="text-white text-sm bg-white/20 px-3 py-1.5 rounded-lg font-medium"
+              className="rounded-lg bg-white/20 px-3 py-1.5 text-sm font-medium text-white backdrop-blur-sm"
             >
               تعديل
             </Link>
             <button
               type="button"
               onClick={handleLogout}
-              className="text-white text-sm bg-white/20 px-3 py-1.5 rounded-lg"
+              className="rounded-lg bg-white/20 px-3 py-1.5 text-sm text-white backdrop-blur-sm"
             >
               خروج
             </button>
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-3xl shadow-lg border-2 border-amber-100">
-            {avatar}
+          <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-[#E6F4F3] bg-white shadow-lg">
+            {shortEmojiAvatar ? (
+              <span className="text-3xl">{String(p.avatar_url)}</span>
+            ) : avatarUrl ? (
+              <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+            ) : (
+              <UserCircle className="h-12 w-12 text-[#1B7F7A]" weight="fill" />
+            )}
           </div>
-          <div className="text-white min-w-0">
-            <h2 className="text-xl font-bold truncate">
+          <div className="min-w-0 text-white">
+            <h2 className="truncate text-xl font-bold">
               {(p.full_name && String(p.full_name).trim()) || 'مستخدم جديد'}
             </h2>
-            <p className="text-amber-100 text-sm">{user?.phone || ''}</p>
-            <p className="text-amber-100 text-sm">{p.city ? '📍 ' + p.city : ''}</p>
+            <p className="text-sm text-white/70">{user?.phone || ''}</p>
+            {p.city ? (
+              <p className="mt-0.5 flex items-center gap-1 text-sm text-white/70">
+                <MapPin className="h-4 w-4 shrink-0" weight="bold" />
+                {p.city}
+              </p>
+            ) : null}
           </div>
         </div>
       </div>
-      <div className="px-4 -mt-10">
-        <div className="bg-white rounded-2xl shadow-md p-4 grid grid-cols-4 gap-2 text-center border border-gray-100">
+      <div className="-mt-10 px-4">
+        <div className="grid grid-cols-4 gap-2 rounded-2xl border border-[#1B7F7A]/10 bg-white p-4 text-center shadow-md">
           <div>
-            <p className="text-xl font-bold text-amber-600">
+            <p className="text-xl font-bold text-[#1B7F7A]">
               {p.rating != null ? Number(p.rating).toFixed(1) : '—'}
             </p>
             <p className="text-xs text-gray-500">
@@ -118,18 +143,18 @@ export default function ProfilePage() {
             </p>
           </div>
           <div>
-            <p className="text-xl font-bold text-amber-600">{p.total_sales ?? 0}</p>
+            <p className="text-xl font-bold text-[#1B7F7A]">{p.total_sales ?? 0}</p>
             <p className="text-xs text-gray-500">مبيعات</p>
           </div>
           <div>
-            <p className="text-xl font-bold text-amber-600">{p.total_purchases ?? 0}</p>
+            <p className="text-xl font-bold text-[#1B7F7A]">{p.total_purchases ?? 0}</p>
             <p className="text-xs text-gray-500">مشتريات</p>
           </div>
           <Link
             href="/wallet"
-            className="block rounded-lg focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400 min-h-0 py-0.5"
+            className="block min-h-0 rounded-lg py-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-[#1B7F7A]"
           >
-            <p className="text-xl font-bold text-green-600">
+            <p className="text-xl font-bold text-[#10B981]">
               {(p.wallet_balance ?? 0).toLocaleString()}
             </p>
             <p className="text-xs text-gray-500">المحفظة ←</p>
@@ -137,66 +162,66 @@ export default function ProfilePage() {
         </div>
       </div>
       <div className="mt-4 px-4">
-        <h3 className="font-bold text-gray-900 text-sm mb-2">آراء المشترين</h3>
+        <h3 className="mb-2 text-sm font-bold text-gray-900">آراء المشترين</h3>
         <ReviewsList userId={user?.user_id ?? ''} />
       </div>
       <div className="mt-4 px-4">
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
+        <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm">
           <div className="grid grid-cols-2 gap-3 p-3">
             <Link
               href="/create"
-              className="flex items-center gap-3 bg-amber-50 rounded-xl p-3 border border-amber-100"
+              className="flex items-center gap-3 rounded-xl border border-[#1B7F7A]/20 bg-[#E6F4F3] p-3 transition-transform hover:scale-[1.02]"
             >
-              <span className="text-2xl">➕</span>
-              <span className="font-medium text-sm">إعلان جديد</span>
+              <Plus className="h-7 w-7 shrink-0 text-[#1B7F7A]" weight="bold" />
+              <span className="text-sm font-medium">إعلان جديد</span>
             </Link>
             <Link
               href="/orders"
-              className="flex items-center gap-3 bg-green-50 rounded-xl p-3 border border-green-100"
+              className="flex items-center gap-3 rounded-xl border border-green-100 bg-green-50 p-3 transition-transform hover:scale-[1.02]"
             >
-              <span className="text-2xl">📦</span>
-              <span className="font-medium text-sm">مزاداتي</span>
+              <Package className="h-7 w-7 shrink-0 text-green-700" weight="fill" />
+              <span className="text-sm font-medium">مزاداتي</span>
             </Link>
             <Link
               href="/favorites"
-              className="flex items-center gap-3 bg-red-50 rounded-xl p-3 border border-red-100"
+              className="flex items-center gap-3 rounded-xl border border-red-100 bg-red-50 p-3 transition-transform hover:scale-[1.02]"
             >
-              <span className="text-2xl">❤️</span>
-              <span className="font-medium text-sm">المفضلة</span>
+              <Heart className="h-7 w-7 shrink-0 text-red-500" weight="fill" />
+              <span className="text-sm font-medium">المفضلة</span>
             </Link>
             <Link
               href="/messages"
-              className="flex items-center gap-3 bg-blue-50 rounded-xl p-3 border border-blue-100"
+              className="flex items-center gap-3 rounded-xl border border-blue-100 bg-blue-50 p-3 transition-transform hover:scale-[1.02]"
             >
-              <span className="text-2xl">💬</span>
-              <span className="font-medium text-sm">الرسائل</span>
+              <ChatCircle className="h-7 w-7 shrink-0 text-blue-600" weight="fill" />
+              <span className="text-sm font-medium">الرسائل</span>
             </Link>
             <Link
               href="/wallet"
-              className="col-span-2 flex items-center justify-center gap-2 bg-emerald-50 rounded-xl p-3 border border-emerald-100"
+              className="col-span-2 flex items-center justify-center gap-2 rounded-xl border border-emerald-100 bg-emerald-50 p-3 transition-transform hover:scale-[1.02]"
             >
-              <span className="text-2xl">💰</span>
-              <span className="font-medium text-sm">المحفظة والمعاملات</span>
+              <Wallet className="h-7 w-7 shrink-0 text-emerald-700" weight="fill" />
+              <span className="text-sm font-medium">المحفظة والمعاملات</span>
             </Link>
           </div>
         </div>
       </div>
-      <div className="mt-4 px-4 mb-4">
-        <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
+      <div className="mb-4 mt-4 px-4">
+        <div className="space-y-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
           <Link
             href="/terms"
-            className="flex items-center justify-between text-sm text-gray-700 hover:text-amber-600"
+            className="flex items-center justify-between text-sm text-gray-700 hover:text-[#1B7F7A]"
           >
             <span>الشروط والأحكام</span>
-            <span className="text-gray-400">←</span>
+            <CaretLeft className="h-4 w-4 text-gray-400" weight="bold" />
           </Link>
           <div className="border-t border-gray-100" />
           <Link
             href="/privacy"
-            className="flex items-center justify-between text-sm text-gray-700 hover:text-amber-600"
+            className="flex items-center justify-between text-sm text-gray-700 hover:text-[#1B7F7A]"
           >
             <span>سياسة الخصوصية</span>
-            <span className="text-gray-400">←</span>
+            <CaretLeft className="h-4 w-4 text-gray-400" weight="bold" />
           </Link>
         </div>
       </div>

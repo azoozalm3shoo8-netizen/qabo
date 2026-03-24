@@ -9,17 +9,17 @@ export default function TermsPage() {
       <header className="sticky top-0 z-20 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
         <Link
           href="/profile"
-          className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-lg"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E6F4F3] text-lg text-[#1B7F7A]"
           aria-label="رجوع"
         >
           →
         </Link>
-        <h1 className="font-bold text-lg text-gray-900 flex-1 text-center">الشروط والأحكام</h1>
+        <h1 className="flex-1 text-center text-lg font-bold text-[#1B7F7A]">الشروط والأحكام</h1>
         <div className="w-10" />
       </header>
 
       <div className="px-4 py-6 max-w-2xl mx-auto">
-        <h2 className="font-bold text-xl text-gray-900 mb-4">الشروط والأحكام — منصة قبو</h2>
+        <h2 className="mb-4 text-xl font-bold text-[#1F2937]">الشروط والأحكام — منصة قبو</h2>
 
         <section>
           <h2 className="font-bold text-lg text-gray-900 mb-3 mt-8">1. مقدمة</h2>
@@ -32,7 +32,7 @@ export default function TermsPage() {
 
         <section>
           <h2 className="font-bold text-lg text-gray-900 mb-3 mt-8">2. التسجيل والحساب</h2>
-          <ul className="text-gray-700 text-sm leading-relaxed space-y-2 list-disc pr-5">
+          <ul className="list-disc space-y-2 pr-5 text-sm leading-relaxed text-gray-700 marker:text-[#1B7F7A]">
             <li>يجب أن يكون عمرك 18 سنة أو أكثر لاستخدام المنصة.</li>
             <li>رقم الجوال المستخدم يجب أن يكون صحيحاً ومملوكاً لك، وأنت مسؤول عن أي نشاط يتم عبر حسابك.</li>
             <li>أنت مسؤول عن الحفاظ على سرية بيانات الدخول وعدم مشاركتها مع الغير.</li>

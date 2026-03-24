@@ -4,7 +4,9 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Package, PlusCircle } from '@phosphor-icons/react'
 import { BottomNav } from '@/components/BottomNav'
+import { EmptyState } from '@/components/EmptyState'
 import { OrderStatusTracker } from '@/components/OrderStatusTracker'
 import { PullToRefresh } from '@/components/PullToRefresh'
 import { useToast } from '@/components/Toast'
@@ -185,7 +187,7 @@ export default function OrdersPage() {
             onClick={() => setTab('buy')}
             className={
               'flex-1 py-2.5 rounded-xl text-sm font-bold shadow-sm ' +
-              (tab === 'buy' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 border border-gray-100')
+              (tab === 'buy' ? 'bg-[#1B7F7A] text-white' : 'bg-white text-gray-600 border border-gray-100')
             }
           >
             مشترياتي ({buyCount})
@@ -195,7 +197,7 @@ export default function OrdersPage() {
             onClick={() => setTab('sell')}
             className={
               'flex-1 py-2.5 rounded-xl text-sm font-bold shadow-sm ' +
-              (tab === 'sell' ? 'bg-amber-500 text-white' : 'bg-white text-gray-600 border border-gray-100')
+              (tab === 'sell' ? 'bg-[#1B7F7A] text-white' : 'bg-white text-gray-600 border border-gray-100')
             }
           >
             مبيعاتي ({sellCount})
@@ -214,7 +216,7 @@ export default function OrdersPage() {
                   'shrink-0 rounded-xl px-3 py-1.5 text-xs shadow-sm border border-transparent ' +
                   f.cls +
                   (active
-                    ? ' ring-2 ring-amber-600 ring-offset-1 font-extrabold brightness-95'
+                    ? ' ring-2 ring-[#1B7F7A] ring-offset-1 font-extrabold brightness-95'
                     : ' font-bold opacity-90')
                 }
               >
@@ -232,23 +234,21 @@ export default function OrdersPage() {
               ))}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-gray-100">
+            <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
               {tab === 'buy' ? (
-                <>
-                  <p className="text-5xl mb-3">🛒</p>
-                  <p className="text-gray-600 font-medium">لم تفز بأي مزاد بعد</p>
-                  <Link href="/" className="inline-block mt-4 text-amber-600 font-medium text-sm">
-                    تصفح المزادات
-                  </Link>
-                </>
+                <EmptyState
+                  icon={<Package className="h-14 w-14" weight="duotone" />}
+                  title="لم تفز بأي مزاد بعد"
+                  actionLabel="تصفح المزادات"
+                  actionHref="/"
+                />
               ) : (
-                <>
-                  <p className="text-5xl mb-3">📢</p>
-                  <p className="text-gray-600 font-medium">لم تبع شيئاً بعد</p>
-                  <Link href="/create" className="inline-block mt-4 text-amber-600 font-medium text-sm">
-                    أنشئ مزادك الأول
-                  </Link>
-                </>
+                <EmptyState
+                  icon={<PlusCircle className="h-14 w-14" weight="duotone" />}
+                  title="لم تبع شيئاً بعد"
+                  actionLabel="أنشئ مزادك الأول"
+                  actionHref="/create"
+                />
               )}
             </div>
           ) : (
@@ -282,7 +282,7 @@ export default function OrdersPage() {
                     <div className="flex items-start justify-between gap-2">
                       <Link
                         href={'/orders/' + o.id}
-                        className="font-bold text-sm truncate flex-1 hover:text-amber-600 text-right"
+                        className="font-bold text-sm truncate flex-1 hover:text-[#1B7F7A] text-right"
                       >
                         {title}
                       </Link>
@@ -290,7 +290,7 @@ export default function OrdersPage() {
                         {badge.label}
                       </span>
                     </div>
-                    <p className="text-amber-600 font-bold text-sm mt-1">
+                    <p className="text-[#1B7F7A] font-bold text-sm mt-1">
                       {Number(o.product_amount).toLocaleString()} ر.س
                     </p>
                     <OrderStatusTracker currentStatus={o.status} />
@@ -302,7 +302,7 @@ export default function OrdersPage() {
                       <button
                         type="button"
                         onClick={() => router.push('/checkout/' + o.auction_id)}
-                        className="mt-2 w-full py-2 rounded-xl bg-amber-500 text-white text-sm font-bold"
+                        className="mt-2 w-full rounded-xl bg-[#FF8C42] py-2 text-sm font-bold text-white transition-transform active:scale-95 hover:bg-[#E87A35]"
                       >
                         ادفع الآن
                       </button>

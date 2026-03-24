@@ -1,20 +1,39 @@
 @import "tailwindcss";
 
 :root {
-  --background: #f9fafb;
-  --foreground: #111827;
+  --background: #f3f4f6;
+  --foreground: #1f2937;
+  --primary: #1b7f7a;
+  --primary-light: #e6f4f3;
+  --accent: #ff8c42;
+  --charcoal: #1f2937;
+  --surface: #f3f4f6;
+  --success: #10b981;
+  --error: #ef4444;
+}
+
+.dark {
+  --background: #0f172a;
+  --foreground: #f1f5f9;
+  --primary: #2dd4bf;
+  --primary-light: #134e4a;
+  --accent: #fb923c;
+  --charcoal: #e2e8f0;
+  --surface: #1e293b;
+  --success: #34d399;
+  --error: #f87171;
 }
 
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-tajawal), system-ui, sans-serif;
+  --font-sans: var(--font-cairo), system-ui, sans-serif;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
-  font-family: var(--font-tajawal), system-ui, sans-serif;
+  font-family: var(--font-cairo), system-ui, sans-serif;
 }
 
 .safe-pb {
@@ -25,7 +44,7 @@ body {
   height: 4px;
 }
 .scrollbar-thin::-webkit-scrollbar-thumb {
-  background: #fcd34d;
+  background: #1b7f7a;
   border-radius: 4px;
 }
 
@@ -36,4 +55,41 @@ body {
   100% {
     background-position: -200% 0;
   }
+}
+
+.animate-skeleton-shimmer {
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes bell-shake {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  25% {
+    transform: rotate(8deg);
+  }
+  75% {
+    transform: rotate(-8deg);
+  }
+}
+
+.animate-bell-shake {
+  animation: bell-shake 0.5s ease-in-out;
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.3);
+  }
+}
+
+.animate-pulse-dot {
+  animation: pulse-dot 1.5s ease-in-out infinite;
 }

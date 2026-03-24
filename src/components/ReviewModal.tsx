@@ -83,7 +83,7 @@ export function ReviewModal({
                   key={n}
                   type="button"
                   onClick={() => setRating(n)}
-                  className="text-3xl p-1 focus:outline-none focus:ring-2 focus:ring-amber-400 rounded-lg"
+                  className="text-3xl p-1 focus:outline-none focus:ring-2 focus:ring-[#1B7F7A] rounded-lg"
                   aria-label={`${n} نجوم`}
                 >
                   {n <= rating ? '⭐' : '☆'}
@@ -98,7 +98,7 @@ export function ReviewModal({
               onChange={(e) => setComment(e.target.value.slice(0, 200))}
               placeholder="شاركنا تجربتك..."
               rows={3}
-              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-amber-500 outline-none resize-none"
+              className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm focus:ring-2 focus:ring-[#1B7F7A] outline-none resize-none"
             />
             <p className="text-xs text-gray-400 mt-1">{comment.length}/200</p>
           </div>
@@ -106,7 +106,7 @@ export function ReviewModal({
             type="button"
             onClick={() => void submit()}
             disabled={loading || rating < 1}
-            className="w-full py-3 bg-amber-500 text-white rounded-xl font-bold disabled:opacity-50"
+            className="w-full rounded-xl bg-[#1B7F7A] py-3 font-bold text-white transition-transform active:scale-95 hover:bg-[#156661] disabled:opacity-50"
           >
             {loading ? 'جاري الإرسال...' : 'إرسال التقييم'}
           </button>

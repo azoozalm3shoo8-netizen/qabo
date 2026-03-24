@@ -2,6 +2,9 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
+import { Bell } from '@phosphor-icons/react'
+import { QabbooLogo } from '@/components/QabbooLogo'
+import { ThemeToggle } from '@/components/ThemeToggle'
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications'
 
 export function AppHeader({
@@ -15,6 +18,7 @@ export function AppHeader({
 }) {
   const [pollUnread, setPollUnread] = useState(0)
   const [headerUserId, setHeaderUserId] = useState<string | null>(null)
+  const [shakeBell, setShakeBell] = useState(false)
   const { realtimeUnread, resetUnread } = useRealtimeNotifications(headerUserId)
 
   useEffect(() => {
@@ -51,25 +55,36 @@ export function AppHeader({
 
   const totalUnread = pollUnread + realtimeUnread
 
+  useEffect(() => {
+    if (totalUnread <= 0) return
+    setShakeBell(true)
+    const id = window.setTimeout(() => setShakeBell(false), 600)
+    return () => window.clearTimeout(id)
+  }, [totalUnread])
+
   return (
     <div className="flex items-center justify-between gap-2 mb-3">
       {showBrand ? (
-        <h1 className="text-2xl font-bold text-amber-500">قبو</h1>
+        <QabbooLogo variant="header" />
       ) : title ? (
-        <h1 className="text-lg font-bold text-gray-900 truncate">{title}</h1>
+        <h1 className="text-lg font-bold text-gray-900 truncate dark:text-slate-100">{title}</h1>
       ) : (
         <span />
       )}
       <div className="flex items-center gap-2 flex-shrink-0">
         {rightSlot}
+        <ThemeToggle />
         <Link
           href="/notifications"
-          className="relative w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center text-lg hover:bg-gray-200 transition-colors"
+          className={
+            'relative flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-[#1B7F7A] transition-colors hover:bg-gray-200 dark:bg-slate-700 dark:text-teal-300 dark:hover:bg-slate-600 ' +
+            (shakeBell && totalUnread > 0 ? 'animate-bell-shake' : '')
+          }
           aria-label="الإشعارات"
         >
-          🔔
+          <Bell className="h-5 w-5" weight={totalUnread > 0 ? 'fill' : 'regular'} />
           {totalUnread > 0 && (
-            <span className="absolute -top-0.5 -left-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">
+            <span className="absolute -top-0.5 -left-0.5 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
               {totalUnread > 99 ? '99+' : totalUnread}
             </span>
           )}

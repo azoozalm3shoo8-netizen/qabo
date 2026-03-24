@@ -69,12 +69,12 @@ export function AuctionCountdown({ endsAt, status, onEndedChange }: Props) {
           ].map((item, i) => (
             <div
               key={i}
-              className="bg-amber-50 rounded-xl px-4 py-3 text-center min-w-[72px] border border-amber-100"
+              className="min-w-[72px] rounded-xl border border-[#1B7F7A]/15 bg-[#E6F4F3] px-4 py-3 text-center"
             >
-              <div className="text-2xl font-bold text-amber-600">
+              <div className="text-2xl font-bold text-[#1B7F7A]">
                 {String(item.val).padStart(2, '0')}
               </div>
-              <div className="text-xs text-amber-700/80 mt-0.5">{item.label}</div>
+              <div className="mt-0.5 text-xs text-[#156661]/90">{item.label}</div>
             </div>
           ))}
         </div>

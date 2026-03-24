@@ -57,16 +57,16 @@ export function OrderStatusTracker({
             (cancelled
               ? 'bg-red-100 text-red-600'
               : completed
-                ? 'bg-amber-500 text-white'
+                ? 'bg-[#1B7F7A] text-white'
                 : current
-                  ? 'bg-amber-500 text-white ring-4 ring-amber-200'
+                  ? 'bg-[#1B7F7A] text-white ring-4 ring-[#1B7F7A]/25'
                   : 'bg-gray-200 text-gray-400')
 
           const lineDone = !cancelled && i < activeIdx
           const lineClass =
             lineH +
             ' flex-1 min-w-[4px] rounded-full ' +
-            (cancelled ? 'bg-red-100' : lineDone ? 'bg-amber-500' : 'bg-gray-200')
+            (cancelled ? 'bg-red-100' : lineDone ? 'bg-[#1B7F7A]' : 'bg-gray-200')
 
           const dateKey = DATE_KEYS[i]
           const dateStr =
@@ -79,8 +79,8 @@ export function OrderStatusTracker({
           )
 
           return (
-            <div key={label} className="flex flex-1 items-center min-w-0">
-              <div className="flex flex-col items-center shrink-0">
+            <div key={label} className="flex min-w-0 flex-1 items-center">
+              <div className="flex shrink-0 flex-col items-center">
                 {completed ? (
                   <motion.div
                     initial={{ scale: 0.5 }}
@@ -100,9 +100,9 @@ export function OrderStatusTracker({
                     (cancelled
                       ? 'text-red-600'
                       : completed
-                        ? 'font-medium text-amber-700'
+                        ? 'font-medium text-[#156661]'
                         : current
-                          ? 'font-bold text-amber-600'
+                          ? 'font-bold text-[#1B7F7A]'
                           : 'text-gray-400')
                   }
                 >

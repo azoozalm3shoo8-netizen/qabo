@@ -171,7 +171,7 @@ export default function OrderDetailPage() {
       {!loading && notFound && (
         <div className="p-8 text-center">
           <p className="text-gray-600 mb-4">الطلب غير موجود</p>
-          <Link href="/orders" className="text-amber-600 font-medium">
+          <Link href="/orders" className="text-[#1B7F7A] font-medium">
             العودة لطلباتي
           </Link>
         </div>
@@ -224,7 +224,7 @@ export default function OrderDetailPage() {
             <hr className="border-gray-200 my-2" />
             <div className="flex justify-between items-baseline">
               <span className="font-bold text-gray-900">الإجمالي</span>
-              <span className="text-xl font-extrabold text-amber-600">
+              <span className="text-xl font-extrabold text-[#1B7F7A]">
                 {Number(order.total_amount).toLocaleString()} ر.س
               </span>
             </div>
@@ -242,7 +242,7 @@ export default function OrderDetailPage() {
                 <button
                   type="button"
                   onClick={() => void copyTracking()}
-                  className="shrink-0 rounded-lg bg-amber-500 px-4 py-2 text-sm font-bold text-white"
+                  className="shrink-0 rounded-lg bg-[#FF8C42] px-4 py-2 text-sm font-bold text-white"
                 >
                   نسخ
                 </button>
@@ -274,7 +274,7 @@ export default function OrderDetailPage() {
             <button
               type="button"
               onClick={() => router.push('/checkout/' + order.auction_id)}
-              className="w-full py-3.5 rounded-2xl bg-amber-500 text-white font-bold shadow-md hover:bg-amber-600"
+              className="w-full py-3.5 rounded-2xl bg-[#FF8C42] text-white font-bold shadow-md hover:bg-[#E87A35]"
             >
               ادفع الآن
             </button>

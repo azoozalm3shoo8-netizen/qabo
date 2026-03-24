@@ -67,7 +67,7 @@ export default function CategoryAuctionsPage() {
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center p-6 pb-20" dir="rtl">
         <p className="text-gray-600 mb-4">التصنيف غير معروف</p>
-        <Link href="/categories" className="text-amber-600 font-medium">
+        <Link href="/categories" className="text-[#1B7F7A] font-medium">
           العودة للتصنيفات
         </Link>
         <BottomNav active="categories" />
@@ -99,7 +99,7 @@ export default function CategoryAuctionsPage() {
           <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-gray-100">
             <p className="text-5xl mb-3">📭</p>
             <p className="text-gray-600">لا توجد مزادات في هذا التصنيف حالياً</p>
-            <Link href="/" className="inline-block mt-4 text-amber-600 font-medium">
+            <Link href="/" className="inline-block mt-4 text-[#1B7F7A] font-medium">
               الرئيسية
             </Link>
           </div>
@@ -122,7 +122,7 @@ export default function CategoryAuctionsPage() {
                   <div className="h-32 bg-gray-100 flex items-center justify-center text-3xl">📦</div>
                   <div className="p-3">
                     <h3 className="font-medium text-sm truncate">{a.title}</h3>
-                    <p className="text-amber-600 font-bold mt-1">
+                    <p className="text-[#1B7F7A] font-bold mt-1">
                       {Number(a.current_bid).toLocaleString()} ر.س
                     </p>
                     <div className="flex items-center justify-between mt-2 text-xs text-gray-500">

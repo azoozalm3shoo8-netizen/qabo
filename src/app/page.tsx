@@ -1,26 +1,55 @@
 'use client'
 
+import {
+  ArrowLeft,
+  Barbell,
+  Book,
+  Buildings,
+  Car,
+  Clock,
+  DeviceMobile,
+  DotsThree,
+  Gavel,
+  GridFour,
+  MagnifyingGlass,
+  MapPin,
+  TShirt,
+  UserCircle,
+} from '@phosphor-icons/react'
 import Image from 'next/image'
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppHeader } from '@/components/AppHeader'
 import { BottomNav } from '@/components/BottomNav'
+import { EmptyState } from '@/components/EmptyState'
 import { FavoriteHeart } from '@/components/FavoriteHeart'
 import { PullToRefresh } from '@/components/PullToRefresh'
 import { PushPermissionBanner } from '@/components/PushPermissionBanner'
 import { HomeGridSkeleton } from '@/components/Skeleton'
+import { SplashScreen } from '@/components/SplashScreen'
 import { normalizeAuctionImages } from '@/lib/auction-images'
 import { auctionCountdownParts } from '@/lib/time'
+
+const CATEGORY_ICONS: Record<string, ReactNode> = {
+  الكل: <GridFour className="h-4 w-4 shrink-0" weight="bold" />,
+  إلكترونيات: <DeviceMobile className="h-4 w-4 shrink-0" weight="bold" />,
+  سيارات: <Car className="h-4 w-4 shrink-0" weight="bold" />,
+  عقارات: <Buildings className="h-4 w-4 shrink-0" weight="bold" />,
+  أزياء: <TShirt className="h-4 w-4 shrink-0" weight="bold" />,
+  ساعات: <Clock className="h-4 w-4 shrink-0" weight="bold" />,
+  أثاث: <DotsThree className="h-4 w-4 shrink-0" weight="bold" />,
+  رياضة: <Barbell className="h-4 w-4 shrink-0" weight="bold" />,
+  كتب: <Book className="h-4 w-4 shrink-0" weight="bold" />,
+  أخرى: <DotsThree className="h-4 w-4 shrink-0" weight="bold" />,
+}
 
 function AuctionListingThumb({ src }: { src: string | null }) {
   const [failed, setFailed] = useState(false)
   if (!src || failed) {
     return (
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-gray-100 text-gray-400">
-        <span className="text-4xl" aria-hidden>
-          📷
-        </span>
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-[#F3F4F6] text-gray-400">
+        <MagnifyingGlass className="h-10 w-10 opacity-40" />
       </div>
     )
   }
@@ -106,53 +135,61 @@ export default function HomePage() {
 
   return (
     <PullToRefresh onRefresh={load}>
-      <div className="min-h-screen bg-gray-50 pb-20" dir="rtl">
-        <div className="bg-white px-4 pt-4 pb-2 shadow-sm rounded-b-2xl">
+      <SplashScreen />
+      <div className="min-h-screen bg-gray-50 pb-20 dark:bg-slate-900" dir="rtl">
+        <div className="rounded-b-2xl bg-white px-4 pb-2 pt-4 shadow-sm dark:bg-slate-800">
           <AppHeader
             showBrand
             rightSlot={
               user ? (
                 <Link
                   href="/profile"
-                  className="w-9 h-9 bg-amber-100 rounded-full flex items-center justify-center text-sm shadow-sm"
+                  className="flex h-9 w-9 items-center justify-center rounded-full bg-[#E6F4F3] text-[#1B7F7A] shadow-sm transition-transform active:scale-95"
+                  aria-label="الملف الشخصي"
                 >
-                  👤
+                  <UserCircle className="h-6 w-6" weight="fill" />
                 </Link>
               ) : (
-                <Link href="/auth/login" className="text-sm text-amber-600 font-medium px-2">
+                <Link
+                  href="/auth/login"
+                  className="rounded-full bg-[#E6F4F3] px-4 py-1.5 text-sm font-semibold text-[#1B7F7A] transition-transform active:scale-95"
+                >
                   دخول
                 </Link>
               )
             }
           />
           {user && <PushPermissionBanner />}
-          <div className="flex flex-col gap-2 mb-3">
+          <div className="mb-3 flex flex-col gap-2">
             <div className="relative">
               <span
-                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm z-[1]"
+                className="pointer-events-none absolute right-3 top-1/2 z-[1] -translate-y-1/2 text-[#1B7F7A]"
                 aria-hidden
               >
-                🔍
+                <MagnifyingGlass className="h-5 w-5" weight="bold" />
               </span>
               <Link
                 href="/search"
-                className="block w-full pr-10 pl-4 py-2.5 bg-gray-100 rounded-xl text-sm text-gray-400 shadow-inner"
+                className="flex h-12 w-full items-center rounded-2xl border-2 border-gray-100 bg-white pr-11 pl-4 text-sm text-[#156661] shadow-sm transition-colors focus-within:border-[#1B7F7A] hover:border-[#1B7F7A]/40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
               >
                 ابحث في المزادات...
               </Link>
             </div>
           </div>
-          <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-thin">
+          <div className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-2 scrollbar-thin">
             {categories.map((c) => (
               <button
                 key={c}
                 type="button"
                 onClick={() => setCategory(c)}
                 className={
-                  'px-4 py-1.5 rounded-full text-sm whitespace-nowrap shrink-0 shadow-sm ' +
-                  (category === c ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600')
+                  'flex shrink-0 snap-center items-center gap-2 rounded-full px-5 py-2 text-sm whitespace-nowrap transition-transform ' +
+                  (category === c
+                    ? 'scale-[1.02] bg-[#1B7F7A] font-semibold text-white shadow-md'
+                    : 'border border-gray-200 bg-white text-[#1F2937] hover:border-[#1B7F7A]/30 hover:shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100')
                 }
               >
+                {CATEGORY_ICONS[c] ?? <DotsThree className="h-4 w-4" />}
                 {c}
               </button>
             ))}
@@ -160,46 +197,63 @@ export default function HomePage() {
         </div>
 
         {!user && (
-          <div className="px-4 mt-4">
-            <h3 className="font-bold text-sm text-gray-700 mb-2">كيف يعمل قبو؟</h3>
-            <div className="flex gap-3 overflow-x-auto pb-2">
-              <div className="flex-shrink-0 w-28 bg-amber-50 rounded-xl p-3 text-center border border-amber-100">
-                <span className="text-2xl block mb-1">📝</span>
-                <span className="text-xs font-medium text-gray-700">سجّل حسابك</span>
+          <div className="mt-4 px-4">
+            <h3 className="mb-2 text-sm font-bold text-gray-700 dark:text-slate-200">كيف يعمل قبو؟</h3>
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2">
+              <div className="w-28 flex-shrink-0 snap-center rounded-xl border border-[#E6F4F3] bg-white p-3 text-center dark:border-teal-900/40 dark:bg-slate-800">
+                <span className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#E6F4F3] text-lg dark:bg-teal-900/50">
+                  1
+                </span>
+                <span className="text-2xl mb-1 block">📝</span>
+                <span className="text-xs font-medium text-[#1F2937] dark:text-slate-200">سجّل حسابك</span>
               </div>
-              <div className="flex-shrink-0 w-28 bg-amber-50 rounded-xl p-3 text-center border border-amber-100">
-                <span className="text-2xl block mb-1">🏷️</span>
-                <span className="text-xs font-medium text-gray-700">زايد على ما تحب</span>
+              <div className="w-28 flex-shrink-0 snap-center rounded-xl border border-[#E6F4F3] bg-white p-3 text-center dark:border-teal-900/40 dark:bg-slate-800">
+                <span className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#E6F4F3] text-lg dark:bg-teal-900/50">
+                  2
+                </span>
+                <span className="text-2xl mb-1 block">🏷️</span>
+                <span className="text-xs font-medium text-[#1F2937] dark:text-slate-200">زايد على ما تحب</span>
               </div>
-              <div className="flex-shrink-0 w-28 bg-amber-50 rounded-xl p-3 text-center border border-amber-100">
-                <span className="text-2xl block mb-1">🏆</span>
-                <span className="text-xs font-medium text-gray-700">اربح وادفع</span>
+              <div className="w-28 flex-shrink-0 snap-center rounded-xl border border-[#E6F4F3] bg-white p-3 text-center dark:border-teal-900/40 dark:bg-slate-800">
+                <span className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#E6F4F3] text-lg dark:bg-teal-900/50">
+                  3
+                </span>
+                <span className="text-2xl mb-1 block">🏆</span>
+                <span className="text-xs font-medium text-gray-700 dark:text-slate-200">اربح وادفع</span>
               </div>
             </div>
           </div>
         )}
 
-        <div className="px-4 mt-4">
-          <div className="flex items-center justify-between mb-3">
-            <h2 className="font-bold text-lg">مزادات حية 🔴</h2>
-            <Link href="/auction" className="text-sm text-amber-600 font-medium">
-              عرض الكل ←
+        <div className="mt-4 px-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-slate-100">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-pulse-dot rounded-full bg-red-500 opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+              </span>
+              مزادات حية
+            </h2>
+            <Link
+              href="/auction"
+              className="flex items-center gap-1 text-sm font-medium text-[#1B7F7A]"
+            >
+              عرض الكل
+              <ArrowLeft className="h-4 w-4" weight="bold" />
             </Link>
           </div>
           {loading ? (
             <HomeGridSkeleton />
           ) : auctions.length === 0 ? (
-            <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-gray-100">
-              <p className="text-5xl mb-4">📭</p>
-              <p className="text-gray-600 font-medium mb-1">لا توجد مزادات مطابقة</p>
-              <p className="text-gray-400 text-sm mb-6">جرّب تغيير التصنيف أو استخدم البحث المتقدم</p>
-              <button
-                type="button"
-                onClick={() => router.push('/search')}
-                className="inline-block px-6 py-2.5 bg-amber-500 text-white rounded-xl text-sm font-medium shadow-md"
-              >
-                بحث متقدم
-              </button>
+            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <EmptyState
+                icon={<MagnifyingGlass className="h-14 w-14" weight="duotone" />}
+                title="لا توجد مزادات مطابقة"
+                subtitle="جرّب تغيير التصنيف أو استخدم البحث المتقدم"
+                actionLabel="بحث متقدم"
+                onAction={() => router.push('/search')}
+                actionClassName="bg-gradient-to-r from-[#1B7F7A] to-[#22A39F] shadow-lg hover:opacity-95"
+              />
             </div>
           ) : (
             <>
@@ -209,38 +263,52 @@ export default function HomePage() {
                   const label = parts.ended
                     ? 'انتهى'
                     : `${parts.hours}س ${parts.minutes}د ${parts.seconds}ث`
+                  const underOneHour = !parts.ended && parts.hours < 1
                   const imgs = normalizeAuctionImages(a.images)
                   const firstImg = imgs[0] ?? null
                   return (
                     <Link
                       key={a.id}
                       href={'/auction/' + a.id}
-                      className="bg-white rounded-xl overflow-hidden shadow-md border border-gray-100/80 relative group hover:shadow-lg transition-shadow duration-200"
+                      className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-700 dark:bg-slate-800"
                     >
-                      <div className="absolute top-2 left-2 z-10">
+                      <div className="absolute top-2 left-2 z-10 rounded-full bg-white p-1 shadow-md ring-1 ring-white/80">
                         <FavoriteHeart auctionId={a.id} userId={user?.user_id ?? null} />
                       </div>
-                      <div className="relative aspect-square w-full bg-gray-100 overflow-hidden rounded-t-lg">
+                      <div className="relative aspect-square w-full overflow-hidden rounded-t-2xl bg-gray-100">
                         <AuctionListingThumb src={firstImg} />
                       </div>
                       <div className="p-3">
-                        <h3 className="font-medium text-sm truncate leading-snug">{a.title}</h3>
-                        <p className="text-amber-600 font-bold mt-1">
+                        <h3 className="truncate text-sm font-medium leading-snug text-gray-900 dark:text-slate-100">
+                          {a.title}
+                        </h3>
+                        <p className="mt-1 text-base font-bold text-[#1B7F7A]">
                           {Number(a.current_bid).toLocaleString()} ر.س
                         </p>
-                        <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
-                          <span>{a.city || 'غير محدد'}</span>
+                        <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
+                          <span className="flex items-center gap-1 truncate">
+                            <MapPin className="h-3.5 w-3.5 shrink-0 text-[#1B7F7A]" weight="bold" />
+                            {a.city || 'غير محدد'}
+                          </span>
                           <span
                             className={
                               parts.ended
-                                ? 'text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded-md'
-                                : ''
+                                ? 'rounded-md bg-red-50 px-2 py-0.5 font-semibold text-red-600'
+                                : underOneHour
+                                  ? 'flex items-center gap-1 font-semibold text-red-600'
+                                  : ''
                             }
                           >
+                            {underOneHour && !parts.ended && (
+                              <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-red-500" />
+                            )}
                             {label}
                           </span>
                         </div>
-                        <p className="text-xs text-gray-400 mt-1">{a.bid_count} مزايدة</p>
+                        <p className="mt-1 flex items-center gap-1 text-xs text-gray-400">
+                          <Gavel className="h-3.5 w-3.5 text-[#1B7F7A]" weight="bold" />
+                          {a.bid_count} مزايدة
+                        </p>
                       </div>
                     </Link>
                   )
@@ -249,7 +317,7 @@ export default function HomePage() {
               {auctions.length > 6 && (
                 <Link
                   href="/auction"
-                  className="block text-center py-3 mt-3 bg-white rounded-xl shadow-sm border border-gray-100 text-amber-600 font-medium text-sm"
+                  className="mt-3 block rounded-xl border border-gray-100 bg-white py-3 text-center text-sm font-medium text-[#1B7F7A] shadow-sm dark:border-slate-700 dark:bg-slate-800"
                 >
                   عرض المزيد ({auctions.length - 6}+)
                 </Link>

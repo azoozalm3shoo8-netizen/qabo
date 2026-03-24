@@ -1,5 +1,6 @@
 'use client'
 
+import { FolderSimple } from '@phosphor-icons/react'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { BottomNav } from '@/components/BottomNav'
@@ -32,26 +33,29 @@ export default function CategoriesPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20" dir="rtl">
-      <div className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-3 shadow-sm rounded-b-2xl">
-        <h1 className="font-bold text-lg text-center text-gray-900">التصنيفات</h1>
+      <div className="sticky top-0 z-30 rounded-b-2xl border-b border-gray-100 bg-white px-4 py-3 shadow-sm">
+        <h1 className="flex items-center justify-center gap-2 text-center text-lg font-bold text-gray-900">
+          <FolderSimple className="h-6 w-6 text-[#1B7F7A]" weight="fill" />
+          التصنيفات
+        </h1>
       </div>
 
-      <div className="p-4 grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-3 p-4">
         {loading
           ? [1, 2, 3, 4, 5, 6].map((i) => (
-              <div key={i} className="h-36 bg-white rounded-2xl shadow-sm animate-pulse" />
+              <div key={i} className="h-36 animate-pulse rounded-2xl bg-white shadow-sm" />
             ))
           : CATEGORY_CATALOG.map((cat) => (
               <Link
                 key={cat.slug}
                 href={'/categories/' + encodeURIComponent(cat.slug)}
-                className="rounded-2xl p-4 text-center bg-white border border-gray-100 shadow-md hover:border-amber-200 hover:shadow-lg transition-all"
+                className="rounded-2xl border border-gray-100 bg-white p-4 text-center shadow-md transition-all hover:border-[#1B7F7A]/30 hover:shadow-lg"
               >
-                <span className="text-4xl block mb-2">{cat.icon}</span>
-                <h3 className="font-bold text-sm text-gray-900">{cat.name}</h3>
-                <p className="text-xs text-gray-400 mt-1">
-                  {counts[cat.name] ?? 0} مزاد
-                </p>
+                <span className="mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-full bg-[#E6F4F3] text-4xl">
+                  {cat.icon}
+                </span>
+                <h3 className="text-sm font-bold text-gray-900">{cat.name}</h3>
+                <p className="mt-1 text-xs font-semibold text-[#1B7F7A]">{counts[cat.name] ?? 0} مزاد</p>
               </Link>
             ))}
       </div>

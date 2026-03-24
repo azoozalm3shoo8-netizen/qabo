@@ -168,7 +168,7 @@ export function ImageUploader({
               </button>
             )}
             {index === 0 && (
-              <span className="absolute bottom-0 inset-x-0 bg-amber-500/95 text-white text-[10px] font-bold text-center py-0.5">
+              <span className="absolute bottom-0 inset-x-0 bg-[#1B7F7A]/95 text-white text-[10px] font-bold text-center py-0.5">
                 الصورة الرئيسية
               </span>
             )}
@@ -182,7 +182,7 @@ export function ImageUploader({
               console.log('Add image clicked')
               fileInputRef.current?.click()
             }}
-            className="aspect-square rounded-xl border-2 border-dashed border-amber-300 bg-amber-50/50 flex flex-col items-center justify-center gap-0.5 text-amber-700 hover:bg-amber-50 transition-colors text-xs font-medium px-1 text-center leading-tight"
+            className="aspect-square rounded-xl border-2 border-dashed border-[#1B7F7A]/40 bg-[#E6F4F3]/50 flex flex-col items-center justify-center gap-0.5 text-[#1B7F7A] hover:bg-[#E6F4F3] transition-colors text-xs font-medium px-1 text-center leading-tight"
           >
             + إضافة صورة
           </button>

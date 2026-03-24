@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { Bell } from '@phosphor-icons/react'
 import {
   getPermissionStatus,
   isPushSupported,
@@ -36,18 +37,21 @@ export function PushPermissionBanner() {
 
   return (
     <div
-      className="mb-3 rounded-xl border border-amber-100 bg-amber-50 px-3 py-2.5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between"
+      className="mb-3 flex flex-col gap-2 rounded-xl border border-[#1B7F7A]/20 bg-[#E6F4F3] px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
       dir="rtl"
     >
-      <p className="text-sm text-amber-900 font-medium">🔔 فعّل الإشعارات عشان ما يفوتك شيء!</p>
-      <div className="flex items-center gap-2 shrink-0">
+      <p className="flex items-center gap-2 text-sm font-medium text-[#156661]">
+        <Bell className="h-5 w-5 shrink-0 text-[#1B7F7A]" weight="fill" />
+        فعّل الإشعارات عشان ما يفوتك شيء!
+      </p>
+      <div className="flex shrink-0 items-center gap-2">
         <button
           type="button"
           onClick={async () => {
             await requestNotificationPermission()
             setVisible(false)
           }}
-          className="rounded-lg bg-amber-500 px-4 py-1.5 text-sm font-bold text-white"
+          className="rounded-lg bg-[#FF8C42] px-4 py-1.5 text-sm font-bold text-white transition-transform active:scale-95 hover:bg-[#E87A35]"
         >
           تفعيل
         </button>

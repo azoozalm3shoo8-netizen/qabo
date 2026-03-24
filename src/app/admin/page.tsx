@@ -135,10 +135,10 @@ export default function AdminPage() {
       {!loading && stats && (
         <div className="px-4 mt-4 space-y-4">
           <div className="grid grid-cols-2 gap-3">
-            <div className="bg-amber-50 rounded-2xl p-4 border border-amber-100">
+            <div className="rounded-2xl border border-[#1B7F7A]/20 bg-[#E6F4F3] p-4">
               <p className="text-2xl mb-1">🏷️</p>
-              <p className="text-2xl font-extrabold text-amber-800">{stats.total_auctions}</p>
-              <p className="text-xs text-amber-900 font-medium">إجمالي المزادات</p>
+              <p className="text-2xl font-extrabold text-[#1B7F7A]">{stats.total_auctions}</p>
+              <p className="text-xs font-medium text-[#156661]">إجمالي المزادات</p>
             </div>
             <div className="bg-green-50 rounded-2xl p-4 border border-green-100">
               <p className="text-2xl mb-1">✅</p>
@@ -179,7 +179,7 @@ export default function AdminPage() {
                     <div className="flex flex-wrap gap-2 mt-1 text-xs text-gray-600">
                       <span className="px-2 py-0.5 rounded-full bg-gray-100">{a.status}</span>
                       <span>{a.seller_name}</span>
-                      <span className="text-amber-600 font-bold">
+                      <span className="font-bold text-[#1B7F7A]">
                         {Number(a.current_bid).toLocaleString()} ر.س
                       </span>
                     </div>
@@ -209,14 +209,14 @@ export default function AdminPage() {
                       <p className="text-xs text-gray-500 mt-0.5">مزاد: {r.auction_title}</p>
                     )}
                     <div className="flex items-center justify-between mt-2 gap-2">
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-100 text-amber-800">
+                      <span className="rounded-full bg-[#FF8C42]/15 px-2 py-0.5 text-[10px] font-bold text-[#C2410C]">
                         {r.status}
                       </span>
                       <button
                         type="button"
                         disabled={patching === r.id || r.status === 'reviewed'}
                         onClick={() => void markReportReviewed(r.id)}
-                        className="text-xs font-bold text-amber-700 disabled:opacity-40"
+                        className="text-xs font-bold text-[#1B7F7A] disabled:opacity-40"
                       >
                         {patching === r.id ? '...' : 'تعيين كمراجَع'}
                       </button>

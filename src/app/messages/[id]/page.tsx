@@ -143,7 +143,7 @@ export default function ChatPage() {
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {loading ? (
           <div className="flex justify-center py-16">
-            <div className="animate-spin w-10 h-10 border-4 border-amber-500 border-t-transparent rounded-full" />
+            <div className="animate-spin w-10 h-10 border-4 border-[#1B7F7A] border-t-transparent rounded-full" />
           </div>
         ) : messages.length === 0 ? (
           <div className="text-center py-16 text-gray-500 text-sm">ابدأ المحادثة بكتابة رسالة</div>
@@ -156,14 +156,14 @@ export default function ChatPage() {
                   className={
                     'max-w-[82%] px-4 py-2.5 rounded-2xl shadow-sm text-sm leading-relaxed ' +
                     (mine
-                      ? 'bg-amber-500 text-white rounded-br-md'
-                      : 'bg-gray-200 text-gray-900 rounded-bl-md')
+                      ? 'rounded-br-md bg-[#1B7F7A] text-white'
+                      : 'rounded-bl-md bg-gray-200 text-gray-900')
                   }
                 >
                   <p>{m.content}</p>
                   <p
                     className={
-                      'text-[10px] mt-1 ' + (mine ? 'text-amber-100' : 'text-gray-500')
+                      'mt-1 text-[10px] ' + (mine ? 'text-teal-100' : 'text-gray-500')
                     }
                   >
                     {format(new Date(m.created_at), 'HH:mm')}
@@ -182,14 +182,14 @@ export default function ChatPage() {
           value={text}
           onChange={(e) => setText(e.target.value)}
           placeholder="اكتب رسالة..."
-          className="flex-1 px-4 py-2.5 bg-gray-100 rounded-full outline-none text-sm focus:ring-2 focus:ring-amber-500"
+          className="flex-1 px-4 py-2.5 bg-gray-100 rounded-full outline-none text-sm focus:ring-2 focus:ring-[#1B7F7A]"
           onKeyDown={(e) => e.key === 'Enter' && void send()}
         />
         <button
           type="button"
           onClick={() => void send()}
           disabled={sending || !text.trim() || !peer}
-          className="w-11 h-11 bg-amber-500 text-white rounded-full flex items-center justify-center shadow-md disabled:opacity-40"
+          className="w-11 h-11 rounded-full bg-[#1B7F7A] text-white flex items-center justify-center shadow-md disabled:opacity-40"
         >
           ➤
         </button>
