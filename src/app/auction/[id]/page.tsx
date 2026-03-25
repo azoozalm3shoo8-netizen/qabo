@@ -25,7 +25,9 @@ import { FavoriteHeart } from '@/components/FavoriteHeart'
 import { OrderStatusTracker } from '@/components/OrderStatusTracker'
 import { ReviewModal } from '@/components/ReviewModal'
 import { useToast } from '@/components/Toast'
+import { normalizeAuctionImages } from '@/lib/auction-images'
 import { sameUserId } from '@/lib/ids'
+import { useLocale } from '@/lib/locale-context'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { supabase } from '@/lib/supabase/client'
 
@@ -70,6 +72,7 @@ export default function AuctionDetailPage() {
   const params = useParams()
   const router = useRouter()
   const { show } = useToast()
+  const { t, dir } = useLocale()
   const id = typeof params.id === 'string' ? params.id : ''
 
   const [auction, setAuction] = useState<AuctionDetail | null>(null)
@@ -98,19 +101,22 @@ export default function AuctionDetailPage() {
   const [autobidMax, setAutobidMax] = useState('')
   const [autobidLoading, setAutobidLoading] = useState(false)
   const [autobidError, setAutobidError] = useState('')
+  const [similarAuctions, setSimilarAuctions] = useState<
+    { id: string; title: string; current_bid: number; images?: string[] | null }[]
+  >([])
 
   const loadAuction = useCallback(async () => {
     if (!id) return
     const res = await fetch('/api/auctions/' + id)
     const data = await res.json()
     if (!res.ok) {
-      setFetchError(data.error || 'تعذر تحميل المزاد')
+      setFetchError(data.error || t('auction_loadError'))
       setAuction(null)
       return
     }
     setFetchError('')
     setAuction(data as AuctionDetail)
-  }, [id])
+  }, [id, t])
 
   const loadAuctionRef = useRef(loadAuction)
   loadAuctionRef.current = loadAuction
@@ -190,6 +196,31 @@ export default function AuctionDetailPage() {
       cancelled = true
     }
   }, [auction?.id, auction?.seller_id, user?.user_id])
+
+  useEffect(() => {
+    if (!auction?.category || !auction.id) {
+      setSimilarAuctions([])
+      return
+    }
+    let cancelled = false
+    fetch('/api/auctions?category=' + encodeURIComponent(auction.category))
+      .then((r) => r.json())
+      .then((data: unknown) => {
+        if (cancelled) return
+        if (!Array.isArray(data)) {
+          setSimilarAuctions([])
+          return
+        }
+        const rows = data as { id: string; title: string; current_bid: number; images?: string[] | null }[]
+        setSimilarAuctions(rows.filter((x) => x.id !== auction.id).slice(0, 8))
+      })
+      .catch(() => {
+        if (!cancelled) setSimilarAuctions([])
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [auction?.id, auction?.category])
 
   useEffect(() => {
     if (!id) return
@@ -299,7 +330,9 @@ export default function AuctionDetailPage() {
     if (!auction || !user) return
     setBidError('')
     if (bidAmount < minBid) {
-      setBidError('المبلغ أقل من الحد الأدنى: ' + minBid.toLocaleString() + ' ر.س')
+      setBidError(
+        `${t('auction_minBidError')}: ${minBid.toLocaleString()} ${t('common_currency')}`
+      )
       return
     }
     setBidSubmitting(true)
@@ -315,8 +348,8 @@ export default function AuctionDetailPage() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'فشلت المزايدة')
-      show('تم تسجيل مزايدتك بنجاح', 'success')
+      if (!res.ok) throw new Error(data.error || t('auction_bidFailed'))
+      show(t('auction_bidSuccess'), 'success')
       setShowBidModal(false)
       await loadAuction()
     } catch (e: unknown) {
@@ -360,7 +393,7 @@ export default function AuctionDetailPage() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'تعذر فتح المحادثة')
+      if (!res.ok) throw new Error(data.error || t('auction_chatOpenError'))
       router.push('/messages/' + data.conversation_id)
     } catch (e: unknown) {
       show(e instanceof Error ? e.message : 'خطأ', 'error')
@@ -371,12 +404,12 @@ export default function AuctionDetailPage() {
 
   const sellerDisplayName =
     auction?.seller?.full_name?.trim() ||
-    (auction ? 'بائع' : '')
+    (auction ? t('common_seller') : '')
 
   const submitReport = async () => {
     if (!auction || !user) return
     if (!reportReason) {
-      setReportError('اختر سبب البلاغ')
+      setReportError(t('auction_reportPick'))
       return
     }
     setReportSubmitting(true)
@@ -394,8 +427,8 @@ export default function AuctionDetailPage() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'فشل الإرسال')
-      show('تم إرسال البلاغ، شكراً لك', 'success')
+      if (!res.ok) throw new Error(data.error || t('common_error'))
+      show(t('auction_reportSent'), 'success')
       setShowReportModal(false)
       setReportReason('')
       setReportDetails('')
@@ -409,8 +442,8 @@ export default function AuctionDetailPage() {
   const submitAutobid = async () => {
     if (!auction || !user) return
     const max = Number(autobidMax.replace(/,/g, ''))
-    if (!Number.isFinite(max) || max <= 0) {
-      setAutobidError('أدخل حداً أقصى صالحاً')
+      if (!Number.isFinite(max) || max <= 0) {
+      setAutobidError(t('auction_autobidMaxInvalid'))
       return
     }
     setAutobidLoading(true)
@@ -426,8 +459,8 @@ export default function AuctionDetailPage() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'تعذر التفعيل')
-      show('تم تفعيل المزايدة التلقائية', 'success')
+      if (!res.ok) throw new Error(data.error || t('common_error'))
+      show(t('auction_autobidOn'), 'success')
       setHasAutobid(true)
       setShowAutobidModal(false)
       setAutobidMax('')
@@ -448,8 +481,8 @@ export default function AuctionDetailPage() {
         body: JSON.stringify({ user_id: user.user_id, auction_id: auction.id }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'تعذر الإيقاف')
-      show('تم إيقاف المزايدة التلقائية', 'info')
+      if (!res.ok) throw new Error(data.error || t('common_error'))
+      show(t('auction_autobidOff'), 'info')
       setHasAutobid(false)
     } catch (e: unknown) {
       show(e instanceof Error ? e.message : 'خطأ', 'error')
@@ -458,23 +491,29 @@ export default function AuctionDetailPage() {
     }
   }
 
+  const msLeft =
+    auction && auction.status === 'active' && !ended
+      ? new Date(auction.ends_at).getTime() - Date.now()
+      : 0
+  const pulseBid = msLeft > 0 && msLeft < 3600000
+
   return (
-    <div className="min-h-screen bg-gray-50 pb-24" dir="rtl">
-      <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-gray-100 bg-white/95 px-4 py-3 backdrop-blur-sm dark:border-slate-700 dark:bg-slate-900/90">
+    <div className="min-h-screen bg-[#F3F4F6] pb-28 dark:bg-slate-900" dir={dir}>
+      <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-gray-200 bg-white/90 px-4 py-3 backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/90">
         <Link
           href="/"
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/90 text-[#1F2937] shadow-sm backdrop-blur-sm dark:bg-slate-800 dark:text-slate-100"
-          aria-label="الرئيسية"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-[#1F2937] shadow-sm dark:bg-slate-800 dark:text-slate-100"
+          aria-label={t('auction_ariaHome')}
         >
           <ArrowRight className="h-5 w-5" weight="bold" />
         </Link>
-        <h1 className="flex-1 text-center text-lg font-semibold text-gray-900 dark:text-slate-100">
-          تفاصيل المزاد
+        <h1 className="flex-1 text-center text-lg font-semibold text-[#1F2937] dark:text-slate-100">
+          {t('auction_title')}
         </h1>
         <Link
           href="/notifications"
-          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white/90 text-[#1F2937] shadow-sm backdrop-blur-sm dark:bg-slate-800 dark:text-slate-100"
-          aria-label="الإشعارات"
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#1F2937] shadow-sm dark:bg-slate-800 dark:text-slate-100"
+          aria-label={t('auction_ariaNotif')}
         >
           <Bell className="h-5 w-5" weight="bold" />
         </Link>
@@ -490,14 +529,14 @@ export default function AuctionDetailPage() {
         <div className="p-6 text-center">
           <p className="mb-4 text-gray-600">{fetchError}</p>
           <Link href="/" className="font-medium text-[#1B7F7A]">
-            العودة للرئيسية
+            {t('auction_goHome')}
           </Link>
         </div>
       )}
 
       {!loading && auction && (
         <>
-          <div className="relative bg-white">
+          <div className="relative bg-white dark:bg-slate-900">
             <div className="absolute top-3 left-3 z-10 flex gap-2 rounded-full bg-white/95 p-1 shadow-md ring-1 ring-white/80">
               <FavoriteHeart auctionId={auction.id} userId={user?.user_id ?? null} />
             </div>
@@ -508,8 +547,10 @@ export default function AuctionDetailPage() {
           </div>
 
           <div className="px-4 mt-3 space-y-3">
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <h2 className="text-xl font-bold text-gray-900 leading-snug">{auction.title}</h2>
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <h2 className="text-xl font-bold leading-snug text-[#1F2937] dark:text-slate-100">
+                {auction.title}
+              </h2>
               <div className="mt-3 flex flex-wrap gap-2 text-sm text-[#1F2937]">
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#F3F4F6] px-3 py-1.5 dark:bg-slate-700 dark:text-slate-100">
                   <Folder className="h-4 w-4 text-[#1B7F7A]" weight="bold" />
@@ -521,7 +562,7 @@ export default function AuctionDetailPage() {
                 </span>
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#F3F4F6] px-3 py-1.5 dark:bg-slate-700 dark:text-slate-100">
                   <MapPin className="h-4 w-4 text-[#1B7F7A]" weight="bold" />
-                  {auction.city || 'غير محدد'}
+                  {auction.city || t('common_undefinedCity')}
                 </span>
               </div>
             </div>
@@ -532,28 +573,34 @@ export default function AuctionDetailPage() {
               onEndedChange={handleEndedChange}
             />
 
-            <div className="rounded-2xl border border-[#1B7F7A]/20 bg-white p-5 text-center shadow-sm dark:border-teal-800/40 dark:bg-slate-800">
-              <p className="mb-1 text-sm text-gray-500">السعر الحالي</p>
-              <p className="text-4xl font-extrabold text-[#1B7F7A]">
+            <div className="rounded-2xl border border-[#1B7F7A]/25 bg-white p-5 text-center shadow-md dark:border-slate-600 dark:bg-slate-800">
+              <p className="mb-1 text-sm text-gray-500 dark:text-slate-400">{t('auction_currentPrice')}</p>
+              <p className="text-4xl font-extrabold text-[#1B7F7A] dark:text-slate-100">
                 {Number(auction.current_bid).toLocaleString()}{' '}
-                <span className="text-xl font-bold text-[#156661]">ر.س</span>
+                <span className="text-xl font-bold text-[#156661] dark:text-slate-300">
+                  {t('common_currency')}
+                </span>
               </p>
               <div className="mt-4 flex justify-center divide-x divide-gray-200 pt-4 text-sm text-gray-600 dark:divide-slate-600">
                 <div className="flex flex-1 flex-col items-center px-4">
-                  <span className="mb-0.5 block text-xs text-gray-400">المزايدات</span>
-                  <span className="font-semibold text-gray-900 dark:text-slate-100">{auction.bid_count}</span>
+                  <span className="mb-0.5 block text-xs text-gray-400 dark:text-slate-500">
+                    {t('auction_bids')}
+                  </span>
+                  <span className="font-semibold text-[#1F2937] dark:text-slate-100">{auction.bid_count}</span>
                 </div>
                 <div className="flex flex-1 flex-col items-center px-4">
-                  <span className="mb-0.5 block text-xs text-gray-400">أعلى مزايد</span>
-                  <span className="font-semibold text-gray-900 dark:text-slate-100">
+                  <span className="mb-0.5 block text-xs text-gray-400 dark:text-slate-500">
+                    {t('auction_highestBidder')}
+                  </span>
+                  <span className="font-semibold text-[#1F2937] dark:text-slate-100">
                     {auction.highest_bidder?.full_name ?? '—'}
                   </span>
                 </div>
               </div>
-              <p className="mt-3 text-xs text-gray-500">
-                الحد الأدنى للمزايدة التالية:{' '}
-                <span className="rounded-full bg-[#E6F4F3] px-2 py-0.5 font-semibold text-[#1B7F7A] dark:bg-teal-900/40">
-                  {minBid.toLocaleString()} ر.س
+              <p className="mt-3 text-xs text-gray-500 dark:text-slate-400">
+                {t('auction_minNext')}:{' '}
+                <span className="rounded-full bg-[#E6F4F3] px-2 py-0.5 font-semibold text-[#1B7F7A] dark:bg-[#134e4a] dark:text-slate-100">
+                  {minBid.toLocaleString()} {t('common_currency')}
                 </span>
               </p>
             </div>
@@ -562,23 +609,29 @@ export default function AuctionDetailPage() {
               type="button"
               onClick={handleBidButtonClick}
               disabled={bidButtonDisabled}
+              animate={
+                pulseBid && !bidButtonDisabled
+                  ? { scale: [1, 1.04, 1], boxShadow: ['0 10px 25px rgba(255,140,66,0.35)', '0 14px 32px rgba(255,140,66,0.5)', '0 10px 25px rgba(255,140,66,0.35)'] }
+                  : {}
+              }
+              transition={{ repeat: pulseBid && !bidButtonDisabled ? Infinity : 0, duration: 1.15 }}
               whileHover={bidButtonDisabled ? undefined : { scale: 1.02 }}
               whileTap={bidButtonDisabled ? undefined : { scale: 0.98 }}
               className={
                 'flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-lg font-bold shadow-lg transition-colors ' +
                 (bidButtonDisabled
-                  ? 'cursor-not-allowed bg-gray-200 text-gray-400'
+                  ? 'cursor-not-allowed bg-gray-200 text-gray-400 dark:bg-slate-700 dark:text-slate-500'
                   : 'bg-gradient-to-r from-[#FF8C42] to-[#E87A35] text-white hover:from-[#E87A35] hover:to-[#d96d2e]')
               }
             >
               <Gavel className="h-6 w-6" weight="bold" />
               {!user
-                ? 'سجّل الدخول للمزايدة'
+                ? t('auction_loginToBid')
                 : isSeller
-                  ? 'لا يمكنك المزايدة على مزادك'
+                  ? t('auction_ownAuction')
                   : auctionClosed
-                    ? 'المزاد غير نشط'
-                    : 'زايد الآن'}
+                    ? t('auction_inactive')
+                    : t('auction_bidNow')}
             </motion.button>
 
             {user && !isSeller && !auctionClosed && (
@@ -590,7 +643,7 @@ export default function AuctionDetailPage() {
                     onClick={() => void stopAutobid()}
                     className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-gray-200 bg-gray-50 py-3 text-sm font-bold text-gray-600 transition-transform active:scale-95 disabled:opacity-50"
                   >
-                    إيقاف المزايدة التلقائية
+                    {t('auction_stopAutobid')}
                   </button>
                 ) : (
                   <button
@@ -600,24 +653,24 @@ export default function AuctionDetailPage() {
                       setAutobidMax(String(minBid))
                       setShowAutobidModal(true)
                     }}
-                    className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[#1B7F7A] bg-[#E6F4F3] py-3 text-sm font-bold text-[#1B7F7A] transition-transform active:scale-95 dark:border-teal-500 dark:bg-teal-950/40"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[#1B7F7A] bg-[#E6F4F3] py-3 text-sm font-bold text-[#1B7F7A] transition-transform active:scale-95 dark:border-[#1B7F7A] dark:bg-[#134e4a]/50 dark:text-slate-100"
                   >
                     <Robot className="h-5 w-5" weight="bold" />
-                    مزايدة تلقائية
+                    {t('auction_autobid')}
                   </button>
                 )}
               </div>
             )}
 
-            <div className="bg-white rounded-2xl p-4 shadow-sm">
-              <h3 className="font-bold text-gray-900 mb-2">الوصف</h3>
-              <p className="text-gray-600 text-sm leading-relaxed whitespace-pre-wrap">
-                {auction.description || 'لا يوجد وصف.'}
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <h3 className="mb-2 font-bold text-[#1F2937] dark:text-slate-100">{t('auction_description')}</h3>
+              <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-600 dark:text-slate-300">
+                {auction.description || t('common_noDescription')}
               </p>
             </div>
 
-            <div className="rounded-2xl bg-white p-4 shadow-sm dark:bg-slate-800">
-              <h3 className="mb-3 font-bold text-gray-900 dark:text-slate-100">البائع</h3>
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <h3 className="mb-3 font-bold text-[#1F2937] dark:text-slate-100">{t('auction_seller')}</h3>
               <div className="flex items-center gap-3">
                 <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#E6F4F3] text-[#1B7F7A] dark:bg-teal-900/40">
                   <UserCircle className="h-9 w-9" weight="fill" />
@@ -634,7 +687,7 @@ export default function AuctionDetailPage() {
                       </span>
                     ) : null}
                     {auction.seller.city ? <span>·</span> : null}
-                    <span className="inline-flex items-center gap-0.5 text-yellow-500">
+                    <span className="inline-flex items-center gap-0.5 text-[#FF8C42]">
                       <Star className="h-3.5 w-3.5" weight="fill" />
                       {auction.seller.rating != null
                         ? Number(auction.seller.rating).toFixed(1)
@@ -649,56 +702,59 @@ export default function AuctionDetailPage() {
                   type="button"
                   onClick={() => void openSellerChat()}
                   disabled={msgLoading}
-                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1B7F7A] py-3 font-bold text-[#1B7F7A] transition-transform active:scale-95 disabled:opacity-50 dark:border-teal-400 dark:text-teal-300"
+                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1B7F7A] py-3 font-bold text-[#1B7F7A] transition-transform active:scale-95 disabled:opacity-50 dark:border-[#1B7F7A] dark:text-slate-100"
                 >
                   <ChatCircle className="h-5 w-5" weight="bold" />
-                  {msgLoading ? 'جاري الفتح...' : 'مراسلة البائع'}
+                  {msgLoading ? t('auction_openingChat') : t('auction_chatSellerBtn')}
                 </button>
               )}
 
               {!user && (
-                <p className="mt-3 text-center text-sm text-gray-500">
-                  <Link href="/auth/login" className="font-semibold text-[#1B7F7A]">
-                    سجّل الدخول
-                  </Link>
-                  {' لمراسلة البائع'}
+                <p className="mt-3 text-center text-sm text-gray-500 dark:text-slate-400">
+                  <Link href="/auth/login" className="font-semibold text-[#1B7F7A] dark:text-slate-200">
+                    {t('auction_loginChatLead')}
+                  </Link>{' '}
+                  {t('auction_loginChatTail')}
                 </p>
               )}
             </div>
 
             {auctionClosed && isWinner && (
-              <div className="rounded-2xl bg-gradient-to-br from-[#10B981] to-[#059669] p-4 text-center text-white shadow-md">
+              <div className="rounded-2xl bg-gradient-to-br from-[#1B7F7A] to-[#134e4a] p-4 text-center text-white shadow-md">
                 <p className="mb-1 flex items-center justify-center gap-2 text-sm font-bold">
                   <Confetti className="h-6 w-6" weight="fill" />
-                  أنت الفائز!
+                  {t('auction_youWon')}
                 </p>
                 <p className="mb-3 text-sm text-white/90">
-                  سعر الفوز: {Number(auction.current_bid).toLocaleString()} ر.س
+                  {t('auction_winPrice')}: {Number(auction.current_bid).toLocaleString()}{' '}
+                  {t('common_currency')}
                 </p>
                 <button
                   type="button"
                   onClick={() => router.push('/checkout/' + auction.id)}
                   className="w-full rounded-xl bg-[#FF8C42] py-3.5 font-bold text-white shadow-md transition-transform active:scale-95 hover:bg-[#E87A35]"
                 >
-                  ادفع الآن
+                  {t('auction_payNow')}
                 </button>
-                <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-white/95 leading-relaxed">
+                <p className="mt-3 flex items-center justify-center gap-1.5 text-xs leading-relaxed text-white/95">
                   <ShieldCheck className="h-4 w-4 shrink-0" weight="fill" aria-hidden />
-                  مبلغك محمي بدرع الصفقة حتى استلام المنتج
+                  {t('auction_escrowHint')}
                 </p>
               </div>
             )}
 
             {auctionClosed && isWinner && auctionOrder && (
-              <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm space-y-3">
-                <p className="text-sm font-bold text-gray-900 text-center">حالة الطلب</p>
+              <div className="space-y-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                <p className="text-center text-sm font-bold text-[#1F2937] dark:text-slate-100">
+                  {t('auction_orderStatusTitle')}
+                </p>
                 <OrderStatusTracker currentStatus={auctionOrder.status} />
                 <button
                   type="button"
                   onClick={() => router.push('/orders/' + auctionOrder.id)}
-                  className="w-full rounded-xl border-2 border-[#1B7F7A] bg-[#E6F4F3] py-3 font-bold text-[#1B7F7A] transition-transform active:scale-95"
+                  className="w-full rounded-xl border-2 border-[#1B7F7A] bg-[#E6F4F3] py-3 font-bold text-[#1B7F7A] transition-transform active:scale-95 dark:bg-[#134e4a]/40 dark:text-slate-100"
                 >
-                  عرض تفاصيل الطلب
+                  {t('auction_viewOrder')}
                 </button>
               </div>
             )}
@@ -707,25 +763,32 @@ export default function AuctionDetailPage() {
               isSeller &&
               auction.highest_bidder_id &&
               auction.highest_bidder && (
-                <div className="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 text-center shadow-sm">
-                  <p className="text-sm text-emerald-800 font-medium mb-1">تم بيع مزادك</p>
-                  <p className="text-lg font-bold text-gray-900">{auction.highest_bidder.full_name}</p>
-                  <p className="text-sm text-gray-600 mt-1">
-                    سعر البيع: {Number(auction.current_bid).toLocaleString()} ر.س
+                <div className="rounded-2xl border border-[#1B7F7A]/30 bg-[#E6F4F3] p-4 text-center shadow-sm dark:border-slate-600 dark:bg-slate-800">
+                  <p className="mb-1 text-sm font-medium text-[#1B7F7A] dark:text-slate-200">
+                    {t('auction_soldTitle')}
+                  </p>
+                  <p className="text-lg font-bold text-[#1F2937] dark:text-slate-100">
+                    {auction.highest_bidder.full_name}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600 dark:text-slate-400">
+                    {t('auction_salePriceLabel')}: {Number(auction.current_bid).toLocaleString()}{' '}
+                    {t('common_currency')}
                   </p>
                 </div>
               )}
 
             {auctionClosed && auctionOrder && isSeller && (
-              <div className="bg-white border border-gray-100 rounded-2xl p-4 shadow-sm space-y-3">
-                <p className="text-sm font-bold text-gray-900 text-center">إدارة الشحن</p>
+              <div className="space-y-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                <p className="text-center text-sm font-bold text-[#1F2937] dark:text-slate-100">
+                  {t('auction_manageShipping')}
+                </p>
                 <OrderStatusTracker currentStatus={auctionOrder.status} />
                 <button
                   type="button"
                   onClick={() => router.push('/orders/' + auctionOrder.id)}
                   className="w-full rounded-xl bg-[#1B7F7A] py-3 font-bold text-white shadow-md transition-transform active:scale-95 hover:bg-[#156661]"
                 >
-                  إدارة الطلب
+                  {t('auction_manageOrder')}
                 </button>
               </div>
             )}
@@ -734,32 +797,62 @@ export default function AuctionDetailPage() {
               !isWinner &&
               !isSeller &&
               auction.highest_bidder_id && (
-                <div className="bg-gray-100 rounded-2xl p-4 text-center text-gray-600 text-sm font-medium">
-                  انتهى المزاد
+                <div className="rounded-2xl bg-gray-100 p-4 text-center text-sm font-medium text-gray-600 dark:bg-slate-800 dark:text-slate-400">
+                  {t('auction_endedSimple')}
                 </div>
               )}
 
             {auctionClosed && !auction.highest_bidder_id && (
-              <div className="bg-gray-100 rounded-2xl p-4 text-center text-gray-600 text-sm">
-                انتهى المزاد دون مزايدات
+              <div className="rounded-2xl bg-gray-100 p-4 text-center text-sm text-gray-600 dark:bg-slate-800 dark:text-slate-400">
+                {t('auction_endedNoBids')}
               </div>
             )}
 
             {reviewExists === false && user && auction.highest_bidder_id && (
-              <div className="rounded-2xl border border-[#1B7F7A]/20 bg-[#E6F4F3] p-4 shadow-sm dark:border-teal-800 dark:bg-teal-950/30">
+              <div className="rounded-2xl border border-[#1B7F7A]/20 bg-[#E6F4F3] p-4 shadow-sm dark:border-slate-600 dark:bg-[#134e4a]/30">
                 <p className="mb-2 text-sm font-semibold text-gray-900 dark:text-slate-100">
-                  كيف كانت تجربتك مع البائع؟
+                  {t('auction_reviewAsk')}
                 </p>
-                <p className="mb-3 text-xs text-gray-600 dark:text-slate-400">
-                  ساعد المجتمع بتقييم سريع للبائع.
-                </p>
+                <p className="mb-3 text-xs text-gray-600 dark:text-slate-400">{t('auction_reviewSub')}</p>
                 <button
                   type="button"
                   onClick={() => setShowReviewModal(true)}
                   className="w-full rounded-xl bg-[#1B7F7A] py-3 text-sm font-bold text-white transition-transform active:scale-95 hover:bg-[#156661]"
                 >
-                  تقييم البائع
+                  {t('auction_reviewBtn')}
                 </button>
+              </div>
+            )}
+
+            {similarAuctions.length > 0 && (
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                <h3 className="mb-3 font-bold text-[#1F2937] dark:text-slate-100">{t('auction_similar')}</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {similarAuctions.map((s) => {
+                    const img = normalizeAuctionImages(s.images)[0] ?? null
+                    return (
+                      <Link
+                        key={s.id}
+                        href={'/auction/' + s.id}
+                        className="group overflow-hidden rounded-xl border border-gray-100 bg-[#F3F4F6] transition-transform hover:scale-[1.02] dark:border-slate-600 dark:bg-slate-900"
+                      >
+                        <div className="relative aspect-[4/3] bg-gray-100 dark:bg-slate-700">
+                          {img ? (
+                            <img src={img} alt="" className="h-full w-full object-cover" />
+                          ) : null}
+                        </div>
+                        <div className="p-2">
+                          <p className="line-clamp-2 text-xs font-bold text-[#1F2937] dark:text-slate-100">
+                            {s.title}
+                          </p>
+                          <p className="mt-1 text-sm font-extrabold text-[#1B7F7A]">
+                            {Number(s.current_bid).toLocaleString()} {t('common_currency')}
+                          </p>
+                        </div>
+                      </Link>
+                    )
+                  })}
+                </div>
               </div>
             )}
           </div>
@@ -787,26 +880,28 @@ export default function AuctionDetailPage() {
           <div className="max-h-[90vh] w-full max-w-md overflow-y-auto overflow-hidden rounded-t-[2rem] bg-white shadow-xl sm:rounded-2xl dark:bg-slate-900">
             <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-slate-700">
               <h2 id="report-modal-title" className="text-lg font-bold text-gray-900 dark:text-slate-100">
-                الإبلاغ عن هذا المزاد
+                {t('auction_reportTitle')}
               </h2>
               <button
                 type="button"
                 onClick={() => setShowReportModal(false)}
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300"
-                aria-label="إغلاق"
+                aria-label={t('auction_close')}
               >
                 <X className="h-5 w-5" weight="bold" />
               </button>
             </div>
             <div className="p-4 space-y-3">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">سبب البلاغ</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                  {t('auction_reportReasonLabel')}
+                </label>
                 <select
                   value={reportReason}
                   onChange={(e) => setReportReason(e.target.value)}
-                  className="w-full px-3 py-2.5 border border-gray-200 rounded-xl bg-white text-sm"
+                  className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                 >
-                  <option value="">— اختر —</option>
+                  <option value="">{t('auction_reportChoose')}</option>
                   <option value="محتوى مخالف">محتوى مخالف</option>
                   <option value="منتج ممنوع">منتج ممنوع</option>
                   <option value="احتيال محتمل">احتيال محتمل</option>
@@ -815,13 +910,15 @@ export default function AuctionDetailPage() {
                 </select>
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">تفاصيل إضافية (اختياري)</label>
+                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">
+                  {t('auction_reportDetailsLabel')}
+                </label>
                 <textarea
                   value={reportDetails}
                   onChange={(e) => setReportDetails(e.target.value)}
-                  placeholder="تفاصيل إضافية (اختياري)"
+                  placeholder={t('auction_reportDetailsLabel')}
                   rows={3}
-                  className="w-full px-3 py-2 border border-gray-200 rounded-xl text-sm resize-none"
+                  className="w-full resize-none rounded-xl border border-gray-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-white"
                 />
               </div>
               {reportError && (
@@ -833,7 +930,7 @@ export default function AuctionDetailPage() {
                 disabled={reportSubmitting}
                 className="w-full rounded-xl bg-[#FF8C42] py-3 font-bold text-white transition-transform active:scale-95 disabled:opacity-50 hover:bg-[#E87A35]"
               >
-                {reportSubmitting ? 'جاري الإرسال...' : 'إرسال البلاغ'}
+                {reportSubmitting ? t('auction_reportSending') : t('auction_reportSubmit')}
               </button>
             </div>
           </div>
@@ -850,25 +947,27 @@ export default function AuctionDetailPage() {
           <div className="w-full max-w-md overflow-hidden rounded-t-[2rem] bg-white shadow-xl sm:rounded-2xl dark:bg-slate-900">
             <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-slate-700">
               <h2 id="bid-modal-title" className="text-lg font-bold text-gray-900 dark:text-slate-100">
-                تقديم مزايدة
+                {t('auction_bidModalTitle')}
               </h2>
               <button
                 type="button"
                 onClick={() => setShowBidModal(false)}
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300"
-                aria-label="إغلاق"
+                aria-label={t('auction_close')}
               >
                 <X className="h-5 w-5" weight="bold" />
               </button>
             </div>
             <div className="space-y-4 p-4">
               <p className="text-sm text-gray-600 dark:text-slate-300">
-                الحد الأدنى:{' '}
-                <span className="font-bold text-[#1B7F7A]">{minBid.toLocaleString()} ر.س</span>
+                {t('auction_bidMinLine')}:{' '}
+                <span className="font-bold text-[#1B7F7A]">
+                  {minBid.toLocaleString()} {t('common_currency')}
+                </span>
               </p>
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-200">
-                  مبلغ المزايدة
+                  {t('auction_bidAmountLabel')}
                 </label>
                 <input
                   type="number"
@@ -921,20 +1020,21 @@ export default function AuctionDetailPage() {
           <div className="w-full max-w-md overflow-hidden rounded-t-[2rem] bg-white shadow-xl sm:rounded-2xl dark:bg-slate-900">
             <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-slate-700">
               <h2 id="autobid-modal-title" className="text-lg font-bold text-gray-900 dark:text-slate-100">
-                المزايدة التلقائية
+                {t('auction_autobidModalTitle')}
               </h2>
               <button
                 type="button"
                 onClick={() => setShowAutobidModal(false)}
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300"
-                aria-label="إغلاق"
+                aria-label={t('auction_close')}
               >
                 <X className="h-5 w-5" weight="bold" />
               </button>
             </div>
             <div className="space-y-4 p-4">
               <p className="text-sm text-gray-600 dark:text-slate-300">
-                حدد الحد الأقصى للمزايدة التلقائية (لا يقل عن {minBid.toLocaleString()} ر.س).
+                {t('auction_autobidHintPrefix')} {minBid.toLocaleString()} {t('common_currency')}{' '}
+                {t('auction_autobidHintSuffix')}
               </p>
               <input
                 type="number"
@@ -953,7 +1053,7 @@ export default function AuctionDetailPage() {
                 disabled={autobidLoading}
                 className="w-full rounded-xl bg-[#1B7F7A] py-3.5 font-bold text-white transition-transform active:scale-95 disabled:opacity-50 hover:bg-[#156661]"
               >
-                {autobidLoading ? 'جاري الحفظ...' : 'تفعيل'}
+                {autobidLoading ? t('auction_autobidSaving') : t('auction_autobidActivate')}
               </button>
             </div>
           </div>

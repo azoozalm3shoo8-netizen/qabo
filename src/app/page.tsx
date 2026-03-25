@@ -9,13 +9,14 @@ import {
   Clock,
   DeviceMobile,
   DotsThree,
+  Funnel,
   Gavel,
   GridFour,
   MagnifyingGlass,
   MapPin,
   TShirt,
-  UserCircle,
 } from '@phosphor-icons/react'
+import { motion } from 'framer-motion'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
@@ -28,27 +29,30 @@ import { PushPermissionBanner } from '@/components/PushPermissionBanner'
 import { HomeGridSkeleton } from '@/components/Skeleton'
 import { SplashScreen } from '@/components/SplashScreen'
 import { normalizeAuctionImages } from '@/lib/auction-images'
+import { CATEGORY_OPTIONS } from '@/lib/category-labels'
+import { useLocale } from '@/lib/locale-context'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { auctionCountdownParts } from '@/lib/time'
+import type { TranslationKey } from '@/lib/translations'
 
-const CATEGORY_ICONS: Record<string, ReactNode> = {
-  الكل: <GridFour className="h-4 w-4 shrink-0" weight="bold" />,
-  إلكترونيات: <DeviceMobile className="h-4 w-4 shrink-0" weight="bold" />,
-  سيارات: <Car className="h-4 w-4 shrink-0" weight="bold" />,
-  عقارات: <Buildings className="h-4 w-4 shrink-0" weight="bold" />,
-  أزياء: <TShirt className="h-4 w-4 shrink-0" weight="bold" />,
-  ساعات: <Clock className="h-4 w-4 shrink-0" weight="bold" />,
-  أثاث: <DotsThree className="h-4 w-4 shrink-0" weight="bold" />,
-  رياضة: <Barbell className="h-4 w-4 shrink-0" weight="bold" />,
-  كتب: <Book className="h-4 w-4 shrink-0" weight="bold" />,
-  أخرى: <DotsThree className="h-4 w-4 shrink-0" weight="bold" />,
+const CAT_ICONS: Record<TranslationKey, ReactNode> = {
+  cat_all: <GridFour className="h-7 w-7" weight="bold" />,
+  cat_electronics: <DeviceMobile className="h-7 w-7" weight="bold" />,
+  cat_cars: <Car className="h-7 w-7" weight="bold" />,
+  cat_realestate: <Buildings className="h-7 w-7" weight="bold" />,
+  cat_fashion: <TShirt className="h-7 w-7" weight="bold" />,
+  cat_watches: <Clock className="h-7 w-7" weight="bold" />,
+  cat_furniture: <DotsThree className="h-7 w-7" weight="bold" />,
+  cat_sports: <Barbell className="h-7 w-7" weight="bold" />,
+  cat_books: <Book className="h-7 w-7" weight="bold" />,
+  cat_other: <DotsThree className="h-7 w-7" weight="bold" />,
 }
 
 function AuctionListingThumb({ src }: { src: string | null }) {
   const [failed, setFailed] = useState(false)
   if (!src || failed) {
     return (
-      <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-[#F3F4F6] text-gray-400">
+      <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-[#F3F4F6] text-gray-400 dark:bg-slate-700">
         <MagnifyingGlass className="h-8 w-8 opacity-40" />
       </div>
     )
@@ -65,8 +69,21 @@ function AuctionListingThumb({ src }: { src: string | null }) {
   )
 }
 
+function countdownLabel(
+  locale: string,
+  t: (k: TranslationKey) => string,
+  endsAt: string,
+  status: string
+) {
+  const parts = auctionCountdownParts(endsAt, status)
+  if (parts.ended) return t('common_ended')
+  if (locale === 'ar') return `${parts.hours}س ${parts.minutes}د ${parts.seconds}ث`
+  return `${parts.hours}h ${parts.minutes}m ${parts.seconds}s`
+}
+
 export default function HomePage() {
   const router = useRouter()
+  const { t, dir, locale } = useLocale()
   const [auctions, setAuctions] = useState<
     {
       id: string
@@ -88,11 +105,6 @@ export default function HomePage() {
     name?: string
   } | null>(null)
   const [tick, setTick] = useState(0)
-
-  const categories = useMemo(
-    () => ['الكل', 'إلكترونيات', 'سيارات', 'عقارات', 'أزياء', 'ساعات', 'أثاث', 'رياضة', 'كتب', 'أخرى'],
-    []
-  )
 
   const buildUrl = useCallback(() => {
     const p = new URLSearchParams()
@@ -132,200 +144,305 @@ export default function HomePage() {
 
   void tick
 
+  const endingSoon = useMemo(() => {
+    const now = Date.now()
+    const day = 86400000
+    return auctions
+      .filter((a) => a.status === 'active' && new Date(a.ends_at).getTime() - now > 0)
+      .filter((a) => new Date(a.ends_at).getTime() - now < day)
+      .slice(0, 8)
+  }, [auctions])
+
+  const popularCats = CATEGORY_OPTIONS.filter((c) => c.api !== 'الكل').slice(0, 6)
+
   return (
     <PullToRefresh onRefresh={load}>
       <SplashScreen />
-      <div className="min-h-screen bg-gray-50 pb-20 dark:bg-slate-900" dir="rtl">
-        <div className="rounded-b-2xl bg-white px-4 pb-2 pt-4 shadow-sm dark:bg-slate-800">
-          <AppHeader
-            showBrand
-            rightSlot={
-              user ? (
-                <Link
-                  href="/profile"
-                  className="flex h-9 w-9 items-center justify-center rounded-full bg-[#E6F4F3] text-[#1B7F7A] shadow-sm transition-transform active:scale-95"
-                  aria-label="الملف الشخصي"
-                >
-                  <UserCircle className="h-6 w-6" weight="fill" />
-                </Link>
-              ) : (
-                <Link
-                  href="/auth/login"
-                  className="rounded-full bg-[#E6F4F3] px-4 py-1.5 text-sm font-semibold text-[#1B7F7A] transition-transform active:scale-95"
-                >
-                  دخول
-                </Link>
-              )
-            }
-          />
+      <div
+        className="min-h-screen bg-[#F3F4F6] pb-24 dark:bg-slate-900"
+        dir={dir}
+      >
+        <div className="rounded-b-[2rem] bg-gradient-to-b from-[#1B7F7A] via-[#156661] to-[#134e4a] px-4 pb-10 pt-2 text-white shadow-lg">
+          <AppHeader showBrand variant="hero" />
           {user && <PushPermissionBanner />}
-          <div className="mb-3 flex flex-col gap-2">
-            <div className="relative">
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.45, ease: 'easeOut' }}
+            className="mt-2 text-center"
+          >
+            <h1 className="text-2xl font-extrabold leading-tight sm:text-3xl">{t('home_heroTitle')}</h1>
+            <p className="mx-auto mt-2 max-w-md text-sm text-white/85">{t('home_heroSubtitle')}</p>
+            <Link
+              href="/auction"
+              className="mt-5 inline-flex items-center justify-center rounded-full bg-[#FF8C42] px-8 py-3 text-sm font-bold text-white shadow-lg transition-transform hover:scale-[1.03] active:scale-95"
+            >
+              {t('home_ctaBrowse')}
+            </Link>
+          </motion.div>
+        </div>
+
+        <div className="relative z-10 -mt-6 px-4">
+          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-xl dark:border-slate-700 dark:bg-slate-800">
+            <div className="relative mb-4">
               <span
-                className="pointer-events-none absolute right-3 top-1/2 z-[1] -translate-y-1/2 text-[#1B7F7A]"
+                className="pointer-events-none absolute right-3 top-1/2 z-[1] -translate-y-1/2 text-[#1B7F7A] dark:text-slate-200"
                 aria-hidden
               >
-                <MagnifyingGlass className="h-5 w-5" weight="bold" />
+                <MagnifyingGlass className="h-6 w-6" weight="bold" />
               </span>
               <Link
                 href="/search"
-                className="flex h-12 w-full items-center rounded-2xl border-2 border-gray-100 bg-white pr-11 pl-4 text-sm text-[#156661] shadow-sm transition-colors focus-within:border-[#1B7F7A] hover:border-[#1B7F7A]/40 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+                className="flex h-14 w-full items-center rounded-2xl border-2 border-gray-100 bg-[#F3F4F6] pr-12 pl-4 text-sm font-medium text-[#1F2937] shadow-inner transition-colors hover:border-[#1B7F7A]/40 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-200"
               >
-                ابحث في المزادات...
+                {t('home_searchPlaceholder')}
+              </Link>
+              <Link
+                href="/search"
+                className="absolute left-2 top-1/2 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-xl bg-white text-[#1B7F7A] shadow-md dark:bg-slate-800 dark:text-slate-100"
+                aria-label={t('common_filter')}
+              >
+                <Funnel className="h-5 w-5" weight="bold" />
               </Link>
             </div>
-          </div>
-          <div className="-mx-1 flex snap-x snap-mandatory gap-2 overflow-x-auto pb-2 scrollbar-thin">
-            {categories.map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCategory(c)}
-                className={
-                  'flex shrink-0 snap-center items-center gap-2 rounded-full px-5 py-2 text-sm whitespace-nowrap transition-transform ' +
-                  (category === c
-                    ? 'scale-[1.02] bg-[#1B7F7A] font-semibold text-white shadow-md'
-                    : 'border border-gray-200 bg-white text-[#1F2937] hover:border-[#1B7F7A]/30 hover:shadow-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100')
-                }
-              >
-                {CATEGORY_ICONS[c] ?? <DotsThree className="h-4 w-4" />}
-                {c}
-              </button>
-            ))}
+
+            <p className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+              {t('home_popularCategories')}
+            </p>
+            <div className="grid grid-cols-5 gap-2 sm:grid-cols-5">
+              {CATEGORY_OPTIONS.map(({ api, key }) => (
+                <button
+                  key={api}
+                  type="button"
+                  onClick={() => setCategory(api)}
+                  className="flex flex-col items-center gap-1.5"
+                >
+                  <span
+                    className={
+                      'flex h-14 w-14 items-center justify-center rounded-full border-2 shadow-md transition-transform ' +
+                      (category === api
+                        ? 'scale-105 border-[#FF8C42] bg-white text-[#1B7F7A] dark:bg-slate-700 dark:text-slate-100'
+                        : 'border-white/80 bg-white/90 text-[#1B7F7A] hover:scale-105 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100')
+                    }
+                  >
+                    {CAT_ICONS[key] ?? <DotsThree className="h-7 w-7" />}
+                  </span>
+                  <span className="line-clamp-2 text-center text-[10px] font-semibold leading-tight text-[#1F2937] dark:text-slate-200">
+                    {t(key)}
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
         {!user && (
-          <div className="mt-4 px-4">
-            <h3 className="mb-2 text-sm font-bold text-gray-700 dark:text-slate-200">كيف يعمل قبو؟</h3>
-            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2">
-              <div className="w-28 flex-shrink-0 snap-center rounded-xl border border-[#E6F4F3] bg-white p-3 text-center dark:border-teal-900/40 dark:bg-slate-800">
-                <span className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#E6F4F3] text-lg dark:bg-teal-900/50">
-                  1
-                </span>
-                <span className="text-2xl mb-1 block">📝</span>
-                <span className="text-xs font-medium text-[#1F2937] dark:text-slate-200">سجّل حسابك</span>
-              </div>
-              <div className="w-28 flex-shrink-0 snap-center rounded-xl border border-[#E6F4F3] bg-white p-3 text-center dark:border-teal-900/40 dark:bg-slate-800">
-                <span className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#E6F4F3] text-lg dark:bg-teal-900/50">
-                  2
-                </span>
-                <span className="text-2xl mb-1 block">🏷️</span>
-                <span className="text-xs font-medium text-[#1F2937] dark:text-slate-200">زايد على ما تحب</span>
-              </div>
-              <div className="w-28 flex-shrink-0 snap-center rounded-xl border border-[#E6F4F3] bg-white p-3 text-center dark:border-teal-900/40 dark:bg-slate-800">
-                <span className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#E6F4F3] text-lg dark:bg-teal-900/50">
-                  3
-                </span>
-                <span className="text-2xl mb-1 block">🏆</span>
-                <span className="text-xs font-medium text-gray-700 dark:text-slate-200">اربح وادفع</span>
-              </div>
+          <div className="mt-6 px-4">
+            <h3 className="mb-2 text-sm font-bold text-[#1F2937] dark:text-slate-200">{t('home_howTitle')}</h3>
+            <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 scrollbar-thin">
+              {[
+                { n: '1', emoji: '📝', label: t('home_howStep1') },
+                { n: '2', emoji: '🏷️', label: t('home_howStep2') },
+                { n: '3', emoji: '🏆', label: t('home_howStep3') },
+              ].map((s) => (
+                <div
+                  key={s.n}
+                  className="w-28 flex-shrink-0 snap-center rounded-xl border border-[#E6F4F3] bg-white p-3 text-center dark:border-slate-700 dark:bg-slate-800"
+                >
+                  <span className="mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-[#E6F4F3] text-lg dark:bg-[#134e4a]">
+                    {s.n}
+                  </span>
+                  <span className="mb-1 block text-2xl">{s.emoji}</span>
+                  <span className="text-xs font-medium text-[#1F2937] dark:text-slate-200">{s.label}</span>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        <div className="mt-4 px-4">
+        <div className="mt-6 px-4">
           <div className="mb-3 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-lg font-bold text-gray-900 dark:text-slate-100">
+            <h2 className="flex items-center gap-2 text-lg font-bold text-[#1F2937] dark:text-slate-100">
               <span className="relative flex h-2.5 w-2.5">
                 <span className="absolute inline-flex h-full w-full animate-pulse-dot rounded-full bg-red-500 opacity-75" />
                 <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
               </span>
-              مزادات حية
+              {t('home_liveAuctions')}
             </h2>
-            <Link
-              href="/auction"
-              className="flex items-center gap-1 text-sm font-medium text-[#1B7F7A]"
-            >
-              عرض الكل
+            <Link href="/auction" className="flex items-center gap-1 text-sm font-semibold text-[#1B7F7A] dark:text-slate-200">
+              {t('common_viewAll')}
               <ArrowLeft className="h-4 w-4" weight="bold" />
             </Link>
           </div>
           {loading ? (
             <HomeGridSkeleton />
           ) : auctions.length === 0 ? (
-            <div className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
               <EmptyState
                 icon={<MagnifyingGlass className="h-14 w-14" weight="duotone" />}
-                title="لا توجد مزادات مطابقة"
-                subtitle="جرّب تغيير التصنيف أو استخدم البحث المتقدم"
-                actionLabel="بحث متقدم"
+                title={t('home_noAuctions')}
+                subtitle={t('home_noAuctionsHint')}
+                actionLabel={t('home_advancedSearch')}
                 onAction={() => router.push('/search')}
-                actionClassName="bg-gradient-to-r from-[#1B7F7A] to-[#22A39F] shadow-lg hover:opacity-95"
+                actionClassName="bg-gradient-to-r from-[#1B7F7A] to-[#156661] shadow-lg hover:opacity-95"
               />
             </div>
           ) : (
             <>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
                 {auctions.slice(0, 6).map((a) => {
                   const parts = auctionCountdownParts(a.ends_at, a.status)
-                  const label = parts.ended
-                    ? 'انتهى'
-                    : `${parts.hours}س ${parts.minutes}د ${parts.seconds}ث`
+                  const label = countdownLabel(locale, t, a.ends_at, a.status)
                   const underOneHour = !parts.ended && parts.hours < 1
                   const imgs = normalizeAuctionImages(a.images)
                   const firstImg = imgs[0] ?? null
                   return (
-                    <Link
+                    <motion.div
                       key={a.id}
-                      href={'/auction/' + a.id}
-                      className="group relative flex flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all duration-200 active:scale-[0.99] hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                      className="h-full"
                     >
-                      <div className="absolute top-1.5 left-1.5 z-10 rounded-full bg-white/95 p-0.5 shadow-sm ring-1 ring-white/80">
-                        <FavoriteHeart auctionId={a.id} userId={user?.user_id ?? null} />
-                      </div>
-                      <div className="relative h-40 w-full shrink-0 overflow-hidden rounded-t-xl bg-gray-100">
-                        <AuctionListingThumb src={firstImg} />
-                      </div>
-                      <div className="flex min-w-0 flex-1 flex-col p-2">
-                        <h3 className="line-clamp-2 text-xs font-semibold leading-tight text-gray-900 dark:text-slate-100">
-                          {a.title}
-                        </h3>
-                        <p className="mt-1 text-sm font-bold tabular-nums text-[#1B7F7A]">
-                          {Number(a.current_bid).toLocaleString()} ر.س
-                        </p>
-                        <div className="mt-1.5 flex flex-1 flex-col justify-end gap-0.5">
-                          <div className="flex items-start justify-between gap-1 text-[10px] leading-tight text-gray-500">
-                            <span className="flex min-w-0 items-center gap-0.5">
-                              <MapPin className="h-3 w-3 shrink-0 text-[#1B7F7A]" weight="bold" />
-                              <span className="truncate">{a.city || 'غير محدد'}</span>
-                            </span>
-                            <span
-                              className={
-                                parts.ended
-                                  ? 'shrink-0 rounded bg-red-50 px-1 py-0.5 font-semibold text-red-600'
-                                  : underOneHour
-                                    ? 'flex shrink-0 items-center gap-0.5 font-semibold text-red-600'
-                                    : 'shrink-0 font-medium text-gray-600 dark:text-slate-400'
-                              }
-                            >
-                              {underOneHour && !parts.ended && (
-                                <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-red-500" />
-                              )}
-                              {label}
-                            </span>
-                          </div>
-                          <p className="flex items-center gap-0.5 text-[10px] text-gray-400">
-                            <Gavel className="h-3 w-3 text-[#1B7F7A]" weight="bold" />
-                            {a.bid_count} مزايدة
-                          </p>
+                      <Link
+                        href={'/auction/' + a.id}
+                        className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-md transition-shadow hover:shadow-xl dark:border-slate-700 dark:bg-slate-800"
+                      >
+                        <div className="absolute left-2 top-2 z-10 rounded-full bg-white/95 p-1 shadow-md ring-1 ring-white/80 dark:bg-slate-900/90">
+                          <FavoriteHeart auctionId={a.id} userId={user?.user_id ?? null} />
                         </div>
-                      </div>
-                    </Link>
+                        <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-gray-100 dark:bg-slate-700">
+                          <AuctionListingThumb src={firstImg} />
+                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/55 to-transparent" />
+                          {underOneHour && !parts.ended && (
+                            <span className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-red-500/95 px-2 py-0.5 text-[10px] font-bold text-white animate-pulse">
+                              <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                              LIVE
+                            </span>
+                          )}
+                        </div>
+                        <div className="flex min-w-0 flex-1 flex-col p-3">
+                          <h3 className="line-clamp-2 text-sm font-bold leading-snug text-[#1F2937] dark:text-slate-100">
+                            {a.title}
+                          </h3>
+                          <p className="mt-2 text-xl font-extrabold tabular-nums text-[#1B7F7A] dark:text-slate-100">
+                            {Number(a.current_bid).toLocaleString()}{' '}
+                            <span className="text-sm font-bold">{t('common_currency')}</span>
+                          </p>
+                          <div className="mt-2 flex flex-1 flex-col justify-end gap-2">
+                            <div className="flex items-center justify-between gap-1 text-xs text-gray-500 dark:text-slate-400">
+                              <span className="flex min-w-0 items-center gap-1">
+                                <MapPin className="h-3.5 w-3.5 shrink-0 text-[#1B7F7A]" weight="bold" />
+                                <span className="truncate">{a.city || t('common_undefinedCity')}</span>
+                              </span>
+                              <span
+                                className={
+                                  parts.ended
+                                    ? 'shrink-0 rounded-md bg-red-50 px-2 py-0.5 font-semibold text-red-600 dark:bg-red-950/40 dark:text-red-300'
+                                    : underOneHour
+                                      ? 'shrink-0 font-semibold text-red-600 dark:text-red-400'
+                                      : 'shrink-0 font-medium text-gray-600 dark:text-slate-300'
+                                }
+                              >
+                                {label}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between gap-2">
+                              <p className="flex items-center gap-1 text-xs text-gray-400 dark:text-slate-500">
+                                <Gavel className="h-3.5 w-3.5 text-[#1B7F7A]" weight="bold" />
+                                {a.bid_count} {t('home_bidCount')}
+                              </p>
+                              <span className="rounded-full bg-[#FF8C42] px-3 py-1 text-[10px] font-bold text-white shadow-sm">
+                                {t('home_bidNow')}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </Link>
+                    </motion.div>
                   )
                 })}
               </div>
               {auctions.length > 6 && (
                 <Link
                   href="/auction"
-                  className="mt-3 block rounded-xl border border-gray-100 bg-white py-3 text-center text-sm font-medium text-[#1B7F7A] shadow-sm dark:border-slate-700 dark:bg-slate-800"
+                  className="mt-4 block rounded-2xl border border-gray-200 bg-white py-3 text-center text-sm font-semibold text-[#1B7F7A] shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
                 >
-                  عرض المزيد ({auctions.length - 6}+)
+                  {t('home_showMore')} ({auctions.length - 6}+)
                 </Link>
               )}
             </>
           )}
         </div>
+
+        {endingSoon.length > 0 && (
+          <div className="mt-8 px-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-[#1F2937] dark:text-slate-100">{t('home_endingSoon')}</h2>
+            </div>
+            <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 scrollbar-thin">
+              {endingSoon.map((a) => {
+                const imgs = normalizeAuctionImages(a.images)
+                const src = imgs[0]
+                const label = countdownLabel(locale, t, a.ends_at, a.status)
+                return (
+                  <Link
+                    key={a.id}
+                    href={'/auction/' + a.id}
+                    className="w-36 shrink-0 snap-center overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800"
+                  >
+                    <div className="relative aspect-square bg-gray-100 dark:bg-slate-700">
+                      {src ? (
+                        <img src={src} alt="" className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-gray-300">
+                          <MagnifyingGlass className="h-8 w-8" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="p-2">
+                      <p className="line-clamp-2 text-[11px] font-bold leading-tight text-[#1F2937] dark:text-slate-100">
+                        {a.title}
+                      </p>
+                      <p className="mt-1 text-xs font-extrabold text-[#1B7F7A]">
+                        {Number(a.current_bid).toLocaleString()} {t('common_currency')}
+                      </p>
+                      <p className="mt-0.5 text-[10px] font-semibold text-red-600 dark:text-red-400">{label}</p>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </div>
+        )}
+
+        <div className="mt-8 px-4">
+          <h2 className="mb-3 text-lg font-bold text-[#1F2937] dark:text-slate-100">{t('home_popularCategories')}</h2>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {popularCats.map(({ api, key }) => (
+              <Link
+                key={api}
+                href={'/categories/' + encodeURIComponent(api)}
+                className="relative flex h-24 items-end overflow-hidden rounded-2xl bg-gradient-to-br from-[#1B7F7A] to-[#134e4a] p-3 text-white shadow-md transition-transform active:scale-[0.98]"
+              >
+                <div className="absolute inset-0 bg-[url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22%3E%3Ccircle cx=%2250%22 cy=%2250%22 r=%2240%22 fill=%22%23ffffff%22 opacity=%22.06%22/%3E%3C/svg%3E')] opacity-90" />
+                <span className="relative z-[1] text-sm font-bold">{t(key)}</span>
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <footer className="mt-10 border-t border-gray-200 bg-white px-4 py-8 dark:border-slate-800 dark:bg-slate-900">
+          <div className="mx-auto flex max-w-lg flex-col items-center gap-3 text-center text-sm text-gray-600 dark:text-slate-400">
+            <div className="flex flex-wrap items-center justify-center gap-4 font-semibold text-[#1B7F7A] dark:text-slate-200">
+              <Link href="/terms">{t('footer_terms')}</Link>
+              <Link href="/privacy">{t('footer_privacy')}</Link>
+              <a href="mailto:support@qabboo.com">{t('common_contactUs')}</a>
+            </div>
+            <p className="text-xs text-gray-400 dark:text-slate-500">
+              © {new Date().getFullYear()} {t('common_appName')} — {t('footer_rights')}
+            </p>
+          </div>
+        </footer>
 
         <BottomNav active="home" />
       </div>

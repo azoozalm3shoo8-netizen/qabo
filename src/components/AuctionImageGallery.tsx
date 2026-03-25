@@ -1,10 +1,11 @@
 'use client'
 
-import Image from 'next/image'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useLocale } from '@/lib/locale-context'
 import { normalizeAuctionImages } from '@/lib/auction-images'
 
 export function AuctionImageGallery({ images }: { images: string[] | null | undefined }) {
+  const { t } = useLocale()
   const list = normalizeAuctionImages(images)
   const [index, setIndex] = useState(0)
   const scrollerRef = useRef<HTMLDivElement>(null)
@@ -28,28 +29,22 @@ export function AuctionImageGallery({ images }: { images: string[] | null | unde
   if (list.length === 0) {
     return (
       <div
-        className="aspect-[4/3] max-h-80 bg-gray-100 flex flex-col items-center justify-center gap-2 rounded-b-2xl text-gray-400 px-4 text-center"
+        className="flex aspect-[4/3] max-h-80 flex-col items-center justify-center gap-2 rounded-b-2xl bg-gray-100 px-4 text-center text-gray-400 dark:bg-slate-800 dark:text-slate-500"
         dir="rtl"
       >
         <span className="text-5xl" aria-hidden>
           📷
         </span>
-        <p className="text-sm font-medium text-gray-500">لا توجد صور</p>
+        <p className="text-sm font-medium">{t('gallery_noPhotos')}</p>
       </div>
     )
   }
 
   if (list.length === 1) {
     return (
-      <div className="relative aspect-[4/3] max-h-80 w-full overflow-hidden rounded-b-2xl bg-gray-100">
-        <Image
-          src={list[0]}
-          alt=""
-          fill
-          className="object-cover"
-          sizes="100vw"
-          priority
-        />
+      <div className="relative aspect-[4/3] max-h-96 w-full overflow-hidden rounded-b-2xl bg-gray-100 dark:bg-slate-800">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={list[0]} alt="" className="h-full w-full object-cover" />
       </div>
     )
   }
@@ -59,27 +54,21 @@ export function AuctionImageGallery({ images }: { images: string[] | null | unde
       <div
         ref={scrollerRef}
         dir="ltr"
-        className="flex overflow-x-auto snap-x snap-mandatory scrollbar-hide gap-0 rounded-b-2xl"
+        className="scrollbar-hide flex snap-x snap-mandatory gap-0 overflow-x-auto rounded-b-2xl"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {list.map((src, i) => (
           <div
             key={i}
-            className="relative min-w-full aspect-[4/3] max-h-80 snap-center shrink-0 bg-gray-100"
+            className="relative aspect-[4/3] max-h-96 min-w-full shrink-0 snap-center bg-gray-100 dark:bg-slate-800"
           >
-            <Image
-              src={src}
-              alt=""
-              fill
-              className="object-cover"
-              sizes="100vw"
-              priority={i === 0}
-            />
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src} alt="" className="h-full w-full object-cover" loading={i === 0 ? 'eager' : 'lazy'} />
           </div>
         ))}
       </div>
-      <div className="flex justify-center gap-1.5">
-        {list.map((_, i) => (
+      <div className="flex justify-center gap-2 px-2">
+        {list.map((src, i) => (
           <button
             key={i}
             type="button"
@@ -90,11 +79,16 @@ export function AuctionImageGallery({ images }: { images: string[] | null | unde
               })
             }}
             className={
-              'w-2 h-2 rounded-full transition-colors ' +
-              (i === index ? 'bg-[#1B7F7A]' : 'bg-gray-300')
+              'h-14 w-14 shrink-0 overflow-hidden rounded-xl border-2 transition-all ' +
+              (i === index
+                ? 'border-[#1B7F7A] ring-2 ring-[#1B7F7A]/20'
+                : 'border-gray-200 opacity-70 hover:opacity-100 dark:border-slate-600')
             }
-            aria-label={'صورة ' + (i + 1)}
-          />
+            aria-label={`${t('gallery_photoN')} ${i + 1}`}
+          >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={src} alt="" className="h-full w-full object-cover" />
+          </button>
         ))}
       </div>
     </div>

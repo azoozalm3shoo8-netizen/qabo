@@ -1,6 +1,16 @@
 'use client'
 
+import { Eraser, SunDim } from '@phosphor-icons/react'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useToast } from '@/components/Toast'
+import {
+  addWatermark,
+  blobToJpegFile,
+  compressImage,
+  enhanceBrightness,
+  generateImageHash,
+} from '@/lib/image-processing'
+import { useLocale } from '@/lib/locale-context'
 import { deleteImage, uploadImage } from '@/lib/storage'
 import { pathFromPublicUrl } from '@/lib/supabase/storage'
 
@@ -15,6 +25,10 @@ type Slot = {
   uploading: boolean
   error: boolean
   path: string | null
+  dna: string | null
+  /** Local blob used for processing (pre-upload) */
+  workingBlob: Blob | null
+  preEnhancePreview: string | null
 }
 
 function randomId() {
@@ -30,6 +44,8 @@ export function ImageUploader({
   onImagesChange: (urls: string[]) => void
   onBusyChange?: (busy: boolean) => void
 }) {
+  const { t } = useLocale()
+  const { show } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
   const lastNotifiedUrlsKeyRef = useRef<string | null>(null)
   const [slots, setSlots] = useState<Slot[]>(() =>
@@ -41,6 +57,9 @@ export function ImageUploader({
       uploading: false,
       error: false,
       path: null,
+      dna: null,
+      workingBlob: null,
+      preEnhancePreview: null,
     }))
   )
 
@@ -57,20 +76,38 @@ export function ImageUploader({
   }, [slots, onBusyChange])
 
   const runUpload = useCallback(async (slotId: string, file: File, preview: string) => {
-    const ext = file.name.split('.').pop() || 'jpg'
+    const ext = 'jpg'
     const path = `temp/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`
 
-    const url = await uploadImage(file, path)
-    if (url) {
-      setSlots((prev) =>
-        prev.map((s) =>
-          s.id === slotId
-            ? { ...s, url, uploading: false, file: null, error: false, path: path }
-            : s
+    try {
+      const compressed = await compressImage(file)
+      const dna = await generateImageHash(compressed)
+      const watermarked = await addWatermark(compressed, 'qabboo')
+      const jpegFile = await blobToJpegFile(watermarked, file.name)
+      const url = await uploadImage(jpegFile, path, { skipCompression: true })
+      if (url) {
+        setSlots((prev) =>
+          prev.map((s) => {
+            if (s.id !== slotId) return s
+            if (s.preEnhancePreview) URL.revokeObjectURL(s.preEnhancePreview)
+            return {
+              ...s,
+              url,
+              uploading: false,
+              file: null,
+              error: false,
+              path,
+              dna,
+              workingBlob: null,
+              preEnhancePreview: null,
+            }
+          })
         )
-      )
-      queueMicrotask(() => URL.revokeObjectURL(preview))
-      return
+        queueMicrotask(() => URL.revokeObjectURL(preview))
+        return
+      }
+    } catch {
+      /* fall through */
     }
 
     setSlots((prev) =>
@@ -81,7 +118,7 @@ export function ImageUploader({
   const handleFile = useCallback(
     async (file: File) => {
       if (file.size > MAX_BYTES_BEFORE) {
-        alert('الحد الأقصى قبل الضغط 10 ميجابايت')
+        alert(t('imageUploader_hint'))
         return
       }
 
@@ -105,6 +142,9 @@ export function ImageUploader({
             uploading: true,
             error: false,
             path: null,
+            dna: null,
+            workingBlob: file,
+            preEnhancePreview: null,
           },
         ]
       })
@@ -115,7 +155,7 @@ export function ImageUploader({
 
       await runUpload(slotId, file, preview)
     },
-    [runUpload]
+    [runUpload, t]
   )
 
   const retrySlot = async (slot: Slot) => {
@@ -134,8 +174,43 @@ export function ImageUploader({
         await deleteImage(storagePath)
       }
     }
+    if (slot.preEnhancePreview) URL.revokeObjectURL(slot.preEnhancePreview)
     if (!slot.url) URL.revokeObjectURL(slot.preview)
     setSlots((prev) => prev.filter((s) => s.id !== slot.id))
+  }
+
+  const onEnhance = async (slot: Slot) => {
+    const base = slot.file
+    if (!base || slot.uploading || slot.url) return
+    try {
+      const blob = slot.workingBlob ?? base
+      const enhanced = await enhanceBrightness(blob, 1.2)
+      const nextFile = await blobToJpegFile(enhanced, base.name)
+      const newPreview = URL.createObjectURL(enhanced)
+      const keepCompare = slot.preview.startsWith('blob:') ? slot.preview : null
+      setSlots((prev) =>
+        prev.map((s) =>
+          s.id === slot.id
+            ? {
+                ...s,
+                preEnhancePreview: keepCompare,
+                preview: newPreview,
+                file: nextFile,
+                workingBlob: enhanced,
+                uploading: true,
+                error: false,
+              }
+            : s
+        )
+      )
+      await runUpload(slot.id, nextFile, newPreview)
+    } catch {
+      show(t('common_error'), 'error')
+    }
+  }
+
+  const onRemoveBgClick = () => {
+    show(t('imageUploader_comingSoon'), 'info')
   }
 
   const atMax = slots.length >= MAX_FILES
@@ -143,12 +218,14 @@ export function ImageUploader({
 
   return (
     <div className="space-y-3" dir="rtl">
-      <label className="block text-sm font-medium text-gray-800">صور المنتج</label>
-      <p className="text-xs text-gray-500">
-        صورة واحدة على الأقل • حتى {MAX_FILES} صور • JPG أو PNG أو WEBP • حتى 10 ميجابايت (يُضغط تلقائياً)
-      </p>
+      <label className="block text-sm font-medium text-[#1F2937] dark:text-slate-200">
+        {t('imageUploader_label')}
+      </label>
+      <p className="text-xs text-gray-500 dark:text-slate-400">{t('imageUploader_hint')}</p>
       {anyUploading && (
-        <p className="text-xs font-semibold text-[#1B7F7A]">جاري رفع الصور...</p>
+        <p className="text-xs font-semibold text-[#1B7F7A] dark:text-slate-200">
+          {t('imageUploader_uploading')}
+        </p>
       )}
 
       <input
@@ -164,28 +241,85 @@ export function ImageUploader({
         }}
       />
 
-      <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
+      <div
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault()
+            fileInputRef.current?.click()
+          }
+        }}
+        onDragOver={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+        }}
+        onDrop={(e) => {
+          e.preventDefault()
+          const f = e.dataTransfer.files?.[0]
+          if (f?.type.startsWith('image/')) void handleFile(f)
+        }}
+        onClick={() => !atMax && fileInputRef.current?.click()}
+        className={
+          'flex min-h-[140px] cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-[#1B7F7A]/35 bg-[#E6F4F3]/40 px-4 py-8 text-center transition-colors hover:bg-[#E6F4F3]/70 dark:border-slate-600 dark:bg-slate-800/60 dark:hover:bg-slate-800 ' +
+          (atMax ? 'pointer-events-none opacity-50' : '')
+        }
+      >
+        <span className="text-sm font-bold text-[#1B7F7A] dark:text-slate-200">{t('imageUploader_drop')}</span>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        <button
+          type="button"
+          onClick={onRemoveBgClick}
+          className="inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-3 py-1.5 text-xs font-semibold text-[#1F2937] dark:border-slate-600 dark:bg-slate-800 dark:text-slate-200"
+        >
+          <Eraser className="h-4 w-4 text-[#FF8C42]" weight="bold" />
+          {t('imageUploader_removeBg')}
+        </button>
+      </div>
+
+      <div className="grid grid-cols-3 gap-2 sm:grid-cols-5">
         {slots.map((s, index) => (
           <div
             key={s.id}
-            className="relative aspect-square rounded-xl overflow-hidden bg-gray-100 border border-gray-200 shadow-sm"
+            className="relative aspect-square overflow-hidden rounded-xl border border-gray-200 bg-gray-100 shadow-sm dark:border-slate-600 dark:bg-slate-800"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={s.url || s.preview} alt="" className="w-full h-full object-cover" />
+            <img src={s.url || s.preview} alt="" className="h-full w-full object-cover" />
+            {s.preEnhancePreview && !s.url && (
+              <div className="absolute inset-x-0 bottom-0 bg-black/55 px-1 py-0.5 text-[9px] text-white">
+                {t('imageUploader_compare')}
+              </div>
+            )}
             {s.uploading && (
-              <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                <div className="w-8 h-8 border-4 border-white border-t-transparent rounded-full animate-spin" />
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40">
+                <div className="h-8 w-8 animate-spin rounded-full border-4 border-white border-t-transparent" />
               </div>
             )}
             {s.error && !s.uploading && (
-              <div className="absolute inset-0 bg-black/55 flex flex-col items-center justify-center gap-1 p-1">
-                <span className="text-[10px] text-white text-center font-bold">فشل الرفع</span>
+              <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-black/55 p-1">
+                <span className="text-center text-[10px] font-bold text-white">
+                  {t('imageUploader_fail')}
+                </span>
                 <button
                   type="button"
                   onClick={() => void retrySlot(s)}
-                  className="text-[10px] bg-[#FF8C42] text-white px-2 py-1 rounded-lg font-bold"
+                  className="rounded-lg bg-[#FF8C42] px-2 py-1 text-[10px] font-bold text-white"
                 >
-                  إعادة
+                  {t('common_retry')}
+                </button>
+              </div>
+            )}
+            {!s.uploading && s.file && !s.url && (
+              <div className="absolute bottom-1 left-1 right-1 flex gap-1">
+                <button
+                  type="button"
+                  onClick={() => void onEnhance(s)}
+                  className="flex flex-1 items-center justify-center gap-0.5 rounded-lg bg-[#1B7F7A]/90 py-1 text-[10px] font-bold text-white"
+                >
+                  <SunDim className="h-3.5 w-3.5" weight="bold" />
+                  {t('imageUploader_enhance')}
                 </button>
               </div>
             )}
@@ -193,15 +327,23 @@ export function ImageUploader({
               <button
                 type="button"
                 onClick={() => void removeSlot(s)}
-                className="absolute top-1 left-1 w-7 h-7 rounded-full bg-black/60 text-white text-sm flex items-center justify-center hover:bg-black/80"
-                aria-label="حذف"
+                className="absolute left-1 top-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/60 text-sm text-white hover:bg-black/80"
+                aria-label={t('common_delete')}
               >
                 ✕
               </button>
             )}
             {index === 0 && (
-              <span className="absolute bottom-0 inset-x-0 bg-[#1B7F7A]/95 text-white text-[10px] font-bold text-center py-0.5">
-                الصورة الرئيسية
+              <span className="absolute inset-x-0 bottom-0 bg-[#1B7F7A]/95 py-0.5 text-center text-[10px] font-bold text-white">
+                {t('imageUploader_main')}
+              </span>
+            )}
+            {s.dna && s.url && (
+              <span
+                className="absolute bottom-7 inset-x-0 truncate bg-black/50 px-1 text-[8px] text-white/90"
+                title={s.dna}
+              >
+                {t('imageUploader_dna')}: {s.dna.slice(0, 8)}…
               </span>
             )}
           </div>
@@ -211,9 +353,9 @@ export function ImageUploader({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="aspect-square rounded-xl border-2 border-dashed border-[#1B7F7A]/40 bg-[#E6F4F3]/50 flex flex-col items-center justify-center gap-0.5 text-[#1B7F7A] hover:bg-[#E6F4F3] transition-colors text-xs font-medium px-1 text-center leading-tight"
+            className="flex aspect-square flex-col items-center justify-center gap-0.5 rounded-xl border-2 border-dashed border-[#1B7F7A]/40 bg-[#E6F4F3]/50 px-1 text-center text-xs font-medium leading-tight text-[#1B7F7A] transition-colors hover:bg-[#E6F4F3] dark:border-slate-500 dark:bg-slate-800/50 dark:text-slate-200"
           >
-            + إضافة صورة
+            + {t('imageUploader_add')}
           </button>
         )}
       </div>

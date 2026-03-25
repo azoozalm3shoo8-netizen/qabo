@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useToast } from '@/components/Toast'
+import { useLocale } from '@/lib/locale-context'
 
 export function FavoriteHeart({
   auctionId,
@@ -12,6 +13,7 @@ export function FavoriteHeart({
   userId: string | null
   className?: string
 }) {
+  const { t } = useLocale()
   const { show } = useToast()
   const [on, setOn] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -48,7 +50,7 @@ export function FavoriteHeart({
         )
         if (res.ok) {
           setOn(false)
-          show('تمت الإزالة من المفضلة', 'success')
+          show(t('favorite_toastRemoved'), 'success')
         }
       } else {
         const res = await fetch('/api/favorites', {
@@ -58,7 +60,7 @@ export function FavoriteHeart({
         })
         if (res.ok) {
           setOn(true)
-          show('أضيف إلى المفضلة', 'success')
+          show(t('favorite_toastAdded'), 'success')
         }
       }
     } finally {
@@ -68,10 +70,7 @@ export function FavoriteHeart({
 
   if (!userId) {
     return (
-      <span
-        className={'opacity-40 ' + className}
-        aria-hidden
-      >
+      <span className={'opacity-40 ' + className} aria-hidden>
         🤍
       </span>
     )
@@ -83,10 +82,10 @@ export function FavoriteHeart({
       onClick={(e) => void toggle(e)}
       disabled={loading}
       className={
-        'p-1.5 rounded-full bg-white/90 shadow-sm hover:scale-105 transition-transform disabled:opacity-50 ' +
+        'rounded-full bg-white/90 p-1.5 shadow-sm transition-transform hover:scale-105 disabled:opacity-50 ' +
         className
       }
-      aria-label={on ? 'إزالة من المفضلة' : 'إضافة للمفضلة'}
+      aria-label={on ? t('favorite_remove') : t('favorite_add')}
     >
       <span className="text-lg">{on ? '❤️' : '🤍'}</span>
     </button>

@@ -2,24 +2,37 @@
 
 import Link from 'next/link'
 import { BottomNav } from '@/components/BottomNav'
+import { useLocale } from '@/lib/locale-context'
 
 export default function TermsPage() {
+  const { t, dir, locale } = useLocale()
   return (
-    <div className="min-h-screen bg-gray-50 pb-24" dir="rtl">
-      <header className="sticky top-0 z-20 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
+    <div className="min-h-screen bg-[#F3F4F6] pb-24 dark:bg-slate-900" dir={dir}>
+      <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
         <Link
           href="/profile"
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E6F4F3] text-lg text-[#1B7F7A]"
-          aria-label="رجوع"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-[#E6F4F3] text-lg text-[#1B7F7A] dark:bg-[#134e4a] dark:text-slate-100"
+          aria-label={t('common_back')}
         >
           →
         </Link>
-        <h1 className="flex-1 text-center text-lg font-bold text-[#1B7F7A]">الشروط والأحكام</h1>
+        <h1 className="flex-1 text-center text-lg font-bold text-[#1B7F7A] dark:text-slate-100">
+          {t('terms_title')}
+        </h1>
         <div className="w-10" />
       </header>
 
-      <div className="px-4 py-6 max-w-2xl mx-auto">
-        <h2 className="mb-4 text-xl font-bold text-[#1F2937]">الشروط والأحكام — منصة قبو</h2>
+      <div className="mx-auto max-w-2xl px-4 py-6">
+        <h2 className="mb-4 text-xl font-bold text-[#1F2937] dark:text-slate-100">
+          {t('terms_title')} — {t('common_appName')}
+        </h2>
+
+        {locale === 'en' ? (
+          <p className="text-sm leading-relaxed text-gray-700 dark:text-slate-300">{t('terms_body')}</p>
+        ) : null}
+
+        {locale === 'ar' ? (
+          <>
 
         <section>
           <h2 className="font-bold text-lg text-gray-900 mb-3 mt-8">1. مقدمة</h2>
@@ -115,6 +128,8 @@ export default function TermsPage() {
             support@qabo.app (عنوان توضيحي — يُستبدل بعنوانكم الفعلي). نهدف للرد خلال 48 ساعة عمل.
           </p>
         </section>
+          </>
+        ) : null}
       </div>
 
       <BottomNav active="profile" />

@@ -3,8 +3,10 @@
 import Image from 'next/image'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useEffect, useState } from 'react'
+import { useLocale } from '@/lib/locale-context'
 
 export function SplashScreen() {
+  const { t, dir } = useLocale()
   const [visible, setVisible] = useState(false)
   const [exiting, setExiting] = useState(false)
 
@@ -32,7 +34,7 @@ export function SplashScreen() {
       {visible && (
         <motion.div
           className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#1B7F7A]"
-          dir="rtl"
+          dir={dir}
           initial={{ opacity: 1 }}
           animate={{ opacity: exiting ? 0 : 1 }}
           exit={{ opacity: 0 }}
@@ -53,7 +55,7 @@ export function SplashScreen() {
             >
               <Image
                 src="/logo-qabboo.png"
-                alt="قبو"
+                alt={t('common_appName')}
                 width={240}
                 height={240}
                 className="h-[120px] w-auto object-contain"
@@ -74,7 +76,7 @@ export function SplashScreen() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.35, duration: 0.3 }}
             >
-              قبو
+              {t('common_appName')}
             </motion.p>
             <motion.p
               className="mt-3 text-base font-normal text-white/70"
@@ -82,7 +84,7 @@ export function SplashScreen() {
               animate={{ opacity: 1 }}
               transition={{ delay: 0.4, duration: 0.3 }}
             >
-              كنوزك عندنا...
+              {t('home_tagline')}
             </motion.p>
           </motion.div>
         </motion.div>

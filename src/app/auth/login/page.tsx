@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { QabbooLogo } from '@/components/QabbooLogo'
+import { useLocale } from '@/lib/locale-context'
 
 const RESEND_SECONDS = 60
 const OTP_LENGTH = 8
@@ -39,6 +40,7 @@ function ConfettiBurst() {
 
 export default function LoginPage() {
   const router = useRouter()
+  const { t, dir } = useLocale()
   const [email, setEmail] = useState('')
   const [otpDigits, setOtpDigits] = useState(() => emptyOtpDigits())
   const [step, setStep] = useState<'email' | 'otp' | 'success'>('email')
@@ -82,12 +84,12 @@ export default function LoginPage() {
         body: JSON.stringify({ email: email.trim() }),
       })
       const data = (await res.json()) as { error?: string }
-      if (!res.ok) throw new Error(data.error || 'تعذر إرسال الرمز')
+      if (!res.ok) throw new Error(data.error || t('login_errorGeneric'))
       setOtpDigits(emptyOtpDigits())
       setStep('otp')
       setResendLeft(RESEND_SECONDS)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'حدث خطأ')
+      setError(err instanceof Error ? err.message : t('common_error'))
     } finally {
       setLoading(false)
     }
@@ -114,7 +116,7 @@ export default function LoginPage() {
         } catch {
           /* الاستجابة ليست JSON */
         }
-        setError('حدث خطأ، حاول مرة أخرى')
+        setError(t('login_errorGeneric'))
         return
       }
 
@@ -126,12 +128,12 @@ export default function LoginPage() {
       try {
         data = (await res.json()) as typeof data
       } catch {
-        setError('حدث خطأ، حاول مرة أخرى')
+        setError(t('login_errorGeneric'))
         return
       }
 
       if (!data.success || !data.user) {
-        setError('حدث خطأ، حاول مرة أخرى')
+        setError(t('login_errorGeneric'))
         return
       }
 
@@ -145,7 +147,7 @@ export default function LoginPage() {
       )
       setStep('success')
     } catch {
-      setError('حدث خطأ، حاول مرة أخرى')
+      setError(t('login_errorGeneric'))
     } finally {
       setLoading(false)
     }
@@ -161,7 +163,7 @@ export default function LoginPage() {
         body: JSON.stringify({ phone: '+966500000000' }),
       })
       const data = (await res.json()) as { error?: string; user_id?: string; phone?: string }
-      if (!res.ok) throw new Error(data.error || 'فشل وضع التطوير')
+      if (!res.ok) throw new Error(data.error || t('dev_login_fail'))
       localStorage.setItem(
         'qabo_user',
         JSON.stringify({
@@ -171,7 +173,7 @@ export default function LoginPage() {
       )
       window.location.href = '/'
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'حدث خطأ')
+      setError(err instanceof Error ? err.message : t('common_error'))
     } finally {
       setLoading(false)
     }
@@ -216,8 +218,14 @@ export default function LoginPage() {
 
   const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
 
+  const steps: { id: typeof step; label: string }[] = [
+    { id: 'email', label: t('login_stepEmail') },
+    { id: 'otp', label: t('login_stepOtp') },
+    { id: 'success', label: t('login_stepDone') },
+  ]
+
   return (
-    <div className="flex min-h-screen flex-col bg-[#156661]" dir="rtl">
+    <div className="flex min-h-screen flex-col bg-[#156661] dark:bg-slate-950" dir={dir}>
       <div className="relative flex min-h-[42vh] flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[#1B7F7A] to-[#156661] px-4 pb-10 pt-12">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-16 top-10 h-48 w-48 rounded-full bg-white/[0.08]" />
@@ -231,7 +239,7 @@ export default function LoginPage() {
         >
           <QabbooLogo variant="login" />
         </motion.div>
-        <p className="relative z-[1] mt-4 text-sm text-white/85">كنوزك عندنا...</p>
+        <p className="relative z-[1] mt-4 text-sm text-white/85">{t('home_tagline')}</p>
       </div>
 
       <motion.div
@@ -242,6 +250,38 @@ export default function LoginPage() {
       >
         {step === 'success' && <ConfettiBurst />}
 
+        <div className="mb-6 flex flex-wrap justify-center gap-2">
+          {steps.map((s, i) => {
+            const active =
+              (step === 'email' && s.id === 'email') ||
+              (step === 'otp' && (s.id === 'email' || s.id === 'otp')) ||
+              (step === 'success' && s.id === 'success')
+            const current =
+              (step === 'email' && s.id === 'email') ||
+              (step === 'otp' && s.id === 'otp') ||
+              (step === 'success' && s.id === 'success')
+            return (
+              <motion.span
+                key={s.id}
+                layout
+                initial={{ opacity: 0, x: dir === 'rtl' ? 12 : -12 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className={
+                  'rounded-full px-3 py-1 text-[10px] font-bold sm:text-xs ' +
+                  (current
+                    ? 'bg-[#1B7F7A] text-white shadow-md'
+                    : active
+                      ? 'bg-[#E6F4F3] text-[#156661] dark:bg-slate-800 dark:text-slate-200'
+                      : 'bg-gray-100 text-gray-400 dark:bg-slate-800 dark:text-slate-500')
+                }
+              >
+                {s.label}
+              </motion.span>
+            )
+          })}
+        </div>
+
         <AnimatePresence mode="wait">
           {error ? (
             <motion.div
@@ -249,7 +289,7 @@ export default function LoginPage() {
               initial={{ opacity: 0, y: -6 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
-              className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700"
+              className="mb-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-900/40 dark:bg-red-950/40 dark:text-red-200"
             >
               {error}
             </motion.div>
@@ -260,19 +300,20 @@ export default function LoginPage() {
           {step === 'email' && (
             <motion.div
               key="email"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0, x: dir === 'rtl' ? 24 : -24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: dir === 'rtl' ? -16 : 16 }}
+              transition={{ duration: 0.28 }}
               className="space-y-4"
             >
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
-                البريد الإلكتروني
+                {t('login_emailLabel')}
               </label>
               <input
                 type="email"
                 inputMode="email"
                 autoComplete="email"
-                placeholder="أدخل بريدك الإلكتروني"
+                placeholder={t('login_emailPh')}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-12 w-full rounded-xl border-2 border-gray-200 px-4 outline-none transition-colors focus:border-[#1B7F7A] dark:border-slate-600 dark:bg-slate-800 dark:text-white"
@@ -286,10 +327,10 @@ export default function LoginPage() {
                 {loading ? (
                   <span className="inline-flex items-center justify-center gap-2">
                     <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    جاري الإرسال...
+                    {t('login_sending')}
                   </span>
                 ) : (
-                  'إرسال رمز التحقق'
+                  t('login_sendOtp')
                 )}
               </button>
 
@@ -297,18 +338,18 @@ export default function LoginPage() {
                 <button
                   type="button"
                   onClick={() => setDevMode(!devMode)}
-                  className="w-full text-center text-[11px] text-gray-400 hover:text-gray-500"
+                  className="w-full text-center text-[11px] text-gray-400 hover:text-gray-500 dark:text-slate-500"
                 >
-                  وضع التطوير
+                  {t('login_devMode')}
                 </button>
                 {devMode && (
                   <button
                     type="button"
                     onClick={() => void handleDevLogin()}
                     disabled={loading}
-                    className="mt-2 h-11 w-full rounded-xl bg-gray-800 text-sm font-medium text-white disabled:opacity-50"
+                    className="mt-2 h-11 w-full rounded-xl bg-[#1F2937] text-sm font-medium text-white disabled:opacity-50 dark:bg-slate-800"
                   >
-                    دخول مباشر (تطوير فقط)
+                    {t('login_devBtn')}
                   </button>
                 )}
               </div>
@@ -318,16 +359,17 @@ export default function LoginPage() {
           {step === 'otp' && (
             <motion.div
               key="otp"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0, x: dir === 'rtl' ? 24 : -24 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: dir === 'rtl' ? -16 : 16 }}
+              transition={{ duration: 0.28 }}
               className="space-y-4"
             >
-              <p className="text-center text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
-                تم إرسال رمز التحقق إلى{' '}
+              <p className="text-center text-sm leading-relaxed text-gray-600 dark:text-slate-300">
+                {t('login_otpHint')}{' '}
                 <span className="font-bold text-gray-900 dark:text-white">{email.trim()}</span>
               </p>
-              <div className="flex flex-row-reverse justify-center gap-2" dir="ltr">
+              <div className="flex justify-center gap-2" dir="ltr">
                 {otpDigits.map((ch, i) => (
                   <input
                     key={i}
@@ -355,10 +397,10 @@ export default function LoginPage() {
                 {loading ? (
                   <span className="inline-flex items-center justify-center gap-2">
                     <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
-                    جاري التحقق...
+                    {t('login_verifying')}
                   </span>
                 ) : (
-                  'تحقق'
+                  t('login_verify')
                 )}
               </button>
               <div className="flex flex-col items-center gap-2 text-sm">
@@ -366,9 +408,9 @@ export default function LoginPage() {
                   type="button"
                   disabled={resendLeft > 0 || loading}
                   onClick={() => void handleResend()}
-                  className="text-[#1B7F7A] font-semibold disabled:text-gray-400 disabled:cursor-not-allowed"
+                  className="font-semibold text-[#1B7F7A] disabled:cursor-not-allowed disabled:text-gray-400 dark:text-slate-200"
                 >
-                  {resendLeft > 0 ? `إعادة الإرسال (${resendLeft})` : 'إعادة الإرسال'}
+                  {resendLeft > 0 ? `${t('login_resendWait')} (${resendLeft})` : t('login_resend')}
                 </button>
                 <button
                   type="button"
@@ -377,9 +419,9 @@ export default function LoginPage() {
                     setOtpDigits(emptyOtpDigits())
                     setError('')
                   }}
-                  className="text-gray-500 hover:text-[#1B7F7A]"
+                  className="text-gray-500 hover:text-[#1B7F7A] dark:text-slate-400"
                 >
-                  تغيير البريد
+                  {t('login_changeEmail')}
                 </button>
               </div>
             </motion.div>
@@ -390,15 +432,16 @@ export default function LoginPage() {
               key="success"
               initial={{ scale: 0.92, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="py-10 text-center space-y-4"
+              transition={{ type: 'spring', stiffness: 280, damping: 22 }}
+              className="space-y-4 py-10 text-center"
             >
-              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#E6F4F3] text-4xl">
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#E6F4F3] text-4xl dark:bg-[#134e4a]">
                 ✓
               </div>
-              <h2 className="text-xl font-extrabold text-[#1B7F7A]">مرحباً بك في قبو!</h2>
-              <p className="text-sm text-gray-600">سيتم تحويلك للرئيسية خلال لحظات...</p>
+              <h2 className="text-xl font-extrabold text-[#1B7F7A] dark:text-slate-100">{t('login_successTitle')}</h2>
+              <p className="text-sm text-gray-600 dark:text-slate-400">{t('login_successBody')}</p>
               <Link href="/" className="inline-block text-sm font-bold text-[#FF8C42]">
-                الانتقال الآن
+                {t('login_goNow')}
               </Link>
             </motion.div>
           )}

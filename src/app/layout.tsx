@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import { Cairo, Inter } from 'next/font/google'
+import { AppProviders } from '@/components/AppProviders'
 import { PageFade } from '@/components/PageFade'
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister'
 import { ToastProvider } from '@/components/Toast'
@@ -35,7 +36,7 @@ export const viewport: Viewport = {
   themeColor: '#1B7F7A',
 }
 
-const themeScript = `(function(){try{var t=localStorage.getItem('qabboo_theme');if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})();`
+const themeScript = `(function(){try{var t=localStorage.getItem('qabboo-theme')||localStorage.getItem('qabboo_theme');if(t==='dark')document.documentElement.classList.add('dark');}catch(e){}})();`
 
 export default function RootLayout({
   children,
@@ -50,13 +51,15 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-[#F3F4F6] font-sans dark:bg-slate-900">
-        <ServiceWorkerRegister />
         <Script id="qabboo-theme" strategy="beforeInteractive">
           {themeScript}
         </Script>
-        <ToastProvider>
-          <PageFade>{children}</PageFade>
-        </ToastProvider>
+        <AppProviders>
+          <ServiceWorkerRegister />
+          <ToastProvider>
+            <PageFade>{children}</PageFade>
+          </ToastProvider>
+        </AppProviders>
       </body>
     </html>
   )

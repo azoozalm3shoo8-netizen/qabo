@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useRef, useState, type ReactNode } from 'react'
+import { useLocale } from '@/lib/locale-context'
 
 const THRESHOLD = 72
 
@@ -13,6 +14,7 @@ export function PullToRefresh({
   children: ReactNode
   className?: string
 }) {
+  const { t } = useLocale()
   const startY = useRef(0)
   const pulling = useRef(false)
   const triggered = useRef(false)
@@ -60,7 +62,7 @@ export function PullToRefresh({
           aria-hidden
         >
           <div className="h-5 w-5 animate-spin rounded-full border-2 border-[#1B7F7A] border-t-transparent" />
-          <span className="text-xs font-medium text-[#1B7F7A]">جاري التحديث...</span>
+          <span className="text-xs font-medium text-[#1B7F7A] dark:text-slate-200">{t('pull_refreshing')}</span>
         </div>
       )}
       {children}
