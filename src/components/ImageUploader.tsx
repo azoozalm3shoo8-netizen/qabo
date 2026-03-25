@@ -50,7 +50,6 @@ export function ImageUploader({
   const { t } = useLocale()
   const { show } = useToast()
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const lastNotifiedUrlsKeyRef = useRef<string | null>(null)
   const [slots, setSlots] = useState<Slot[]>(() =>
     (initialUrls ?? []).map((url) => ({
       id: randomId(),
@@ -67,6 +66,8 @@ export function ImageUploader({
       removeBgProgress: 0,
     }))
   )
+  const lastNotifiedUrlsKeyRef = useRef<string | null>(null)
+  const slotsRef = useRef(slots)
 
   useEffect(() => {
     slotsRef.current = slots
