@@ -26,6 +26,7 @@ import { OrderStatusTracker } from '@/components/OrderStatusTracker'
 import { ReviewModal } from '@/components/ReviewModal'
 import { useToast } from '@/components/Toast'
 import { sameUserId } from '@/lib/ids'
+import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { supabase } from '@/lib/supabase/client'
 
 type Seller = {
