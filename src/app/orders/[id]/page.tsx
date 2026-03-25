@@ -2,12 +2,14 @@
 
 import Image from 'next/image'
 import Link from 'next/link'
+import { CheckCircle, ShieldCheck, XCircle } from '@phosphor-icons/react'
 import { useParams, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BottomNav } from '@/components/BottomNav'
 import { OrderStatusTracker } from '@/components/OrderStatusTracker'
 import { useToast } from '@/components/Toast'
 import { normalizeAuctionImages } from '@/lib/auction-images'
+import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { format } from 'date-fns'
 import { arSA } from 'date-fns/locale'
 
@@ -32,6 +34,9 @@ type OrderDetail = {
   commission_amount: number
   vat_amount: number
   total_amount: number
+  shipping_amount?: number
+  moyasar_payment_id?: string | null
+  tap_charge_id?: string | null
   status: string
   tracking_number?: string | null
   created_at: string
@@ -39,6 +44,14 @@ type OrderDetail = {
   auction: AuctionDetailEmbed
   seller_profile: ProfileSeller
   buyer_profile: ProfileBuyer
+}
+
+type EscrowRow = {
+  id: string
+  status: string
+  amount: number
+  created_at: string
+  released_at?: string | null
 }
 
 export default function OrderDetailPage() {
@@ -54,6 +67,13 @@ export default function OrderDetailPage() {
   const [shipOpen, setShipOpen] = useState(false)
   const [trackingInput, setTrackingInput] = useState('')
   const [actionLoading, setActionLoading] = useState(false)
+  const [escrow, setEscrow] = useState<EscrowRow | null>(null)
+  const [paymentInfo, setPaymentInfo] = useState<{
+    payment_id: string
+    amount: number
+    status: string
+    created_at: string
+  } | null>(null)
 
   const load = useCallback(
     async (uid: string, orderId: string) => {
@@ -83,19 +103,77 @@ export default function OrderDetailPage() {
   )
 
   useEffect(() => {
-    const stored = localStorage.getItem('qabo_user')
-    if (!stored) {
+    const u = readQaboUserFromStorage()
+    if (!u) {
       window.location.href = '/auth/login'
       return
     }
-    const uid = JSON.parse(stored).user_id as string
-    setUserId(uid)
-    if (id) void load(uid, id)
+    setUserId(u.user_id)
+    if (id) void load(u.user_id, id)
   }, [id, load])
+
+  useEffect(() => {
+    if (!order || !userId) {
+      setEscrow(null)
+      setPaymentInfo(null)
+      return
+    }
+    let cancelled = false
+    fetch('/api/escrow?auction_id=' + encodeURIComponent(order.auction_id))
+      .then((r) => r.json())
+      .then((d: { escrow?: EscrowRow | null }) => {
+        if (!cancelled) setEscrow(d.escrow ?? null)
+      })
+      .catch(() => {
+        if (!cancelled) setEscrow(null)
+      })
+
+    fetch('/api/payments?user_id=' + encodeURIComponent(userId))
+      .then((r) => r.json())
+      .then(
+        (d: {
+          payments?: Array<{
+            payment_id: string
+            auction_id: string | null
+            amount: number
+            status: string
+            created_at: string
+          }>
+        }) => {
+          if (cancelled || !d.payments) return
+          const hit = d.payments.find((p) => p.auction_id === order.auction_id)
+          setPaymentInfo(
+            hit
+              ? {
+                  payment_id: hit.payment_id,
+                  amount: Number(hit.amount),
+                  status: hit.status,
+                  created_at: hit.created_at,
+                }
+              : null
+          )
+        }
+      )
+      .catch(() => {
+        if (!cancelled) setPaymentInfo(null)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [order, userId])
 
   const isBuyer = Boolean(order && userId && order.buyer_id === userId)
   const isSeller = Boolean(order && userId && order.seller_id === userId)
   const st = order ? order.status.toLowerCase() : ''
+
+  const daysSinceOrder = useMemo(() => {
+    if (!order) return 0
+    return (Date.now() - new Date(order.created_at).getTime()) / 86400000
+  }, [order])
+
+  const canDispute =
+    isBuyer && st === 'shipped' && escrow?.status === 'held' && daysSinceOrder >= 3
 
   const trackerDates = useMemo(() => {
     if (!order) return undefined
@@ -134,6 +212,62 @@ export default function OrderDetailPage() {
       show('تم التحديث بنجاح', 'success')
       setShipOpen(false)
       await load(userId, order.id)
+    } catch (e: unknown) {
+      show(e instanceof Error ? e.message : 'خطأ', 'error')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const confirmReceiptWithEscrow = async () => {
+    if (!userId || !order) return
+    setActionLoading(true)
+    try {
+      if (escrow?.id && escrow.status === 'held') {
+        const r = await fetch('/api/escrow/release', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ escrow_id: escrow.id }),
+        })
+        const d = (await r.json()) as { error?: string }
+        if (!r.ok) throw new Error(d.error || 'فشل تحرير درع الصفقة')
+      }
+      const res = await fetch('/api/orders', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          order_id: order.id,
+          user_id: userId,
+          action: 'confirm_delivery',
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error((data as { error?: string }).error || 'فشل تأكيد الاستلام')
+      show('تم تأكيد الاستلام', 'success')
+      await load(userId, order.id)
+    } catch (e: unknown) {
+      show(e instanceof Error ? e.message : 'خطأ', 'error')
+    } finally {
+      setActionLoading(false)
+    }
+  }
+
+  const submitDispute = async () => {
+    if (!escrow?.id) return
+    const raw = typeof window !== 'undefined' ? window.prompt('صف سبب فتح النزاع (اختياري)') : null
+    if (raw === null) return
+    const reason = raw
+    setActionLoading(true)
+    try {
+      const res = await fetch('/api/escrow/dispute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ escrow_id: escrow.id, reason }),
+      })
+      const data = (await res.json()) as { error?: string }
+      if (!res.ok) throw new Error(data.error || 'فشل فتح النزاع')
+      show('تم تسجيل النزاع', 'success')
+      await load(userId!, order!.id)
     } catch (e: unknown) {
       show(e instanceof Error ? e.message : 'خطأ', 'error')
     } finally {
@@ -221,6 +355,12 @@ export default function OrderDetailPage() {
               <span>ضريبة القيمة المضافة (15% على العمولة)</span>
               <span>{Number(order.vat_amount).toLocaleString()} ر.س</span>
             </div>
+            {Number(order.shipping_amount ?? 0) > 0 && (
+              <div className="flex justify-between text-sm text-gray-700">
+                <span>الشحن</span>
+                <span>{Number(order.shipping_amount).toLocaleString()} ر.س</span>
+              </div>
+            )}
             <hr className="border-gray-200 my-2" />
             <div className="flex justify-between items-baseline">
               <span className="font-bold text-gray-900">الإجمالي</span>
@@ -229,6 +369,131 @@ export default function OrderDetailPage() {
               </span>
             </div>
           </div>
+
+          {(paymentInfo || order.moyasar_payment_id || order.tap_charge_id) && (
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-right space-y-2">
+              <h3 className="font-bold text-gray-900 mb-2">معلومات الدفع</h3>
+              <div className="flex justify-between text-sm text-gray-700">
+                <span>الوسيلة</span>
+                <span className="font-semibold">
+                  {order.moyasar_payment_id || paymentInfo ? 'بطاقة / Moyasar' : 'Tap'}
+                </span>
+              </div>
+              {paymentInfo && (
+                <>
+                  <div className="flex justify-between text-sm text-gray-700">
+                    <span>حالة العملية</span>
+                    <span className="font-semibold">{paymentInfo.status}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-700">
+                    <span>المبلغ المدفوع</span>
+                    <span>{paymentInfo.amount.toLocaleString()} ر.س</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-700">
+                    <span>رقم المعاملة</span>
+                    <span className="font-mono text-xs break-all">{paymentInfo.payment_id}</span>
+                  </div>
+                  <div className="flex justify-between text-sm text-gray-700">
+                    <span>التاريخ</span>
+                    <span>
+                      {format(new Date(paymentInfo.created_at), 'd MMM yyyy — HH:mm', { locale: arSA })}
+                    </span>
+                  </div>
+                </>
+              )}
+              {!paymentInfo && order.moyasar_payment_id && (
+                <div className="flex justify-between text-sm text-gray-700">
+                  <span>رقم Moyasar</span>
+                  <span className="font-mono text-xs break-all">{order.moyasar_payment_id}</span>
+                </div>
+              )}
+              {!paymentInfo && order.tap_charge_id && (
+                <div className="flex justify-between text-sm text-gray-700">
+                  <span>رقم Tap</span>
+                  <span className="font-mono text-xs break-all">{order.tap_charge_id}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {escrow && (
+            <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 text-right space-y-3">
+              <h3 className="font-bold text-gray-900 flex items-center justify-end gap-2">
+                درع الصفقة
+                <ShieldCheck className="h-5 w-5 text-[#1B7F7A]" weight="fill" aria-hidden />
+              </h3>
+              <p className="text-xs text-gray-500">
+                حالة الضمان:{' '}
+                <span className="font-bold text-gray-800">
+                  {escrow.status === 'held'
+                    ? 'قيد الحماية'
+                    : escrow.status === 'released'
+                      ? 'تم التحرير'
+                      : escrow.status === 'disputed'
+                        ? 'نزاع'
+                        : escrow.status}
+                </span>
+              </p>
+              <div className="space-y-2 border-t border-gray-100 pt-3">
+                <div className="flex items-center justify-end gap-2 text-sm">
+                  <span
+                    className={
+                      ['paid', 'captured', 'shipped', 'delivered'].includes(st)
+                        ? 'text-gray-900 font-medium'
+                        : 'text-gray-400'
+                    }
+                  >
+                    تم الدفع
+                  </span>
+                  {['paid', 'captured', 'shipped', 'delivered'].includes(st) ? (
+                    <CheckCircle className="h-5 w-5 text-[#10B981]" weight="fill" aria-hidden />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-gray-300" aria-hidden />
+                  )}
+                </div>
+                <div className="flex items-center justify-end gap-2 text-sm">
+                  <span
+                    className={
+                      ['shipped', 'delivered'].includes(st) ? 'text-gray-900 font-medium' : 'text-gray-400'
+                    }
+                  >
+                    تم الشحن
+                  </span>
+                  {['shipped', 'delivered'].includes(st) ? (
+                    <CheckCircle className="h-5 w-5 text-[#10B981]" weight="fill" aria-hidden />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-gray-300" aria-hidden />
+                  )}
+                </div>
+                <div className="flex items-center justify-end gap-2 text-sm">
+                  <span className={st === 'delivered' ? 'text-gray-900 font-medium' : 'text-gray-400'}>
+                    تم الاستلام
+                  </span>
+                  {st === 'delivered' ? (
+                    <CheckCircle className="h-5 w-5 text-[#10B981]" weight="fill" aria-hidden />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-gray-300" aria-hidden />
+                  )}
+                </div>
+                <div className="flex items-center justify-end gap-2 text-sm">
+                  <span
+                    className={
+                      escrow.status === 'released' || st === 'delivered'
+                        ? 'text-gray-900 font-medium'
+                        : 'text-gray-400'
+                    }
+                  >
+                    تم التحويل للبائع
+                  </span>
+                  {escrow.status === 'released' || st === 'delivered' ? (
+                    <CheckCircle className="h-5 w-5 text-[#10B981]" weight="fill" aria-hidden />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-gray-300" aria-hidden />
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
 
           {order.tracking_number && String(order.tracking_number).trim() !== '' && (
             <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100">
@@ -284,10 +549,21 @@ export default function OrderDetailPage() {
             <button
               type="button"
               disabled={actionLoading}
-              onClick={() => void patchOrder({ action: 'confirm_delivery' })}
+              onClick={() => void confirmReceiptWithEscrow()}
               className="w-full py-3.5 rounded-2xl bg-green-600 text-white font-bold shadow-md disabled:opacity-50"
             >
               تأكيد الاستلام
+            </button>
+          )}
+
+          {canDispute && (
+            <button
+              type="button"
+              disabled={actionLoading}
+              onClick={() => void submitDispute()}
+              className="w-full py-3 rounded-2xl border-2 border-red-200 bg-red-50 text-red-700 font-bold disabled:opacity-50"
+            >
+              فتح نزاع
             </button>
           )}
 

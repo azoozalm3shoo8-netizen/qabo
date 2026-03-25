@@ -4,7 +4,8 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Package, PlusCircle } from '@phosphor-icons/react'
+import { readQaboUserFromStorage } from '@/lib/qabo-user'
+import { Package, PlusCircle, ShieldCheck } from '@phosphor-icons/react'
 import { BottomNav } from '@/components/BottomNav'
 import { EmptyState } from '@/components/EmptyState'
 import { OrderStatusTracker } from '@/components/OrderStatusTracker'
@@ -53,15 +54,16 @@ function statusMatchesFilter(orderStatus: string, filter: string): boolean {
   return s === filter
 }
 
-function statusBadge(status: string) {
+function statusBadge(status: string): { cls: string; label: string; shield?: boolean } {
   const s = status.toLowerCase()
   if (s === 'pending')
-    return { cls: 'bg-yellow-100 text-yellow-800', label: 'بانتظار الدفع' }
+    return { cls: 'bg-orange-100 text-orange-800', label: 'في انتظار الدفع' }
   if (s === 'captured' || s === 'paid')
     return { cls: 'bg-green-100 text-green-700', label: 'تم الدفع' }
-  if (s === 'shipped') return { cls: 'bg-blue-100 text-blue-700', label: 'تم الشحن' }
-  if (s === 'delivered') return { cls: 'bg-emerald-100 text-emerald-700', label: 'تم التوصيل' }
-  if (s === 'cancelled') return { cls: 'bg-red-100 text-red-700', label: 'ملغي' }
+  if (s === 'shipped')
+    return { cls: 'bg-[#E6F4F3] text-[#156661]', label: 'في الضمان', shield: true }
+  if (s === 'delivered') return { cls: 'bg-emerald-100 text-emerald-800', label: 'مكتمل' }
+  if (s === 'cancelled') return { cls: 'bg-red-100 text-red-800', label: 'ملغي' }
   return { cls: 'bg-gray-100 text-gray-700', label: status }
 }
 
@@ -93,14 +95,13 @@ export default function OrdersPage() {
   }, [show])
 
   useEffect(() => {
-    const stored = localStorage.getItem('qabo_user')
-    if (!stored) {
+    const u = readQaboUserFromStorage()
+    if (!u) {
       window.location.href = '/auth/login'
       return
     }
-    const uid = JSON.parse(stored).user_id as string
-    setUserId(uid)
-    void load(uid)
+    setUserId(u.user_id)
+    void load(u.user_id)
   }, [load])
 
   const buyCount = useMemo(
@@ -286,7 +287,15 @@ export default function OrdersPage() {
                       >
                         {title}
                       </Link>
-                      <span className={'text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ' + badge.cls}>
+                      <span
+                        className={
+                          'inline-flex items-center gap-0.5 text-[10px] font-bold px-2 py-0.5 rounded-full shrink-0 ' +
+                          badge.cls
+                        }
+                      >
+                        {badge.shield ? (
+                          <ShieldCheck className="h-3.5 w-3.5" weight="fill" aria-hidden />
+                        ) : null}
                         {badge.label}
                       </span>
                     </div>

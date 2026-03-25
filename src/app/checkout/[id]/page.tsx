@@ -3,9 +3,9 @@
 import Image from 'next/image'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { normalizeAuctionImages } from '@/lib/auction-images'
-import { paymentBreakdown } from '@/lib/payment-breakdown'
 
 type Auction = {
   id: string
@@ -16,6 +16,16 @@ type Auction = {
   images?: string[] | null
 }
 
+declare global {
+  interface Window {
+    Moyasar?: {
+      init: (options: Record<string, unknown>) => void
+    }
+  }
+}
+
+const SHIPPING_SAR = 25
+
 export default function CheckoutPage() {
   const params = useParams()
   const router = useRouter()
@@ -25,19 +35,16 @@ export default function CheckoutPage() {
   const [auction, setAuction] = useState<Auction | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
-  const [paying, setPaying] = useState(false)
+  const formHostRef = useRef<HTMLDivElement>(null)
+  const moyasarStarted = useRef(false)
 
   useEffect(() => {
-    const stored = localStorage.getItem('qabo_user')
-    if (!stored) {
+    const u = readQaboUserFromStorage()
+    if (!u) {
       router.replace('/auth/login')
       return
     }
-    try {
-      setUser(JSON.parse(stored))
-    } catch {
-      router.replace('/auth/login')
-    }
+    setUser({ user_id: u.user_id })
   }, [router])
 
   const load = useCallback(async () => {
@@ -61,33 +68,103 @@ export default function CheckoutPage() {
     void load()
   }, [load])
 
-  const pay = async () => {
-    if (!auction || !user) return
-    setPaying(true)
-    setError('')
-    try {
-      const res = await fetch('/api/payments/create-charge', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          auction_id: auction.id,
-          buyer_id: user.user_id,
-          amount: Number(auction.current_bid),
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'فشل بدء الدفع')
-      if (data.checkout_url) {
-        window.location.href = data.checkout_url as string
-        return
+  const productAmount = auction ? Number(auction.current_bid) : 0
+  const totalSar =
+    auction && Number.isFinite(productAmount) ? Math.round((productAmount + SHIPPING_SAR) * 100) / 100 : 0
+  const totalHalalas = Math.round(totalSar * 100)
+
+  const canPay =
+    Boolean(auction && user) &&
+    auction!.status === 'ended' &&
+    Boolean(auction!.highest_bidder_id) &&
+    auction!.highest_bidder_id === user!.user_id
+
+  useEffect(() => {
+    if (canPay && auction?.id) {
+      try {
+        sessionStorage.setItem('qabboo_last_checkout_auction', auction.id)
+      } catch {
+        /* ignore */
       }
-      throw new Error('لا يوجد رابط دفع')
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : 'خطأ')
-    } finally {
-      setPaying(false)
     }
-  }
+  }, [canPay, auction?.id])
+
+  const baseUrl = (
+    process.env.NEXT_PUBLIC_BASE_URL ||
+    process.env.NEXT_PUBLIC_APP_URL ||
+    'http://localhost:3000'
+  ).replace(/\/$/, '')
+  const pk = process.env.NEXT_PUBLIC_MOYASAR_PK || ''
+
+  useEffect(() => {
+    if (!canPay || !auction || !user || !pk || !formHostRef.current || moyasarStarted.current) return
+    if (totalHalalas <= 0) return
+
+    const host = formHostRef.current
+    host.innerHTML = '<div class="mysr-form"></div>'
+
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'
+    link.href = 'https://cdn.moyasar.com/mpf/1.14.0/moyasar.css'
+    document.head.appendChild(link)
+
+    const script = document.createElement('script')
+    script.src = 'https://cdn.moyasar.com/mpf/1.14.0/moyasar.js'
+    script.async = true
+
+    const cleanup = () => {
+      script.remove()
+      link.remove()
+      if (host) host.innerHTML = ''
+      moyasarStarted.current = false
+    }
+
+    script.onload = () => {
+      if (!window.Moyasar || moyasarStarted.current) return
+      moyasarStarted.current = true
+      try {
+        window.Moyasar.init({
+          element: '.mysr-form',
+          amount: totalHalalas,
+          currency: 'SAR',
+          description: `Qabboo Auction — ${auction.title}`,
+          publishable_api_key: pk,
+          callback_url: `${baseUrl}/checkout/callback?provider=moyasar`,
+          supported_networks: ['mada', 'visa', 'mastercard'],
+          methods: ['creditcard', 'stcpay', 'applepay'],
+          metadata: {
+            kind: 'auction',
+            auction_id: auction.id,
+            user_id: user.user_id,
+          },
+          on_completed: async (payment: { id?: string }) => {
+            const paymentId = payment?.id
+            if (!paymentId) return
+            try {
+              await fetch('/api/payments/create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  payment_id: paymentId,
+                  auction_id: auction.id,
+                  user_id: user.user_id,
+                  amount: totalSar,
+                }),
+              })
+            } catch {
+              /* ignore */
+            }
+          },
+        })
+      } catch {
+        moyasarStarted.current = false
+      }
+    }
+
+    document.body.appendChild(script)
+
+    return cleanup
+  }, [auction, user, canPay, pk, baseUrl, totalHalalas, totalSar])
 
   if (!id) {
     return null
@@ -95,28 +172,19 @@ export default function CheckoutPage() {
 
   const imgs = auction ? normalizeAuctionImages(auction.images) : []
   const thumb = imgs[0] ?? null
-  const productAmount = auction ? Number(auction.current_bid) : 0
-  const breakdown = Number.isFinite(productAmount) ? paymentBreakdown(productAmount) : null
-
-  const canPay =
-    auction &&
-    user &&
-    auction.status === 'ended' &&
-    auction.highest_bidder_id &&
-    auction.highest_bidder_id === user.user_id
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-12" dir="rtl">
-      <header className="sticky top-0 z-20 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3">
+    <div className="min-h-screen bg-[#F3F4F6] pb-12" dir="rtl">
+      <header className="sticky top-0 z-20 bg-[#1B7F7A] text-white px-4 py-4 flex items-center gap-3 shadow-md">
         <button
           type="button"
           onClick={() => router.back()}
-          className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-lg"
+          className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-lg"
           aria-label="رجوع"
         >
           →
         </button>
-        <h1 className="font-bold text-gray-900 flex-1 text-center">إتمام الدفع</h1>
+        <h1 className="font-bold flex-1 text-center text-lg">إتمام الدفع</h1>
         <div className="w-10" />
       </header>
 
@@ -145,41 +213,35 @@ export default function CheckoutPage() {
               </div>
               <div className="p-4">
                 <h2 className="font-bold text-lg text-gray-900 leading-snug">{auction.title}</h2>
-                <p className="text-sm text-gray-500 mt-1">سعر الفوز (المنتج)</p>
+                <p className="text-sm text-gray-500 mt-1">سعر الفوز</p>
                 <p className="text-2xl font-extrabold text-[#1B7F7A]">
-                  {breakdown?.productAmount.toLocaleString()} <span className="text-base">ر.س</span>
+                  {productAmount.toLocaleString()} <span className="text-base">ر.س</span>
                 </p>
               </div>
             </div>
 
-            {breakdown && (
-              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3 text-sm">
-                <h3 className="font-bold text-gray-900 mb-2">تفاصيل المبلغ</h3>
-                <div className="flex justify-between text-gray-700">
-                  <span>سعر المنتج</span>
-                  <span className="font-semibold tabular-nums">
-                    {breakdown.productAmount.toLocaleString()} ر.س
-                  </span>
-                </div>
-                <div className="flex justify-between text-gray-700">
-                  <span>عمولة المنصة (٥٪)</span>
-                  <span className="font-semibold tabular-nums">
-                    {breakdown.commission.toLocaleString()} ر.س
-                  </span>
-                </div>
-                <div className="flex justify-between text-gray-700">
-                  <span>ضريبة القيمة المضافة (١٥٪ على العمولة)</span>
-                  <span className="font-semibold tabular-nums">{breakdown.vat.toLocaleString()} ر.س</span>
-                </div>
-                <div className="border-t border-gray-100 pt-3 flex justify-between text-base font-bold text-gray-900">
-                  <span>الإجمالي</span>
-                  <span className="text-[#1B7F7A] tabular-nums">{breakdown.total.toLocaleString()} ر.س</span>
-                </div>
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3 text-sm">
+              <h3 className="font-bold text-gray-900 mb-1">ملخص الطلب</h3>
+              <div className="flex justify-between text-gray-700">
+                <span>سعر المنتج</span>
+                <span className="font-semibold tabular-nums">{productAmount.toLocaleString()} ر.س</span>
               </div>
-            )}
+              <div className="flex justify-between text-gray-700">
+                <span>الشحن</span>
+                <span className="font-semibold tabular-nums">{SHIPPING_SAR.toLocaleString()} ر.س</span>
+              </div>
+              <div className="border-t border-gray-100 pt-3 flex justify-between text-base font-bold text-gray-900">
+                <span>الإجمالي</span>
+                <span className="text-[#1B7F7A] tabular-nums">{totalSar.toLocaleString()} ر.س</span>
+              </div>
+            </div>
+
+            <div className="rounded-xl border border-[#1B7F7A]/25 bg-[#E6F4F3] p-3 text-xs text-[#156661] text-center leading-relaxed">
+              مبلغك محمي بدرع الصفقة حتى استلام المنتج عند تأكيد الاستلام.
+            </div>
 
             {!canPay && (
-              <div className="rounded-xl border border-[#1B7F7A]/20 bg-[#E6F4F3] p-4 text-center text-sm text-[#156661]">
+              <div className="rounded-xl border border-[#1B7F7A]/20 bg-white p-4 text-center text-sm text-[#156661]">
                 لا يمكن إتمام الدفع من هذا الحساب لهذا المزاد.
               </div>
             )}
@@ -188,14 +250,24 @@ export default function CheckoutPage() {
               <div className="bg-red-50 text-red-700 rounded-xl p-3 text-sm text-center">{error}</div>
             )}
 
-            <button
-              type="button"
-              onClick={() => void pay()}
-              disabled={!canPay || paying}
-              className="w-full rounded-2xl bg-[#FF8C42] py-4 text-lg font-bold text-white shadow-md transition-transform active:scale-95 hover:bg-[#E87A35] disabled:cursor-not-allowed disabled:opacity-45"
-            >
-              {paying ? 'جاري التحويل لبوابة الدفع...' : 'ادفع الآن 💳'}
-            </button>
+            {canPay && !pk && (
+              <div className="bg-orange-50 text-orange-800 rounded-xl p-3 text-sm text-center">
+                مفتاح Moyasar غير مُعرّف (NEXT_PUBLIC_MOYASAR_PK).
+              </div>
+            )}
+
+            {canPay && pk && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3">
+                <h3 className="font-bold text-gray-900 text-center">بطاقة الدفع</h3>
+                <p className="text-xs text-gray-500 text-center">
+                  ندعم مدى، فيزا، ماستركارد، STC Pay وApple Pay
+                </p>
+                <div ref={formHostRef} className="min-h-[120px]" />
+                <p className="text-[11px] text-gray-400 text-center">
+                  بمتابعتك، أنت توافق على شروط بوابة الدفع.
+                </p>
+              </div>
+            )}
 
             <Link
               href={'/auction/' + id}

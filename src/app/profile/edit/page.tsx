@@ -4,12 +4,15 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { SAUDI_CITIES } from '@/lib/constants'
+import { readQaboUserFromStorage } from '@/lib/qabo-user'
 
 const AVATARS = ['👤', '🙂', '😎', '🧑‍💼', '👩‍💼', '🦁', '🦊', '🐼']
 
 export default function ProfileEditPage() {
   const router = useRouter()
-  const [user, setUser] = useState<{ user_id: string; phone: string } | null>(null)
+  const [user, setUser] = useState<{ user_id: string; phone?: string; email?: string; name?: string } | null>(
+    null
+  )
   const [fullName, setFullName] = useState('')
   const [city, setCity] = useState('')
   const [bio, setBio] = useState('')
@@ -19,12 +22,11 @@ export default function ProfileEditPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const stored = localStorage.getItem('qabo_user')
-    if (!stored) {
+    const u = readQaboUserFromStorage()
+    if (!u) {
       window.location.href = '/auth/login'
       return
     }
-    const u = JSON.parse(stored)
     setUser(u)
     fetch('/api/profile?user_id=' + u.user_id)
       .then((r) => r.json())

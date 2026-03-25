@@ -7,6 +7,7 @@ import { BottomNav } from '@/components/BottomNav'
 import { EmptyState } from '@/components/EmptyState'
 import { formatDistanceToNow } from 'date-fns'
 import { arSA } from 'date-fns/locale'
+import { readQaboUserFromStorage } from '@/lib/qabo-user'
 
 type Conv = {
   id: string
@@ -35,17 +36,12 @@ export default function MessagesPage() {
   }, [])
 
   useEffect(() => {
-    const stored = localStorage.getItem('qabo_user')
-    if (!stored) {
+    const u = readQaboUserFromStorage()
+    if (!u) {
       window.location.href = '/auth/login'
       return
     }
-    try {
-      const u = JSON.parse(stored).user_id as string
-      void load(u)
-    } catch {
-      window.location.href = '/auth/login'
-    }
+    void load(u.user_id)
   }, [load])
 
   const timeAgo = (iso: string | null) => {

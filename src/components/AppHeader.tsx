@@ -6,6 +6,7 @@ import { Bell } from '@phosphor-icons/react'
 import { QabbooLogo } from '@/components/QabbooLogo'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications'
+import { readQaboUserFromStorage } from '@/lib/qabo-user'
 
 export function AppHeader({
   title,
@@ -22,17 +23,8 @@ export function AppHeader({
   const { realtimeUnread, resetUnread } = useRealtimeNotifications(headerUserId)
 
   useEffect(() => {
-    const stored = localStorage.getItem('qabo_user')
-    if (!stored) {
-      setHeaderUserId(null)
-      return
-    }
-    try {
-      const uid = JSON.parse(stored).user_id as string
-      setHeaderUserId(uid)
-    } catch {
-      setHeaderUserId(null)
-    }
+    const u = readQaboUserFromStorage()
+    setHeaderUserId(u?.user_id ?? null)
   }, [])
 
   useEffect(() => {

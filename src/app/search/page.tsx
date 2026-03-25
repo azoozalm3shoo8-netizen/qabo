@@ -10,6 +10,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { FavoriteHeart } from '@/components/FavoriteHeart'
 import { CATEGORY_CATALOG, SAUDI_CITIES } from '@/lib/constants'
 import { normalizeAuctionImages } from '@/lib/auction-images'
+import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { auctionCountdownParts } from '@/lib/time'
 
 const HISTORY_KEY = 'qabo_search_history'
@@ -74,14 +75,8 @@ export default function SearchPage() {
   const limit = 20
 
   useEffect(() => {
-    const stored = localStorage.getItem('qabo_user')
-    if (stored) {
-      try {
-        setUserId(JSON.parse(stored).user_id as string)
-      } catch {
-        setUserId(null)
-      }
-    }
+    const u = readQaboUserFromStorage()
+    setUserId(u?.user_id ?? null)
   }, [])
 
   useEffect(() => {

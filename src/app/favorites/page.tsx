@@ -9,6 +9,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { FavoriteHeart } from '@/components/FavoriteHeart'
 import { HomeGridSkeleton } from '@/components/Skeleton'
 import { normalizeAuctionImages } from '@/lib/auction-images'
+import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { auctionCountdownParts } from '@/lib/time'
 
 function FavThumb({ src }: { src: string | null }) {
@@ -54,12 +55,11 @@ export default function FavoritesPage() {
   }, [])
 
   useEffect(() => {
-    const stored = localStorage.getItem('qabo_user')
-    if (!stored) {
+    const u = readQaboUserFromStorage()
+    if (!u) {
       window.location.href = '/auth/login'
       return
     }
-    const u = JSON.parse(stored)
     setUser(u)
     void load(u.user_id)
   }, [load])

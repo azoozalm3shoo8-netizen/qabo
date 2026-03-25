@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Suspense, useEffect, useState } from 'react'
 import { motion } from 'framer-motion'
 
@@ -15,7 +15,7 @@ function ConfettiBurst() {
           className="absolute top-[12%] h-3 w-2 rounded-sm shadow-sm"
           style={{
             left: `${(i * 3.1) % 96}%`,
-            backgroundColor: i % 3 === 0 ? '#f59e0b' : i % 3 === 1 ? '#fcd34d' : '#fff7ed',
+            backgroundColor: i % 3 === 0 ? '#FF8C42' : i % 3 === 1 ? '#1B7F7A' : '#ffffff',
           }}
           initial={{ y: 0, opacity: 1, rotate: 0 }}
           animate={{
@@ -32,21 +32,73 @@ function ConfettiBurst() {
 }
 
 function CallbackInner() {
-  const router = useRouter()
   const searchParams = useSearchParams()
-  const tapId = searchParams.get('tap_id') || searchParams.get('charge_id') || searchParams.get('id')
+  const provider = searchParams.get('provider')
+  const moyasarId = provider === 'moyasar' ? searchParams.get('id') : null
+  const tapId =
+    searchParams.get('tap_id') ||
+    searchParams.get('charge_id') ||
+    (provider !== 'moyasar' ? searchParams.get('id') : null)
 
   const [phase, setPhase] = useState<'loading' | 'success' | 'failed'>('loading')
   const [detail, setDetail] = useState('')
+  const [orderId, setOrderId] = useState<string | null>(null)
+  const [walletTopup, setWalletTopup] = useState(false)
+  const [auctionId, setAuctionId] = useState<string | null>(null)
 
   useEffect(() => {
+    let cancelled = false
+    try {
+      const aid = sessionStorage.getItem('qabboo_last_checkout_auction')
+      if (aid) setAuctionId(aid)
+    } catch {
+      /* ignore */
+    }
+
+    if (moyasarId) {
+      fetch('/api/payments/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ payment_id: moyasarId }),
+      })
+        .then((r) => r.json())
+        .then(
+          (data: {
+            success?: boolean
+            status?: string
+            error?: string
+            order_id?: string
+            kind?: string
+          }) => {
+            if (cancelled) return
+            if (data.success) {
+              setPhase('success')
+              setDetail(data.status || 'paid')
+              if (data.order_id) setOrderId(String(data.order_id))
+              if (data.kind === 'wallet') setWalletTopup(true)
+            } else {
+              setPhase('failed')
+              setDetail(data.error || data.status || 'فشل التحقق')
+            }
+          }
+        )
+        .catch(() => {
+          if (!cancelled) {
+            setPhase('failed')
+            setDetail('تعذر الاتصال بالخادم')
+          }
+        })
+      return () => {
+        cancelled = true
+      }
+    }
+
     if (!tapId) {
       setPhase('failed')
       setDetail('لم يُستلم رقم العملية')
       return
     }
 
-    let cancelled = false
     fetch('/api/payments/verify?tap_id=' + encodeURIComponent(tapId))
       .then((r) => r.json())
       .then((data: { success?: boolean; status?: string; error?: string }) => {
@@ -69,10 +121,12 @@ function CallbackInner() {
     return () => {
       cancelled = true
     }
-  }, [tapId])
+  }, [moyasarId, tapId])
+
+  const retryAuctionId = auctionId
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center px-4 py-12" dir="rtl">
+    <div className="min-h-screen bg-[#F3F4F6] flex flex-col items-center justify-center px-4 py-12" dir="rtl">
       {phase === 'success' && <ConfettiBurst />}
 
       <div className="w-full max-w-md bg-white rounded-2xl shadow-lg border border-gray-100 p-8 text-center relative z-10">
@@ -85,31 +139,56 @@ function CallbackInner() {
 
         {phase === 'success' && (
           <>
-            <p className="text-5xl mb-3">🎉</p>
-            <h1 className="text-xl font-bold text-gray-900 mb-2">تم الدفع بنجاح! 🎉</h1>
-            <p className="text-sm text-gray-500 mb-6">شكراً لك. تم تأكيد عملية الدفع.</p>
+            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-[#10B981]/15 text-[#059669] text-3xl font-bold">
+              ✓
+            </div>
+            <h1 className="text-xl font-bold text-gray-900 mb-2">
+              {walletTopup ? 'تم شحن المحفظة بنجاح!' : 'تمت عملية الدفع بنجاح!'}
+            </h1>
+            <p className="text-sm text-gray-500 mb-6">
+              {walletTopup ? 'تم إضافة المبلغ إلى رصيدك المتاح.' : 'شكراً لك. تم تأكيد عملية الدفع.'}
+            </p>
+            {!walletTopup && orderId && (
+              <Link
+                href={'/orders/' + orderId}
+                className="inline-block w-full py-3.5 rounded-xl bg-[#FF8C42] text-white font-bold shadow-md hover:bg-[#E87A35] mb-3"
+              >
+                عرض الطلب
+              </Link>
+            )}
+            {walletTopup && (
+              <Link
+                href="/wallet"
+                className="inline-block w-full py-3.5 rounded-xl bg-[#1B7F7A] text-white font-bold shadow-md hover:bg-[#156661] mb-3"
+              >
+                فتح المحفظة
+              </Link>
+            )}
             <Link
               href="/"
-              className="inline-block w-full py-3.5 rounded-xl bg-[#1B7F7A] text-white font-bold shadow-md hover:bg-[#156661]"
+              className="inline-block w-full py-3 rounded-xl border-2 border-gray-200 text-gray-800 font-bold"
             >
-              العودة للرئيسية
+              الرئيسية
             </Link>
           </>
         )}
 
         {phase === 'failed' && (
           <>
-            <p className="text-5xl mb-3">😕</p>
-            <h1 className="text-xl font-bold text-gray-900 mb-2">فشل الدفع</h1>
+            <div className="mx-auto mb-3 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 text-red-600 text-3xl font-bold">
+              ✕
+            </div>
+            <h1 className="text-xl font-bold text-gray-900 mb-2">فشلت عملية الدفع</h1>
             <p className="text-sm text-gray-600 mb-6">{detail}</p>
-            <button
-              type="button"
-              onClick={() => router.back()}
-              className="w-full py-3.5 rounded-xl bg-gray-900 text-white font-bold"
-            >
-              حاول مرة أخرى
-            </button>
-            <Link href="/" className="block mt-3 text-sm text-[#1B7F7A] font-medium">
+            {retryAuctionId && (
+              <Link
+                href={'/checkout/' + retryAuctionId}
+                className="block w-full py-3.5 rounded-xl bg-[#FF8C42] text-white font-bold mb-3"
+              >
+                إعادة المحاولة
+              </Link>
+            )}
+            <Link href="/" className="block w-full py-3 rounded-xl bg-gray-900 text-white font-bold">
               الرئيسية
             </Link>
           </>
@@ -123,7 +202,7 @@ export default function CheckoutCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen flex items-center justify-center bg-gray-50" dir="rtl">
+        <div className="min-h-screen flex items-center justify-center bg-[#F3F4F6]" dir="rtl">
           <div className="animate-spin w-10 h-10 border-4 border-[#1B7F7A] border-t-transparent rounded-full" />
         </div>
       }

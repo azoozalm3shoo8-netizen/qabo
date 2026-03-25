@@ -29,6 +29,7 @@ import { PushPermissionBanner } from '@/components/PushPermissionBanner'
 import { HomeGridSkeleton } from '@/components/Skeleton'
 import { SplashScreen } from '@/components/SplashScreen'
 import { normalizeAuctionImages } from '@/lib/auction-images'
+import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { auctionCountdownParts } from '@/lib/time'
 
 const CATEGORY_ICONS: Record<string, ReactNode> = {
@@ -81,7 +82,12 @@ export default function HomePage() {
   >([])
   const [loading, setLoading] = useState(true)
   const [category, setCategory] = useState('الكل')
-  const [user, setUser] = useState<{ user_id: string; phone: string } | null>(null)
+  const [user, setUser] = useState<{
+    user_id: string
+    phone?: string
+    email?: string
+    name?: string
+  } | null>(null)
   const [tick, setTick] = useState(0)
 
   const categories = useMemo(
@@ -111,14 +117,8 @@ export default function HomePage() {
   }, [buildUrl])
 
   useEffect(() => {
-    const stored = localStorage.getItem('qabo_user')
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored) as { user_id: string; phone: string })
-      } catch {
-        setUser(null)
-      }
-    }
+    const u = readQaboUserFromStorage()
+    setUser(u ? { user_id: u.user_id, phone: u.phone ?? '', email: u.email, name: u.name } : null)
   }, [])
 
   useEffect(() => {

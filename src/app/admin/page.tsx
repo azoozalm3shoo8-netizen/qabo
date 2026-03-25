@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { isAdminUserId, ADMIN_USER_IDS } from '@/lib/admin-ids'
+import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { format } from 'date-fns'
 import { arSA } from 'date-fns/locale'
 
@@ -41,12 +42,11 @@ export default function AdminPage() {
   const [patching, setPatching] = useState<string | null>(null)
 
   useEffect(() => {
-    const stored = localStorage.getItem('qabo_user')
-    if (!stored) {
+    const u = readQaboUserFromStorage()
+    if (!u) {
       router.replace('/')
       return
     }
-    const u = JSON.parse(stored) as { user_id: string }
     if (!isAdminUserId(u.user_id)) {
       router.replace('/')
       return

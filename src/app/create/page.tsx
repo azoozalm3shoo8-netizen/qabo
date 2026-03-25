@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from 'react'
 import { CATEGORY_CATALOG, SAUDI_CITIES } from '@/lib/constants'
 import { ImageUploader } from '@/components/ImageUploader'
+import { readQaboUserFromStorage, type QaboUserLocal } from '@/lib/qabo-user'
 
 const CATEGORIES = CATEGORY_CATALOG.map((c) => c.name)
 const ICONS = CATEGORY_CATALOG.map((c) => c.icon)
@@ -33,20 +34,29 @@ export default function CreatePage() {
   const [published, setPublished] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<QaboUserLocal | null>(null)
+  const [imagesUploading, setImagesUploading] = useState(false)
 
   useEffect(() => {
-    const stored = localStorage.getItem('qabo_user')
-    if (!stored) {
+    const u = readQaboUserFromStorage()
+    if (!u) {
       window.location.href = '/auth/login'
       return
     }
-    setUser(JSON.parse(stored))
+    setUser(u)
   }, [])
 
   const goStep3 = () => {
+    if (imagesUploading) {
+      setError('يرجى انتظار اكتمال رفع الصور')
+      return
+    }
     if (imageUrls.length < 1) {
       setError('يرجى رفع صورة واحدة على الأقل للمنتج')
+      return
+    }
+    if (imageUrls.some((u) => u.startsWith('blob:'))) {
+      setError('لا يزال هناك صور قيد المعالجة')
       return
     }
     setError('')
@@ -55,8 +65,16 @@ export default function CreatePage() {
 
   const handlePublish = async () => {
     if (!user) return
+    if (imagesUploading) {
+      setError('يرجى انتظار اكتمال رفع الصور قبل النشر')
+      return
+    }
     if (imageUrls.length < 1) {
       setError('يرجى رفع صورة واحدة على الأقل')
+      return
+    }
+    if (imageUrls.some((u) => u.startsWith('blob:'))) {
+      setError('يجب أن تُرفع جميع الصور إلى التخزين قبل النشر')
       return
     }
     setLoading(true)
@@ -175,7 +193,11 @@ export default function CreatePage() {
       {step === 2 && (
         <div className="px-4 space-y-4">
           <h2 className="font-bold text-gray-900">تفاصيل المنتج</h2>
-          <ImageUploader initialUrls={imageUrls} onImagesChange={setImageUrls} />
+          <ImageUploader
+            initialUrls={imageUrls}
+            onImagesChange={setImageUrls}
+            onBusyChange={setImagesUploading}
+          />
           <div>
             <label className="text-sm text-gray-600 block mb-1">عنوان الإعلان</label>
             <input
@@ -323,10 +345,10 @@ export default function CreatePage() {
             <button
               type="button"
               onClick={() => void handlePublish()}
-              disabled={!startPrice || loading}
+              disabled={!startPrice || loading || imagesUploading}
               className="flex-1 py-3 bg-[#FF8C42] text-white rounded-xl font-medium disabled:opacity-50 transition-transform active:scale-95 hover:bg-[#E87A35]"
             >
-              {loading ? 'جاري النشر...' : 'نشر المزاد'}
+              {loading ? 'جاري النشر...' : imagesUploading ? 'انتظر رفع الصور...' : 'نشر المزاد'}
             </button>
           </div>
         </div>

@@ -9,6 +9,7 @@ import {
   Gavel,
   MapPin,
   Robot,
+  ShieldCheck,
   Star,
   UserCircle,
   X,
@@ -73,7 +74,9 @@ export default function AuctionDetailPage() {
   const [auction, setAuction] = useState<AuctionDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [fetchError, setFetchError] = useState('')
-  const [user, setUser] = useState<{ user_id: string; phone: string } | null>(null)
+  const [user, setUser] = useState<{ user_id: string; phone?: string; email?: string; name?: string } | null>(
+    null
+  )
   const [ended, setEnded] = useState(false)
 
   const [showBidModal, setShowBidModal] = useState(false)
@@ -112,14 +115,7 @@ export default function AuctionDetailPage() {
   loadAuctionRef.current = loadAuction
 
   useEffect(() => {
-    const stored = localStorage.getItem('qabo_user')
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored))
-      } catch {
-        setUser(null)
-      }
-    }
+    setUser(readQaboUserFromStorage())
   }, [])
 
   useEffect(() => {
@@ -685,6 +681,10 @@ export default function AuctionDetailPage() {
                 >
                   ادفع الآن
                 </button>
+                <p className="mt-3 flex items-center justify-center gap-1.5 text-xs text-white/95 leading-relaxed">
+                  <ShieldCheck className="h-4 w-4 shrink-0" weight="fill" aria-hidden />
+                  مبلغك محمي بدرع الصفقة حتى استلام المنتج
+                </p>
               </div>
             )}
 

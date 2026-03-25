@@ -1,34 +1,91 @@
 'use client'
 
 import { AnimatePresence, motion } from 'framer-motion'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { QabbooLogo } from '@/components/QabbooLogo'
 
+const RESEND_SECONDS = 60
+const OTP_LENGTH = 8
+
+const emptyOtpDigits = () => Array.from({ length: OTP_LENGTH }, () => '')
+
+function ConfettiBurst() {
+  const pieces = Array.from({ length: 40 }, (_, i) => i)
+  return (
+    <div className="pointer-events-none fixed inset-0 z-[100] overflow-hidden" aria-hidden>
+      {pieces.map((i) => (
+        <motion.span
+          key={i}
+          className="absolute top-[10%] h-3 w-2 rounded-sm shadow-sm"
+          style={{
+            left: `${(i * 2.7) % 98}%`,
+            backgroundColor: i % 3 === 0 ? '#FF8C42' : i % 3 === 1 ? '#1B7F7A' : '#ffffff',
+          }}
+          initial={{ y: 0, opacity: 1, rotate: 0 }}
+          animate={{
+            y: typeof window !== 'undefined' ? window.innerHeight * 0.92 : 720,
+            opacity: 0,
+            rotate: 260 + (i % 9) * 35,
+            x: ((i % 5) - 2) * 50,
+          }}
+          transition={{ duration: 2.2, delay: i * 0.03, ease: 'easeOut' }}
+        />
+      ))}
+    </div>
+  )
+}
+
 export default function LoginPage() {
-  const [phone, setPhone] = useState('')
-  const [otpDigits, setOtpDigits] = useState(['', '', '', '', '', ''])
-  const [step, setStep] = useState<'phone' | 'otp'>('phone')
+  const router = useRouter()
+  const [email, setEmail] = useState('')
+  const [otpDigits, setOtpDigits] = useState(() => emptyOtpDigits())
+  const [step, setStep] = useState<'email' | 'otp' | 'success'>('email')
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [devMode, setDevMode] = useState(false)
+  const [resendLeft, setResendLeft] = useState(0)
   const otpRefs = useRef<(HTMLInputElement | null)[]>([])
 
-  const fullPhone = '+966' + phone.replace(/^0/, '')
   const otp = otpDigits.join('')
+
+  useEffect(() => {
+    if (step !== 'otp' || resendLeft <= 0) return
+    const t = window.setInterval(() => {
+      setResendLeft((s) => (s <= 1 ? 0 : s - 1))
+    }, 1000)
+    return () => window.clearInterval(t)
+  }, [step, resendLeft])
+
+  useEffect(() => {
+    if (step !== 'otp') return
+    const t = window.setTimeout(() => otpRefs.current[0]?.focus(), 200)
+    return () => window.clearTimeout(t)
+  }, [step])
+
+  useEffect(() => {
+    if (step !== 'success') return
+    const t = window.setTimeout(() => {
+      router.replace('/')
+    }, 2000)
+    return () => window.clearTimeout(t)
+  }, [step, router])
 
   const handleSendOtp = async () => {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/auth/send-otp', {
+      const res = await fetch('/api/auth/email-otp/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fullPhone }),
+        body: JSON.stringify({ email: email.trim() }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'failed')
-      setOtpDigits(['', '', '', '', '', ''])
+      const data = (await res.json()) as { error?: string }
+      if (!res.ok) throw new Error(data.error || 'تعذر إرسال الرمز')
+      setOtpDigits(emptyOtpDigits())
       setStep('otp')
+      setResendLeft(RESEND_SECONDS)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'حدث خطأ')
     } finally {
@@ -36,24 +93,59 @@ export default function LoginPage() {
     }
   }
 
+  const handleResend = async () => {
+    if (resendLeft > 0 || loading) return
+    await handleSendOtp()
+  }
+
   const handleVerify = async () => {
     setLoading(true)
     setError('')
     try {
-      const res = await fetch('/api/auth/verify-otp', {
+      const res = await fetch('/api/auth/email-otp/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fullPhone, code: otp }),
+        body: JSON.stringify({ email: email.trim(), token: otp }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'failed')
+
+      if (!res.ok) {
+        try {
+          await res.json()
+        } catch {
+          /* الاستجابة ليست JSON */
+        }
+        setError('حدث خطأ، حاول مرة أخرى')
+        return
+      }
+
+      let data: {
+        success?: boolean
+        error?: string
+        user?: { user_id: string; email: string; name: string }
+      }
+      try {
+        data = (await res.json()) as typeof data
+      } catch {
+        setError('حدث خطأ، حاول مرة أخرى')
+        return
+      }
+
+      if (!data.success || !data.user) {
+        setError('حدث خطأ، حاول مرة أخرى')
+        return
+      }
+
       localStorage.setItem(
         'qabo_user',
-        JSON.stringify({ user_id: data.user_id, phone: data.phone })
+        JSON.stringify({
+          user_id: data.user.user_id,
+          email: data.user.email,
+          name: data.user.name,
+        })
       )
-      window.location.href = '/'
-    } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'حدث خطأ')
+      setStep('success')
+    } catch {
+      setError('حدث خطأ، حاول مرة أخرى')
     } finally {
       setLoading(false)
     }
@@ -66,13 +158,16 @@ export default function LoginPage() {
       const res = await fetch('/api/auth/dev-login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: fullPhone }),
+        body: JSON.stringify({ phone: '+966500000000' }),
       })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'failed')
+      const data = (await res.json()) as { error?: string; user_id?: string; phone?: string }
+      if (!res.ok) throw new Error(data.error || 'فشل وضع التطوير')
       localStorage.setItem(
         'qabo_user',
-        JSON.stringify({ user_id: data.user_id, phone: data.phone })
+        JSON.stringify({
+          user_id: data.user_id,
+          phone: data.phone ?? '+966500000000',
+        })
       )
       window.location.href = '/'
     } catch (err: unknown) {
@@ -89,7 +184,7 @@ export default function LoginPage() {
       next[index] = d
       return next
     })
-    if (d && index < 5) {
+    if (d && index < OTP_LENGTH - 1) {
       otpRefs.current[index + 1]?.focus()
     }
   }
@@ -111,47 +206,42 @@ export default function LoginPage() {
 
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault()
-    const text = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6)
-    const next = ['', '', '', '', '', ''] as string[]
+    const text = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, OTP_LENGTH)
+    const next = emptyOtpDigits()
     for (let i = 0; i < text.length; i++) next[i] = text[i] ?? ''
     setOtpDigits(next)
-    const focusIdx = Math.min(text.length, 5)
+    const focusIdx = Math.min(text.length, OTP_LENGTH - 1)
     otpRefs.current[focusIdx]?.focus()
   }
 
-  useEffect(() => {
-    if (step !== 'otp') return
-    const t = window.setTimeout(() => otpRefs.current[0]?.focus(), 200)
-    return () => window.clearTimeout(t)
-  }, [step])
-
-  const otpChars = otpDigits
+  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
 
   return (
     <div className="flex min-h-screen flex-col bg-[#156661]" dir="rtl">
-      <div className="relative flex min-h-[40vh] flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[#1B7F7A] to-[#156661] px-4 pb-8 pt-10">
+      <div className="relative flex min-h-[42vh] flex-col items-center justify-center overflow-hidden bg-gradient-to-br from-[#1B7F7A] to-[#156661] px-4 pb-10 pt-12">
         <div className="pointer-events-none absolute inset-0">
           <div className="absolute -right-16 top-10 h-48 w-48 rounded-full bg-white/[0.08]" />
           <div className="absolute -left-20 bottom-4 h-64 w-64 rounded-full bg-white/[0.05]" />
-          <div className="absolute left-1/3 top-1/4 h-24 w-24 rounded-full bg-white/[0.06]" />
         </div>
         <motion.div
-          initial={{ y: -40, opacity: 0 }}
+          initial={{ y: -36, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ type: 'spring', stiffness: 280, damping: 24 }}
           className="relative z-[1]"
         >
           <QabbooLogo variant="login" />
         </motion.div>
-        <p className="relative z-[1] mt-4 text-sm text-white/80">كنوزك عندنا...</p>
+        <p className="relative z-[1] mt-4 text-sm text-white/85">كنوزك عندنا...</p>
       </div>
 
       <motion.div
-        initial={{ y: 80, opacity: 0 }}
+        initial={{ y: 72, opacity: 0 }}
         animate={{ y: 0, opacity: 1 }}
-        transition={{ type: 'spring', stiffness: 260, damping: 26, delay: 0.08 }}
-        className="-mt-8 flex-1 rounded-t-[2rem] bg-white px-5 pb-10 pt-8 shadow-[0_-8px_40px_rgba(0,0,0,0.12)] dark:bg-slate-900"
+        transition={{ type: 'spring', stiffness: 260, damping: 26, delay: 0.06 }}
+        className="-mt-10 flex-1 rounded-t-[2rem] bg-white px-5 pb-10 pt-8 shadow-[0_-8px_40px_rgba(0,0,0,0.12)] dark:bg-slate-900"
       >
+        {step === 'success' && <ConfettiBurst />}
+
         <AnimatePresence mode="wait">
           {error ? (
             <motion.div
@@ -167,46 +257,47 @@ export default function LoginPage() {
         </AnimatePresence>
 
         <AnimatePresence mode="wait">
-          {step === 'phone' ? (
+          {step === 'email' && (
             <motion.div
-              key="phone"
+              key="email"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
               className="space-y-4"
             >
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
-                رقم الجوال
+                البريد الإلكتروني
               </label>
-              <div className="flex gap-2">
-                <span className="flex h-12 shrink-0 items-center rounded-lg bg-[#E6F4F3] px-3 text-sm font-semibold text-[#1B7F7A]">
-                  966+
-                </span>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  placeholder="5xxxxxxxx"
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))}
-                  className="h-12 min-w-0 flex-1 rounded-xl border-2 border-gray-200 px-4 outline-none transition-colors focus:border-[#1B7F7A] dark:border-slate-600 dark:bg-slate-800 dark:text-white"
-                  maxLength={9}
-                  autoComplete="tel-national"
-                />
-              </div>
+              <input
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                placeholder="أدخل بريدك الإلكتروني"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                className="h-12 w-full rounded-xl border-2 border-gray-200 px-4 outline-none transition-colors focus:border-[#1B7F7A] dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+              />
               <button
                 type="button"
                 onClick={() => void handleSendOtp()}
-                disabled={phone.length < 9 || loading}
+                disabled={!emailValid || loading}
                 className="h-12 w-full rounded-xl bg-[#FF8C42] text-base font-bold text-white transition-transform hover:bg-[#E87A35] active:scale-95 disabled:opacity-50"
               >
-                {loading ? 'جاري الارسال...' : 'ارسال رمز التحقق'}
+                {loading ? (
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    جاري الإرسال...
+                  </span>
+                ) : (
+                  'إرسال رمز التحقق'
+                )}
               </button>
+
               <div className="mt-6 border-t border-gray-100 pt-4 dark:border-slate-700">
                 <button
                   type="button"
                   onClick={() => setDevMode(!devMode)}
-                  className="w-full text-center text-[11px] text-gray-300 hover:text-gray-400"
+                  className="w-full text-center text-[11px] text-gray-400 hover:text-gray-500"
                 >
                   وضع التطوير
                 </button>
@@ -214,7 +305,7 @@ export default function LoginPage() {
                   <button
                     type="button"
                     onClick={() => void handleDevLogin()}
-                    disabled={phone.length < 9 || loading}
+                    disabled={loading}
                     className="mt-2 h-11 w-full rounded-xl bg-gray-800 text-sm font-medium text-white disabled:opacity-50"
                   >
                     دخول مباشر (تطوير فقط)
@@ -222,20 +313,22 @@ export default function LoginPage() {
                 )}
               </div>
             </motion.div>
-          ) : (
+          )}
+
+          {step === 'otp' && (
             <motion.div
               key="otp"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
               className="space-y-4"
             >
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-200">
-                رمز التحقق
-              </label>
+              <p className="text-center text-sm text-gray-600 dark:text-slate-300 leading-relaxed">
+                تم إرسال رمز التحقق إلى{' '}
+                <span className="font-bold text-gray-900 dark:text-white">{email.trim()}</span>
+              </p>
               <div className="flex flex-row-reverse justify-center gap-2" dir="ltr">
-                {otpChars.map((ch, i) => (
+                {otpDigits.map((ch, i) => (
                   <input
                     key={i}
                     ref={(el) => {
@@ -256,22 +349,57 @@ export default function LoginPage() {
               <button
                 type="button"
                 onClick={() => void handleVerify()}
-                disabled={otp.length < 6 || loading}
+                disabled={otp.length < OTP_LENGTH || loading}
                 className="h-12 w-full rounded-xl bg-[#1B7F7A] text-base font-bold text-white transition-transform hover:bg-[#156661] active:scale-95 disabled:opacity-50"
               >
-                {loading ? 'جاري التحقق...' : 'تحقق'}
+                {loading ? (
+                  <span className="inline-flex items-center justify-center gap-2">
+                    <span className="h-5 w-5 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                    جاري التحقق...
+                  </span>
+                ) : (
+                  'تحقق'
+                )}
               </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setStep('phone')
-                  setOtpDigits(['', '', '', '', '', ''])
-                  setError('')
-                }}
-                className="w-full text-sm text-gray-500 hover:text-[#1B7F7A]"
-              >
-                تغيير الرقم
-              </button>
+              <div className="flex flex-col items-center gap-2 text-sm">
+                <button
+                  type="button"
+                  disabled={resendLeft > 0 || loading}
+                  onClick={() => void handleResend()}
+                  className="text-[#1B7F7A] font-semibold disabled:text-gray-400 disabled:cursor-not-allowed"
+                >
+                  {resendLeft > 0 ? `إعادة الإرسال (${resendLeft})` : 'إعادة الإرسال'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setStep('email')
+                    setOtpDigits(emptyOtpDigits())
+                    setError('')
+                  }}
+                  className="text-gray-500 hover:text-[#1B7F7A]"
+                >
+                  تغيير البريد
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {step === 'success' && (
+            <motion.div
+              key="success"
+              initial={{ scale: 0.92, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="py-10 text-center space-y-4"
+            >
+              <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-[#E6F4F3] text-4xl">
+                ✓
+              </div>
+              <h2 className="text-xl font-extrabold text-[#1B7F7A]">مرحباً بك في قبو!</h2>
+              <p className="text-sm text-gray-600">سيتم تحويلك للرئيسية خلال لحظات...</p>
+              <Link href="/" className="inline-block text-sm font-bold text-[#FF8C42]">
+                الانتقال الآن
+              </Link>
             </motion.div>
           )}
         </AnimatePresence>

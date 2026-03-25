@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { BottomNav } from '@/components/BottomNav'
 import { FavoriteHeart } from '@/components/FavoriteHeart'
 import { categoryBySlug, categoryNameFromParam } from '@/lib/constants'
+import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { auctionCountdownParts } from '@/lib/time'
 
 export default function CategoryAuctionsPage() {
@@ -40,14 +41,7 @@ export default function CategoryAuctionsPage() {
   }, [categoryName])
 
   useEffect(() => {
-    const stored = localStorage.getItem('qabo_user')
-    if (stored) {
-      try {
-        setUser(JSON.parse(stored))
-      } catch {
-        setUser(null)
-      }
-    }
+    setUser(readQaboUserFromStorage())
   }, [])
 
   useEffect(() => {

@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { BottomNav } from '@/components/BottomNav'
 import { formatDistanceToNow } from 'date-fns'
 import { arSA } from 'date-fns/locale'
+import { readQaboUserFromStorage } from '@/lib/qabo-user'
 
 type N = {
   id: string
@@ -46,14 +47,13 @@ export default function NotificationsPage() {
   }, [])
 
   useEffect(() => {
-    const stored = localStorage.getItem('qabo_user')
-    if (!stored) {
+    const u = readQaboUserFromStorage()
+    if (!u) {
       window.location.href = '/auth/login'
       return
     }
-    const uid = JSON.parse(stored).user_id
-    setUserId(uid)
-    void load(uid)
+    setUserId(u.user_id)
+    void load(u.user_id)
   }, [load])
 
   const markAll = async () => {

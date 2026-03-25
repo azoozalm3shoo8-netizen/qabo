@@ -13,20 +13,20 @@ import {
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { BottomNav } from '@/components/BottomNav'
+import { readQaboUserFromStorage, type QaboUserLocal } from '@/lib/qabo-user'
 import { ReviewsList } from '@/components/ReviewsList'
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<QaboUserLocal | null>(null)
   const [profile, setProfile] = useState<any>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const stored = localStorage.getItem('qabo_user')
-    if (!stored) {
+    const u = readQaboUserFromStorage()
+    if (!u) {
       window.location.href = '/auth/login'
       return
     }
-    const u = JSON.parse(stored)
     setUser(u)
     fetch('/api/profile?user_id=' + encodeURIComponent(u.user_id))
       .then(async (r) => {

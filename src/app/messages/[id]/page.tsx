@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { BottomNav } from '@/components/BottomNav'
 import { useToast } from '@/components/Toast'
+import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { supabase } from '@/lib/supabase/client'
 import { format } from 'date-fns'
 
@@ -41,9 +42,9 @@ export default function ChatPage() {
   }
 
   const load = useCallback(async () => {
-    const stored = localStorage.getItem('qabo_user')
-    if (!stored || !id) return
-    const uid = JSON.parse(stored).user_id as string
+    const u = readQaboUserFromStorage()
+    if (!u || !id) return
+    const uid = u.user_id
     setUserId(uid)
     const res = await fetch('/api/messages/' + id + '?user_id=' + uid + '&mark_read=1')
     const data = (await res.json()) as ChatPayload & { error?: string }
@@ -61,8 +62,8 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!id) return
-    const stored = localStorage.getItem('qabo_user')
-    if (!stored) {
+    const u = readQaboUserFromStorage()
+    if (!u) {
       window.location.href = '/auth/login'
       return
     }

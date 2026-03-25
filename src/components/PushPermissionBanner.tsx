@@ -7,13 +7,14 @@ import {
   isPushSupported,
   requestNotificationPermission,
 } from '@/lib/notifications/push'
+import { readQaboUserFromStorage } from '@/lib/qabo-user'
 
 export function PushPermissionBanner() {
   const [visible, setVisible] = useState(false)
 
   useEffect(() => {
-    const stored = localStorage.getItem('qabo_user')
-    if (!stored) {
+    const u = readQaboUserFromStorage()
+    if (!u) {
       setVisible(false)
       return
     }
