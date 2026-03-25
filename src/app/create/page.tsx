@@ -1,8 +1,13 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
-import { CATEGORY_CATALOG, SAUDI_CITIES } from '@/lib/constants'
+import { Sparkle } from '@phosphor-icons/react'
+import { motion } from 'framer-motion'
+import { useEffect, useMemo, useState } from 'react'
 import { ImageUploader } from '@/components/ImageUploader'
+import { suggestCategoryFromTitle } from '@/lib/ai-classifier'
+import { estimatePrice } from '@/lib/ai-pricing'
+import { CATEGORY_CATALOG, SAUDI_CITIES } from '@/lib/constants'
+import { useLocale } from '@/lib/locale-context'
 import { readQaboUserFromStorage, type QaboUserLocal } from '@/lib/qabo-user'
 
 const CATEGORIES = CATEGORY_CATALOG.map((c) => c.name)
@@ -18,7 +23,11 @@ const DURATIONS = [
   { label: '3 أيام', value: 72 },
 ]
 
+const fieldClass =
+  'w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-[#1F2937] outline-none focus:ring-2 focus:ring-[#1B7F7A] dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100'
+
 export default function CreatePage() {
+  const { t } = useLocale()
   const pendingAuctionId = useMemo(() => crypto.randomUUID(), [])
   const [step, setStep] = useState(1)
   const [category, setCategory] = useState('')
@@ -36,6 +45,7 @@ export default function CreatePage() {
   const [error, setError] = useState('')
   const [user, setUser] = useState<QaboUserLocal | null>(null)
   const [imagesUploading, setImagesUploading] = useState(false)
+  const [suggestedCategory, setSuggestedCategory] = useState<string | null>(null)
 
   useEffect(() => {
     const u = readQaboUserFromStorage()
@@ -45,6 +55,22 @@ export default function CreatePage() {
     }
     setUser(u)
   }, [])
+
+  useEffect(() => {
+    const id = window.setTimeout(() => {
+      if (title.trim().length < 3) {
+        setSuggestedCategory(null)
+        return
+      }
+      setSuggestedCategory(suggestCategoryFromTitle(title))
+    }, 400)
+    return () => window.clearTimeout(id)
+  }, [title])
+
+  const priceHint = useMemo(() => {
+    if (!category || title.trim().length < 3) return null
+    return estimatePrice(category, title)
+  }, [category, title])
 
   const goStep3 = () => {
     if (imagesUploading) {
@@ -116,16 +142,19 @@ export default function CreatePage() {
 
   if (published) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4" dir="rtl">
-        <div className="bg-white rounded-2xl p-8 text-center max-w-sm w-full shadow-lg border border-gray-100">
-          <div className="w-20 h-20 bg-[#10B981]/10 rounded-full flex items-center justify-center mx-auto mb-4">
-            <span className="text-4xl text-[#1B7F7A]">✓</span>
+      <div
+        className="flex min-h-screen items-center justify-center bg-gray-50 p-4 dark:bg-slate-900"
+        dir="rtl"
+      >
+        <div className="w-full max-w-sm rounded-2xl border border-gray-100 bg-white p-8 text-center shadow-lg dark:border-slate-700 dark:bg-slate-800">
+          <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[#10B981]/10 dark:bg-[#134e4a]/50">
+            <span className="text-4xl text-[#1B7F7A] dark:text-slate-100">✓</span>
           </div>
-          <h1 className="text-xl font-bold mb-2 text-[#1B7F7A]">تم نشر مزادك بنجاح!</h1>
-          <p className="text-gray-500 mb-6">يمكنك متابعة المزايدات من صفحة حسابي</p>
+          <h1 className="mb-2 text-xl font-bold text-[#1B7F7A] dark:text-slate-100">تم نشر مزادك بنجاح!</h1>
+          <p className="mb-6 text-gray-500 dark:text-slate-400">يمكنك متابعة المزايدات من صفحة حسابي</p>
           <a
             href="/"
-            className="block w-full py-3 bg-[#1B7F7A] text-white rounded-xl font-medium transition-transform active:scale-95 hover:bg-[#156661]"
+            className="block w-full rounded-xl bg-[#1B7F7A] py-3 font-medium text-white transition-transform hover:bg-[#156661] active:scale-95"
           >
             العودة للرئيسية
           </a>
@@ -135,12 +164,12 @@ export default function CreatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-8" dir="rtl">
-      <div className="bg-white px-4 py-3 shadow-sm flex items-center gap-3 border-b border-gray-100">
-        <a href="/" className="text-xl">
+    <div className="min-h-screen bg-gray-50 pb-8 dark:bg-slate-900" dir="rtl">
+      <div className="flex items-center gap-3 border-b border-gray-100 bg-white px-4 py-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+        <a href="/" className="text-xl text-[#1F2937] dark:text-slate-100">
           →
         </a>
-        <h1 className="font-bold text-lg">إعلان جديد</h1>
+        <h1 className="text-lg font-bold text-[#1F2937] dark:text-slate-100">إعلان جديد</h1>
       </div>
       <div className="px-4 py-3">
         <div className="flex gap-1">
@@ -148,19 +177,22 @@ export default function CreatePage() {
             <div
               key={s}
               className={
-                'h-1 flex-1 rounded-full ' + (step >= s ? 'bg-[#1B7F7A]' : 'bg-gray-200')
+                'h-1 flex-1 rounded-full ' +
+                (step >= s ? 'bg-[#1B7F7A]' : 'bg-gray-200 dark:bg-slate-600')
               }
             />
           ))}
         </div>
       </div>
       {error && (
-        <div className="mx-4 bg-red-50 text-red-600 text-sm p-3 rounded-lg mb-2">{error}</div>
+        <div className="mx-4 mb-2 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-950/40 dark:text-red-300">
+          {error}
+        </div>
       )}
 
       {step === 1 && (
-        <div className="px-4 space-y-4">
-          <h2 className="font-bold text-gray-900">اختر التصنيف</h2>
+        <div className="space-y-4 px-4">
+          <h2 className="font-bold text-gray-900 dark:text-slate-100">اختر التصنيف</h2>
           <div className="grid grid-cols-2 gap-3">
             {CATEGORIES.map((c, i) => (
               <button
@@ -168,14 +200,14 @@ export default function CreatePage() {
                 type="button"
                 onClick={() => setCategory(c)}
                 className={
-                  'p-4 rounded-xl border-2 text-center transition-colors ' +
+                  'rounded-xl border-2 p-4 text-center transition-colors ' +
                   (category === c
-                    ? 'border-[#1B7F7A] bg-[#E6F4F3]'
-                    : 'border-gray-200 bg-white')
+                    ? 'border-[#1B7F7A] bg-[#E6F4F3] dark:bg-[#134e4a]/50'
+                    : 'border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-800')
                 }
               >
-                <span className="text-2xl block mb-1">{ICONS[i]}</span>
-                <span className="text-sm">{c}</span>
+                <span className="mb-1 block text-2xl">{ICONS[i]}</span>
+                <span className="text-sm text-[#1F2937] dark:text-slate-200">{c}</span>
               </button>
             ))}
           </div>
@@ -183,7 +215,7 @@ export default function CreatePage() {
             type="button"
             onClick={() => setStep(2)}
             disabled={!category}
-            className="w-full py-3 bg-[#1B7F7A] text-white rounded-xl font-medium disabled:opacity-50 mt-4 transition-transform active:scale-95 hover:bg-[#156661]"
+            className="mt-4 w-full rounded-xl bg-[#1B7F7A] py-3 font-medium text-white transition-transform hover:bg-[#156661] active:scale-95 disabled:opacity-50"
           >
             التالي
           </button>
@@ -191,35 +223,74 @@ export default function CreatePage() {
       )}
 
       {step === 2 && (
-        <div className="px-4 space-y-4">
-          <h2 className="font-bold text-gray-900">تفاصيل المنتج</h2>
+        <div className="space-y-4 px-4">
+          <h2 className="font-bold text-gray-900 dark:text-slate-100">تفاصيل المنتج</h2>
           <ImageUploader
             initialUrls={imageUrls}
             onImagesChange={setImageUrls}
             onBusyChange={setImagesUploading}
           />
           <div>
-            <label className="text-sm text-gray-600 block mb-1">عنوان الإعلان</label>
+            <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">عنوان الإعلان</label>
             <input
               type="text"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
+              onBlur={() => {
+                if (title.trim().length >= 3) {
+                  setSuggestedCategory(suggestCategoryFromTitle(title))
+                }
+              }}
               placeholder="مثال: ايفون 15 برو ماكس 256GB"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#1B7F7A]"
+              className={fieldClass}
             />
+            {suggestedCategory && suggestedCategory !== category ? (
+              <motion.div
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-[#1B7F7A]/25 bg-[#E6F4F3]/70 p-3 dark:border-slate-600 dark:bg-[#134e4a]/35"
+              >
+                <p className="text-sm text-[#1F2937] dark:text-slate-100">
+                  {t('create_aiSuggest').replace('{category}', suggestedCategory)}
+                </p>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCategory(suggestedCategory)
+                    setSuggestedCategory(null)
+                  }}
+                  className="rounded-full bg-[#1B7F7A] px-4 py-1.5 text-xs font-bold text-white"
+                >
+                  {t('create_aiYes')}
+                </button>
+              </motion.div>
+            ) : null}
           </div>
+          {priceHint ? (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-start gap-2 rounded-xl border border-[#1B7F7A]/20 bg-[#E6F4F3]/50 p-3 dark:border-slate-600 dark:bg-[#134e4a]/30"
+            >
+              <Sparkle className="h-5 w-5 shrink-0 text-[#1B7F7A] dark:text-slate-200" weight="fill" />
+              <p className="text-sm font-medium text-[#1F2937] dark:text-slate-100">
+                {t('create_priceSmart')}: {priceHint.min.toLocaleString()} —{' '}
+                {priceHint.max.toLocaleString()} {t('common_currency')}
+              </p>
+            </motion.div>
+          ) : null}
           <div>
-            <label className="text-sm text-gray-600 block mb-1">الوصف</label>
+            <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">الوصف</label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="اكتب وصف تفصيلي..."
               rows={4}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#1B7F7A] resize-none"
+              className={fieldClass + ' resize-none'}
             />
           </div>
           <div>
-            <label className="text-sm text-gray-600 block mb-1">الحالة</label>
+            <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">الحالة</label>
             <div className="flex gap-3">
               {[
                 { v: 'new', l: 'جديد' },
@@ -231,10 +302,10 @@ export default function CreatePage() {
                   type="button"
                   onClick={() => setCondition(o.v)}
                   className={
-                    'flex-1 py-2 rounded-lg text-sm border-2 ' +
+                    'flex-1 rounded-lg border-2 py-2 text-sm ' +
                     (condition === o.v
-                      ? 'border-[#1B7F7A] bg-[#E6F4F3] text-[#1B7F7A]'
-                      : 'border-gray-200')
+                      ? 'border-[#1B7F7A] bg-[#E6F4F3] text-[#1B7F7A] dark:bg-[#134e4a]/40 dark:text-slate-100'
+                      : 'border-gray-200 dark:border-slate-600 dark:text-slate-200')
                   }
                 >
                   {o.l}
@@ -243,12 +314,8 @@ export default function CreatePage() {
             </div>
           </div>
           <div>
-            <label className="text-sm text-gray-600 block mb-1">المدينة</label>
-            <select
-              value={city}
-              onChange={(e) => setCity(e.target.value)}
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#1B7F7A] bg-white"
-            >
+            <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">المدينة</label>
+            <select value={city} onChange={(e) => setCity(e.target.value)} className={fieldClass}>
               <option value="">اختر المدينة</option>
               {CITIES.map((c) => (
                 <option key={c} value={c}>
@@ -261,7 +328,7 @@ export default function CreatePage() {
             <button
               type="button"
               onClick={() => setStep(1)}
-              className="flex-1 py-3 border-2 border-gray-200 rounded-xl font-medium"
+              className="flex-1 rounded-xl border-2 border-gray-200 py-3 font-medium text-[#1F2937] dark:border-slate-600 dark:text-slate-200"
             >
               السابق
             </button>
@@ -269,7 +336,7 @@ export default function CreatePage() {
               type="button"
               onClick={goStep3}
               disabled={!title}
-              className="flex-1 py-3 bg-[#1B7F7A] text-white rounded-xl font-medium disabled:opacity-50 transition-transform active:scale-95 hover:bg-[#156661]"
+              className="flex-1 rounded-xl bg-[#1B7F7A] py-3 font-medium text-white transition-transform hover:bg-[#156661] active:scale-95 disabled:opacity-50"
             >
               التالي
             </button>
@@ -278,20 +345,33 @@ export default function CreatePage() {
       )}
 
       {step === 3 && (
-        <div className="px-4 space-y-4">
-          <h2 className="font-bold text-gray-900">التسعير والمدة</h2>
+        <div className="space-y-4 px-4">
+          <h2 className="font-bold text-gray-900 dark:text-slate-100">التسعير والمدة</h2>
+          {priceHint ? (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="flex items-start gap-2 rounded-xl border border-[#1B7F7A]/20 bg-[#E6F4F3]/50 p-3 dark:border-slate-600 dark:bg-[#134e4a]/30"
+            >
+              <Sparkle className="h-5 w-5 shrink-0 text-[#1B7F7A] dark:text-slate-200" weight="fill" />
+              <p className="text-sm font-medium text-[#1F2937] dark:text-slate-100">
+                {t('create_priceSmart')}: {priceHint.min.toLocaleString()} —{' '}
+                {priceHint.max.toLocaleString()} {t('common_currency')}
+              </p>
+            </motion.div>
+          ) : null}
           <div>
-            <label className="text-sm text-gray-600 block mb-1">سعر البداية (ر.س)</label>
+            <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">سعر البداية (ر.س)</label>
             <input
               type="number"
               value={startPrice}
               onChange={(e) => setStartPrice(e.target.value)}
               placeholder="0"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#1B7F7A]"
+              className={fieldClass}
             />
           </div>
           <div>
-            <label className="text-sm text-gray-600 block mb-1">
+            <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">
               سعر الشراء الفوري (اختياري)
             </label>
             <input
@@ -299,11 +379,11 @@ export default function CreatePage() {
               value={buyNow}
               onChange={(e) => setBuyNow(e.target.value)}
               placeholder="0"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#1B7F7A]"
+              className={fieldClass}
             />
           </div>
           <div>
-            <label className="text-sm text-gray-600 block mb-1">
+            <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">
               الحد الأدنى للمزايدة (ر.س)
             </label>
             <input
@@ -311,22 +391,22 @@ export default function CreatePage() {
               value={increment}
               onChange={(e) => setIncrement(e.target.value)}
               placeholder="100"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl outline-none focus:ring-2 focus:ring-[#1B7F7A]"
+              className={fieldClass}
             />
           </div>
           <div>
-            <label className="text-sm text-gray-600 block mb-1">مدة المزاد</label>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">مدة المزاد</label>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {DURATIONS.map((d) => (
                 <button
                   key={d.value}
                   type="button"
                   onClick={() => setDuration(d.value)}
                   className={
-                    'py-2 rounded-lg text-sm border-2 ' +
+                    'rounded-lg border-2 py-2 text-sm ' +
                     (duration === d.value
-                      ? 'border-[#1B7F7A] bg-[#E6F4F3] text-[#1B7F7A]'
-                      : 'border-gray-200')
+                      ? 'border-[#1B7F7A] bg-[#E6F4F3] text-[#1B7F7A] dark:bg-[#134e4a]/40 dark:text-slate-100'
+                      : 'border-gray-200 dark:border-slate-600 dark:text-slate-200')
                   }
                 >
                   {d.label}
@@ -338,7 +418,7 @@ export default function CreatePage() {
             <button
               type="button"
               onClick={() => setStep(2)}
-              className="flex-1 py-3 border-2 border-gray-200 rounded-xl font-medium"
+              className="flex-1 rounded-xl border-2 border-gray-200 py-3 font-medium text-[#1F2937] dark:border-slate-600 dark:text-slate-200"
             >
               السابق
             </button>
@@ -346,7 +426,7 @@ export default function CreatePage() {
               type="button"
               onClick={() => void handlePublish()}
               disabled={!startPrice || loading || imagesUploading}
-              className="flex-1 py-3 bg-[#FF8C42] text-white rounded-xl font-medium disabled:opacity-50 transition-transform active:scale-95 hover:bg-[#E87A35]"
+              className="flex-1 rounded-xl bg-[#FF8C42] py-3 font-medium text-white transition-transform hover:bg-[#E87A35] active:scale-95 disabled:opacity-50"
             >
               {loading ? 'جاري النشر...' : imagesUploading ? 'انتظر رفع الصور...' : 'نشر المزاد'}
             </button>

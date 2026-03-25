@@ -33,7 +33,7 @@ export function SplashScreen() {
     <AnimatePresence>
       {visible && (
         <motion.div
-          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-[#1B7F7A]"
+          className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-gradient-to-b from-[#1B7F7A] to-[#0F5F5A]"
           dir={dir}
           initial={{ opacity: 1 }}
           animate={{ opacity: exiting ? 0 : 1 }}
@@ -46,13 +46,7 @@ export function SplashScreen() {
             animate={{ scale: 1, opacity: 1 }}
             transition={{ type: 'spring', stiffness: 260, damping: 20 }}
           >
-            <div
-              className="relative mb-6 rounded-2xl p-4"
-              style={{
-                boxShadow:
-                  '0 0 60px 20px rgba(255,255,255,0.35), 0 0 100px 40px rgba(255,255,255,0.15)',
-              }}
-            >
+            <div className="relative mb-6 rounded-full bg-white p-4 shadow-xl">
               <Image
                 src="/logo-qabboo.png"
                 alt={t('common_appName')}

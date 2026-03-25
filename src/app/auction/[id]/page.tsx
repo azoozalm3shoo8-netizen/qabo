@@ -540,9 +540,8 @@ export default function AuctionDetailPage() {
             <div className="absolute top-3 left-3 z-10 flex gap-2 rounded-full bg-white/95 p-1 shadow-md ring-1 ring-white/80">
               <FavoriteHeart auctionId={auction.id} userId={user?.user_id ?? null} />
             </div>
-            <div className="relative w-full overflow-hidden rounded-b-2xl">
+            <div className="relative w-full px-2 pt-2">
               <AuctionImageGallery images={auction.images} />
-              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 rounded-b-2xl bg-gradient-to-t from-black/45 to-transparent" />
             </div>
           </div>
 

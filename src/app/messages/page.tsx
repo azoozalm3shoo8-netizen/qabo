@@ -112,7 +112,7 @@ export default function MessagesPage() {
         )}
       </div>
 
-      <BottomNav active="messages" />
+      <BottomNav active="home" />
     </div>
   )
 }

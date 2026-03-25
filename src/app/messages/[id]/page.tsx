@@ -196,7 +196,7 @@ export default function ChatPage() {
         </button>
       </div>
 
-      <BottomNav active="messages" />
+      <BottomNav active="home" />
     </div>
   )
 }

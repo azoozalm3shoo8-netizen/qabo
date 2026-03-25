@@ -24,7 +24,7 @@ export const CATEGORY_CATALOG: CategoryDef[] = [
   { slug: 'electronics', name: 'إلكترونيات', icon: '📱' },
   { slug: 'cars', name: 'سيارات', icon: '🚗' },
   { slug: 'realestate', name: 'عقارات', icon: '🏠' },
-  { slug: 'fashion', name: 'أزياء', icon: '👔' },
+  { slug: 'fashion', name: 'أزياء', icon: '👗' },
   { slug: 'watches', name: 'ساعات', icon: '⌚' },
   { slug: 'furniture', name: 'أثاث', icon: '🛋️' },
   { slug: 'sports', name: 'رياضة', icon: '⚽' },

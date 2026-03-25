@@ -382,7 +382,7 @@ export default function OrdersPage() {
         </div>
       </PullToRefresh>
 
-      <BottomNav active="orders" />
+      <BottomNav active="home" />
     </div>
   )
 }

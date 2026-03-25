@@ -17,7 +17,6 @@ const LEGACY_KEY = 'qabboo_theme'
 
 type ThemeContextValue = {
   theme: ThemeMode
-  setTheme: (t: ThemeMode) => void
   toggleTheme: () => void
 }
 
@@ -30,7 +29,6 @@ function applyThemeClass(mode: ThemeMode) {
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<ThemeMode>('light')
-  const [mounted, setMounted] = useState(false)
 
   useLayoutEffect(() => {
     let mode: ThemeMode = 'light'
@@ -44,31 +42,22 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     }
     setThemeState(mode)
     applyThemeClass(mode)
-    setMounted(true)
-  }, [])
-
-  const setTheme = useCallback((mode: ThemeMode) => {
-    setThemeState(mode)
-    applyThemeClass(mode)
-    try {
-      localStorage.setItem(STORAGE_KEY, mode)
-    } catch {
-      /* ignore */
-    }
   }, [])
 
   const toggleTheme = useCallback(() => {
-    setTheme(theme === 'dark' ? 'light' : 'dark')
-  }, [theme, setTheme])
+    setThemeState((prev) => {
+      const next: ThemeMode = prev === 'dark' ? 'light' : 'dark'
+      applyThemeClass(next)
+      try {
+        localStorage.setItem(STORAGE_KEY, next)
+      } catch {
+        /* ignore */
+      }
+      return next
+    })
+  }, [])
 
-  const value = useMemo(
-    () => ({ theme, setTheme, toggleTheme }),
-    [theme, setTheme, toggleTheme]
-  )
-
-  if (!mounted) {
-    return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
-  }
+  const value = useMemo(() => ({ theme, toggleTheme }), [theme, toggleTheme])
 
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>
 }
@@ -77,4 +66,11 @@ export function useTheme(): ThemeContextValue {
   const ctx = useContext(ThemeContext)
   if (!ctx) throw new Error('useTheme must be used within ThemeProvider')
   return ctx
+}
+
+/** Avoid hydration mismatch for theme-dependent UI */
+export function useThemeMounted(): boolean {
+  const [mounted, setMounted] = useState(false)
+  useLayoutEffect(() => setMounted(true), [])
+  return mounted
 }

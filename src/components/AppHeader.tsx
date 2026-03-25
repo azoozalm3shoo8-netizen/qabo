@@ -82,7 +82,7 @@ export function AppHeader({
       <div className="flex items-center justify-between gap-2">
         {showBrand ? (
           <div className={hero ? 'drop-shadow-md' : ''}>
-            <QabbooLogo variant="header" />
+            <QabbooLogo variant={hero ? 'hero' : 'header'} />
           </div>
         ) : title ? (
           <h1
@@ -115,10 +115,10 @@ export function AppHeader({
               <Link
                 href="/auth/login"
                 className={
-                  'rounded-full px-3 py-1.5 text-xs font-bold transition-transform active:scale-95 sm:px-4 sm:text-sm ' +
+                  'rounded-full px-5 py-2 text-sm font-bold transition-transform hover:scale-105 active:scale-95 ' +
                   (hero
                     ? 'bg-[#FF8C42] text-white hover:bg-[#e87a35]'
-                    : 'bg-[#E6F4F3] text-[#1B7F7A] dark:bg-[#134e4a] dark:text-slate-100')
+                    : 'bg-[#1B7F7A] text-white dark:bg-[#FF8C42] dark:text-white')
                 }
               >
                 {t('header_login')}

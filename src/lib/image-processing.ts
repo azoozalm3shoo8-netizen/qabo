@@ -17,7 +17,7 @@ function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
 }
 
 export async function compressImage(
-  file: Blob,
+  file: File | Blob,
   maxWidth = 1200,
   quality = 0.85
 ): Promise<Blob> {
@@ -44,7 +44,7 @@ export async function compressImage(
   })
 }
 
-export async function addWatermark(file: Blob, text = 'qabboo'): Promise<Blob> {
+export async function addWatermark(file: File | Blob, text = 'qabboo'): Promise<Blob> {
   const img = await loadImageFromBlob(file)
   const w = img.naturalWidth || img.width
   const h = img.naturalHeight || img.height
@@ -54,16 +54,21 @@ export async function addWatermark(file: Blob, text = 'qabboo'): Promise<Blob> {
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('no canvas context')
   ctx.drawImage(img, 0, 0)
-  const fontSize = Math.max(14, Math.round(Math.min(w, h) * 0.035))
-  ctx.font = `bold ${fontSize}px Cairo, Inter, system-ui, sans-serif`
-  ctx.fillStyle = 'rgba(255,255,255,0.3)'
-  ctx.strokeStyle = 'rgba(0,0,0,0.25)'
-  ctx.lineWidth = Math.max(1, fontSize / 14)
-  const pad = fontSize * 0.6
+  const fontSize = 20
+  ctx.font = `bold ${fontSize}px Cairo, var(--font-cairo), system-ui, sans-serif`
+  ctx.globalAlpha = 0.3
+  ctx.fillStyle = '#ffffff'
+  ctx.shadowColor = 'rgba(0,0,0,0.65)'
+  ctx.shadowBlur = 6
+  ctx.shadowOffsetX = 1
+  ctx.shadowOffsetY = 1
+  const pad = 12
   const x = pad
   const y = h - pad
-  ctx.strokeText(text, x, y)
+  ctx.textBaseline = 'bottom'
   ctx.fillText(text, x, y)
+  ctx.shadowBlur = 0
+  ctx.globalAlpha = 1
   return new Promise((resolve, reject) => {
     canvas.toBlob(
       (b) => (b ? resolve(b) : reject(new Error('toBlob failed'))),
@@ -73,7 +78,11 @@ export async function addWatermark(file: Blob, text = 'qabboo'): Promise<Blob> {
   })
 }
 
-export async function enhanceBrightness(file: Blob, amount = 1.2): Promise<Blob> {
+export async function enhanceBrightness(
+  file: File | Blob,
+  _amount = 1.15
+): Promise<Blob> {
+  void _amount
   const img = await loadImageFromBlob(file)
   const w = img.naturalWidth || img.width
   const h = img.naturalHeight || img.height
@@ -82,7 +91,7 @@ export async function enhanceBrightness(file: Blob, amount = 1.2): Promise<Blob>
   canvas.height = h
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('no canvas context')
-  ctx.filter = `brightness(${amount})`
+  ctx.filter = 'brightness(1.15) contrast(1.05) saturate(1.1)'
   ctx.drawImage(img, 0, 0)
   ctx.filter = 'none'
   return new Promise((resolve, reject) => {
@@ -94,37 +103,20 @@ export async function enhanceBrightness(file: Blob, amount = 1.2): Promise<Blob>
   })
 }
 
-export async function removeBackground(file: Blob): Promise<Blob> {
-  const img = await loadImageFromBlob(file)
-  const w = img.naturalWidth || img.width
-  const h = img.naturalHeight || img.height
-  const canvas = document.createElement('canvas')
-  canvas.width = w
-  canvas.height = h
-  const ctx = canvas.getContext('2d')
-  if (!ctx) throw new Error('no canvas context')
-  ctx.drawImage(img, 0, 0)
-  const data = ctx.getImageData(0, 0, w, h)
-  const d = data.data
-  const threshold = 235
-  for (let i = 0; i < d.length; i += 4) {
-    const r = d[i] ?? 0
-    const g = d[i + 1] ?? 0
-    const b = d[i + 2] ?? 0
-    if (r > threshold && g > threshold && b > threshold) {
-      d[i + 3] = 0
-    }
-  }
-  ctx.putImageData(data, 0, 0)
-  return new Promise((resolve, reject) => {
-    canvas.toBlob(
-      (b) => (b ? resolve(b) : reject(new Error('toBlob failed'))),
-      'image/png'
-    )
+export async function removeBackground(
+  file: File | Blob,
+  onProgress?: (fraction: number) => void
+): Promise<Blob> {
+  const { removeBackground: removeBg } = await import('@imgly/background-removal')
+  const result = await removeBg(file, {
+    progress: (_key: string, current: number, total: number) => {
+      if (total > 0) onProgress?.(Math.min(1, current / total))
+    },
   })
+  return result
 }
 
-export async function generateImageHash(file: Blob): Promise<string> {
+export async function generateImageHash(file: File | Blob): Promise<string> {
   const img = await loadImageFromBlob(file)
   const size = 8
   const canvas = document.createElement('canvas')
@@ -142,15 +134,11 @@ export async function generateImageHash(file: Blob): Promise<string> {
     grays.push(0.299 * r + 0.587 * g + 0.114 * b)
   }
   const mean = grays.reduce((a, b) => a + b, 0) / grays.length
-  let hi = 0
-  let lo = 0
-  for (let i = 0; i < 32; i++) {
-    if ((grays[i] ?? 0) >= mean) hi |= 1 << i
+  let bits = 0n
+  for (let i = 0; i < grays.length; i++) {
+    if ((grays[i] ?? 0) >= mean) bits |= 1n << BigInt(63 - i)
   }
-  for (let i = 0; i < 32; i++) {
-    if ((grays[i + 32] ?? 0) >= mean) lo |= 1 << i
-  }
-  return `${hi.toString(16).padStart(8, '0')}${lo.toString(16).padStart(8, '0')}`
+  return bits.toString(16).padStart(16, '0')
 }
 
 export async function blobToJpegFile(blob: Blob, baseName: string): Promise<File> {

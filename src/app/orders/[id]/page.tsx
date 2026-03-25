@@ -618,7 +618,7 @@ export default function OrderDetailPage() {
         </div>
       )}
 
-      <BottomNav active="orders" />
+      <BottomNav active="home" />
     </div>
   )
 }

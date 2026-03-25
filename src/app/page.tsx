@@ -2,23 +2,25 @@
 
 import {
   ArrowLeft,
-  Barbell,
   Book,
-  Buildings,
   Car,
-  Clock,
+  Couch,
   DeviceMobile,
-  DotsThree,
   Funnel,
   Gavel,
   GridFour,
+  House,
   MagnifyingGlass,
   MapPin,
+  Package,
+  SoccerBall,
   TShirt,
+  Watch,
 } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
+import Image from 'next/image'
 import Link from 'next/link'
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppHeader } from '@/components/AppHeader'
 import { BottomNav } from '@/components/BottomNav'
@@ -39,13 +41,13 @@ const CAT_ICONS: Record<TranslationKey, ReactNode> = {
   cat_all: <GridFour className="h-7 w-7" weight="bold" />,
   cat_electronics: <DeviceMobile className="h-7 w-7" weight="bold" />,
   cat_cars: <Car className="h-7 w-7" weight="bold" />,
-  cat_realestate: <Buildings className="h-7 w-7" weight="bold" />,
+  cat_realestate: <House className="h-7 w-7" weight="bold" />,
   cat_fashion: <TShirt className="h-7 w-7" weight="bold" />,
-  cat_watches: <Clock className="h-7 w-7" weight="bold" />,
-  cat_furniture: <DotsThree className="h-7 w-7" weight="bold" />,
-  cat_sports: <Barbell className="h-7 w-7" weight="bold" />,
+  cat_watches: <Watch className="h-7 w-7" weight="bold" />,
+  cat_furniture: <Couch className="h-7 w-7" weight="bold" />,
+  cat_sports: <SoccerBall className="h-7 w-7" weight="bold" />,
   cat_books: <Book className="h-7 w-7" weight="bold" />,
-  cat_other: <DotsThree className="h-7 w-7" weight="bold" />,
+  cat_other: <Package className="h-7 w-7" weight="bold" />,
 }
 
 function AuctionListingThumb({ src }: { src: string | null }) {
@@ -80,6 +82,105 @@ function countdownLabel(
   if (locale === 'ar') return `${parts.hours}س ${parts.minutes}د ${parts.seconds}ث`
   return `${parts.hours}h ${parts.minutes}m ${parts.seconds}s`
 }
+
+type HomeAuctionRow = {
+  id: string
+  title: string
+  images?: unknown
+  city?: string | null
+  current_bid: number
+  bid_count: number
+  ends_at: string
+  status: string
+}
+
+type HomeHeaderUser = { user_id: string; phone?: string; email?: string; name?: string } | null
+
+const HomeAuctionCard = memo(function HomeAuctionCard({
+  a,
+  user,
+  locale,
+  t,
+}: {
+  a: HomeAuctionRow
+  user: HomeHeaderUser
+  locale: string
+  t: (k: TranslationKey) => string
+}) {
+  const parts = auctionCountdownParts(a.ends_at, a.status)
+  const label = countdownLabel(locale, t, a.ends_at, a.status)
+  const underOneHour = !parts.ended && parts.hours < 1
+  const imgs = normalizeAuctionImages(a.images)
+  const firstImg = imgs[0] ?? null
+  return (
+    <motion.div
+      whileHover={{ scale: 1.02 }}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+      className="h-full"
+    >
+      <Link
+        href={'/auction/' + a.id}
+        className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-md transition-shadow hover:shadow-xl dark:border-slate-700 dark:bg-slate-800"
+      >
+        <div className="absolute left-2 top-2 z-10 rounded-full bg-white/95 p-1 shadow-md ring-1 ring-white/80 dark:bg-slate-900/90">
+          <FavoriteHeart auctionId={a.id} userId={user?.user_id ?? null} />
+        </div>
+        <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-gray-100 dark:bg-slate-700">
+          <AuctionListingThumb src={firstImg} />
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/55 to-transparent" />
+          {underOneHour && !parts.ended && (
+            <span className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-red-500/95 px-2 py-0.5 text-[10px] font-bold text-white animate-pulse">
+              <span className="h-1.5 w-1.5 rounded-full bg-white" />
+              LIVE
+            </span>
+          )}
+        </div>
+        <div className="flex min-w-0 flex-1 flex-col p-3">
+          <h3 className="line-clamp-2 text-sm font-bold leading-snug text-[#1F2937] dark:text-slate-100">
+            {a.title}
+          </h3>
+          <p className="mt-2 text-xl font-extrabold tabular-nums text-[#1B7F7A] dark:text-slate-100">
+            {Number(a.current_bid).toLocaleString()}{' '}
+            <span className="text-sm font-bold">{t('common_currency')}</span>
+          </p>
+          <div className="mt-2 flex flex-1 flex-col justify-end gap-2">
+            <div className="flex items-center justify-between gap-1 text-xs text-gray-500 dark:text-slate-400">
+              <span className="flex min-w-0 items-center gap-1">
+                <MapPin className="h-3.5 w-3.5 shrink-0 text-[#1B7F7A]" weight="bold" />
+                <span className="truncate">{a.city || t('common_undefinedCity')}</span>
+              </span>
+              <span
+                className={
+                  parts.ended
+                    ? 'shrink-0 rounded-md bg-red-50 px-2 py-0.5 font-semibold text-red-600 dark:bg-red-950/40 dark:text-red-300'
+                    : underOneHour
+                      ? 'shrink-0 font-semibold text-red-600 dark:text-red-400'
+                      : 'shrink-0 font-medium text-gray-600 dark:text-slate-300'
+                }
+              >
+                {label}
+              </span>
+            </div>
+            <div className="flex items-center justify-between gap-2">
+              <p className="flex items-center gap-1 text-xs text-gray-400 dark:text-slate-500">
+                <Gavel className="h-3.5 w-3.5 text-[#1B7F7A]" weight="bold" />
+                {a.bid_count} {t('home_bidCount')}
+              </p>
+              <span
+                className={
+                  'rounded-full bg-[#FF8C42] px-3 py-1 text-[10px] font-bold text-white shadow-sm ' +
+                  (underOneHour && !parts.ended ? 'animate-pulse' : '')
+                }
+              >
+                {t('home_bidNow')}
+              </span>
+            </div>
+          </div>
+        </div>
+      </Link>
+    </motion.div>
+  )
+})
 
 export default function HomePage() {
   const router = useRouter()
@@ -173,6 +274,16 @@ export default function HomePage() {
           >
             <h1 className="text-2xl font-extrabold leading-tight sm:text-3xl">{t('home_heroTitle')}</h1>
             <p className="mx-auto mt-2 max-w-md text-sm text-white/85">{t('home_heroSubtitle')}</p>
+            <div className="mt-4 flex flex-row-reverse items-center justify-center gap-3">
+              <Image
+                src="/logo-qabboo.png"
+                alt=""
+                width={120}
+                height={40}
+                className="h-14 w-auto object-contain drop-shadow-md"
+              />
+              <span className="text-2xl font-extrabold text-white">قبو</span>
+            </div>
             <Link
               href="/auction"
               className="mt-5 inline-flex items-center justify-center rounded-full bg-[#FF8C42] px-8 py-3 text-sm font-bold text-white shadow-lg transition-transform hover:scale-[1.03] active:scale-95"
@@ -219,13 +330,13 @@ export default function HomePage() {
                 >
                   <span
                     className={
-                      'flex h-14 w-14 items-center justify-center rounded-full border-2 shadow-md transition-transform ' +
+                      'flex h-16 w-16 items-center justify-center rounded-full border-2 border-teal-200/90 bg-teal-50 shadow-md transition-transform dark:border-slate-600 dark:bg-slate-700 ' +
                       (category === api
-                        ? 'scale-105 border-[#FF8C42] bg-white text-[#1B7F7A] dark:bg-slate-700 dark:text-slate-100'
-                        : 'border-white/80 bg-white/90 text-[#1B7F7A] hover:scale-105 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100')
+                        ? 'scale-105 border-[#FF8C42] text-[#1B7F7A] dark:text-slate-100'
+                        : 'text-[#1B7F7A] hover:scale-105 dark:text-slate-100')
                     }
                   >
-                    {CAT_ICONS[key] ?? <DotsThree className="h-7 w-7" />}
+                    {CAT_ICONS[key]}
                   </span>
                   <span className="line-clamp-2 text-center text-[10px] font-semibold leading-tight text-[#1F2937] dark:text-slate-200">
                     {t(key)}
@@ -279,88 +390,24 @@ export default function HomePage() {
           ) : auctions.length === 0 ? (
             <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
               <EmptyState
-                icon={<MagnifyingGlass className="h-14 w-14" weight="duotone" />}
+                icon={
+                  <div className="flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-[#E6F4F3] to-[#1B7F7A]/25 text-5xl dark:from-slate-700 dark:to-[#134e4a]/50">
+                    <span aria-hidden>🏛️</span>
+                  </div>
+                }
                 title={t('home_noAuctions')}
                 subtitle={t('home_noAuctionsHint')}
-                actionLabel={t('home_advancedSearch')}
-                onAction={() => router.push('/search')}
+                actionLabel={t('home_addAuctionCta')}
+                onAction={() => router.push('/create')}
                 actionClassName="bg-gradient-to-r from-[#1B7F7A] to-[#156661] shadow-lg hover:opacity-95"
               />
             </div>
           ) : (
             <>
               <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-                {auctions.slice(0, 6).map((a) => {
-                  const parts = auctionCountdownParts(a.ends_at, a.status)
-                  const label = countdownLabel(locale, t, a.ends_at, a.status)
-                  const underOneHour = !parts.ended && parts.hours < 1
-                  const imgs = normalizeAuctionImages(a.images)
-                  const firstImg = imgs[0] ?? null
-                  return (
-                    <motion.div
-                      key={a.id}
-                      whileHover={{ scale: 1.02 }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
-                      className="h-full"
-                    >
-                      <Link
-                        href={'/auction/' + a.id}
-                        className="group relative flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-md transition-shadow hover:shadow-xl dark:border-slate-700 dark:bg-slate-800"
-                      >
-                        <div className="absolute left-2 top-2 z-10 rounded-full bg-white/95 p-1 shadow-md ring-1 ring-white/80 dark:bg-slate-900/90">
-                          <FavoriteHeart auctionId={a.id} userId={user?.user_id ?? null} />
-                        </div>
-                        <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-gray-100 dark:bg-slate-700">
-                          <AuctionListingThumb src={firstImg} />
-                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/55 to-transparent" />
-                          {underOneHour && !parts.ended && (
-                            <span className="absolute bottom-2 right-2 flex items-center gap-1 rounded-full bg-red-500/95 px-2 py-0.5 text-[10px] font-bold text-white animate-pulse">
-                              <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                              LIVE
-                            </span>
-                          )}
-                        </div>
-                        <div className="flex min-w-0 flex-1 flex-col p-3">
-                          <h3 className="line-clamp-2 text-sm font-bold leading-snug text-[#1F2937] dark:text-slate-100">
-                            {a.title}
-                          </h3>
-                          <p className="mt-2 text-xl font-extrabold tabular-nums text-[#1B7F7A] dark:text-slate-100">
-                            {Number(a.current_bid).toLocaleString()}{' '}
-                            <span className="text-sm font-bold">{t('common_currency')}</span>
-                          </p>
-                          <div className="mt-2 flex flex-1 flex-col justify-end gap-2">
-                            <div className="flex items-center justify-between gap-1 text-xs text-gray-500 dark:text-slate-400">
-                              <span className="flex min-w-0 items-center gap-1">
-                                <MapPin className="h-3.5 w-3.5 shrink-0 text-[#1B7F7A]" weight="bold" />
-                                <span className="truncate">{a.city || t('common_undefinedCity')}</span>
-                              </span>
-                              <span
-                                className={
-                                  parts.ended
-                                    ? 'shrink-0 rounded-md bg-red-50 px-2 py-0.5 font-semibold text-red-600 dark:bg-red-950/40 dark:text-red-300'
-                                    : underOneHour
-                                      ? 'shrink-0 font-semibold text-red-600 dark:text-red-400'
-                                      : 'shrink-0 font-medium text-gray-600 dark:text-slate-300'
-                                }
-                              >
-                                {label}
-                              </span>
-                            </div>
-                            <div className="flex items-center justify-between gap-2">
-                              <p className="flex items-center gap-1 text-xs text-gray-400 dark:text-slate-500">
-                                <Gavel className="h-3.5 w-3.5 text-[#1B7F7A]" weight="bold" />
-                                {a.bid_count} {t('home_bidCount')}
-                              </p>
-                              <span className="rounded-full bg-[#FF8C42] px-3 py-1 text-[10px] font-bold text-white shadow-sm">
-                                {t('home_bidNow')}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                      </Link>
-                    </motion.div>
-                  )
-                })}
+                {auctions.slice(0, 6).map((a) => (
+                  <HomeAuctionCard key={a.id} a={a} user={user} locale={locale} t={t} />
+                ))}
               </div>
               {auctions.length > 6 && (
                 <Link
@@ -392,7 +439,7 @@ export default function HomePage() {
                   >
                     <div className="relative aspect-square bg-gray-100 dark:bg-slate-700">
                       {src ? (
-                        <img src={src} alt="" className="h-full w-full object-cover" />
+                        <img src={src} alt="" className="h-full w-full object-cover" loading="lazy" />
                       ) : (
                         <div className="flex h-full items-center justify-center text-gray-300">
                           <MagnifyingGlass className="h-8 w-8" />
@@ -432,14 +479,26 @@ export default function HomePage() {
         </div>
 
         <footer className="mt-10 border-t border-gray-200 bg-white px-4 py-8 dark:border-slate-800 dark:bg-slate-900">
-          <div className="mx-auto flex max-w-lg flex-col items-center gap-3 text-center text-sm text-gray-600 dark:text-slate-400">
+          <div className="mx-auto flex max-w-lg flex-col items-center gap-4 text-center text-sm text-gray-600 dark:text-slate-400">
+            <div className="flex flex-row-reverse items-center gap-2">
+              <Image
+                src="/logo-qabboo.png"
+                alt=""
+                width={120}
+                height={32}
+                className="h-8 w-auto object-contain"
+              />
+              <span className="text-lg font-bold text-[#1F2937] dark:text-slate-100">قبو</span>
+            </div>
             <div className="flex flex-wrap items-center justify-center gap-4 font-semibold text-[#1B7F7A] dark:text-slate-200">
               <Link href="/terms">{t('footer_terms')}</Link>
               <Link href="/privacy">{t('footer_privacy')}</Link>
               <a href="mailto:support@qabboo.com">{t('common_contactUs')}</a>
             </div>
             <p className="text-xs text-gray-400 dark:text-slate-500">
-              © {new Date().getFullYear()} {t('common_appName')} — {t('footer_rights')}
+              {locale === 'ar'
+                ? `جميع الحقوق محفوظة © 2026 ${t('common_appName')}`
+                : `© 2026 ${t('common_appName')} — ${t('footer_rights')}`}
             </p>
           </div>
         </footer>
