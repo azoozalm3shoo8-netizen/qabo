@@ -34,6 +34,7 @@ import { normalizeAuctionImages } from '@/lib/auction-images'
 import { CATEGORY_OPTIONS } from '@/lib/category-labels'
 import { useLocale } from '@/lib/locale-context'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
+import { ACTIVE_CITY } from '@/lib/region-lock'
 import { auctionCountdownParts } from '@/lib/time'
 import type { TranslationKey } from '@/lib/translations'
 
@@ -210,6 +211,7 @@ export default function HomePage() {
   const buildUrl = useCallback(() => {
     const p = new URLSearchParams()
     if (category !== 'الكل') p.set('category', category)
+    p.set('city', ACTIVE_CITY)
     const qs = p.toString()
     return '/api/auctions' + (qs ? '?' + qs : '')
   }, [category])

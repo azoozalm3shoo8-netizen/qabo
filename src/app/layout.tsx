@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
 import { Cairo, Inter } from 'next/font/google'
 import { AppProviders } from '@/components/AppProviders'
+import { NotificationSetup } from '@/components/NotificationSetup'
 import { PageFade } from '@/components/PageFade'
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister'
 import { ToastProvider } from '@/components/Toast'
@@ -58,6 +59,7 @@ export default function RootLayout({
           <ServiceWorkerRegister />
           <ToastProvider>
             <PageFade>{children}</PageFade>
+            <NotificationSetup />
           </ToastProvider>
         </AppProviders>
       </body>

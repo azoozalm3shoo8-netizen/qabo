@@ -3,16 +3,20 @@
 import { Sparkle } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
+import { AIDescriptionGenerator } from '@/components/AIDescriptionGenerator'
+import { DeliveryMethodPicker } from '@/components/DeliveryMethodPicker'
 import { ImageUploader } from '@/components/ImageUploader'
 import { suggestCategoryFromTitle } from '@/lib/ai-classifier'
 import { estimatePrice } from '@/lib/ai-pricing'
-import { CATEGORY_CATALOG, SAUDI_CITIES } from '@/lib/constants'
+import { CATEGORY_CATALOG } from '@/lib/constants'
+import { type DeliveryMethod } from '@/lib/delivery-options'
+import { ACTIVE_CITY, isRegionActive, REGION_CITIES } from '@/lib/region-lock'
+import { computeSmartStartingBid } from '@/lib/smart-pricing'
 import { useLocale } from '@/lib/locale-context'
 import { readQaboUserFromStorage, type QaboUserLocal } from '@/lib/qabo-user'
 
 const CATEGORIES = CATEGORY_CATALOG.map((c) => c.name)
 const ICONS = CATEGORY_CATALOG.map((c) => c.icon)
-const CITIES = SAUDI_CITIES
 const DURATIONS = [
   { label: '1 ساعة', value: 1 },
   { label: '3 ساعات', value: 3 },
@@ -35,11 +39,14 @@ export default function CreatePage() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [condition, setCondition] = useState('new')
-  const [city, setCity] = useState('')
+  const [city, setCity] = useState(ACTIVE_CITY)
   const [startPrice, setStartPrice] = useState('')
   const [buyNow, setBuyNow] = useState('')
   const [duration, setDuration] = useState(24)
   const [increment, setIncrement] = useState('100')
+  const [deliveryMethod, setDeliveryMethod] = useState<DeliveryMethod>('flexible')
+  const [aiDescriptionAccepted, setAiDescriptionAccepted] = useState(false)
+  const [priceTouched, setPriceTouched] = useState(false)
   const [published, setPublished] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -72,6 +79,17 @@ export default function CreatePage() {
     return estimatePrice(category, title)
   }, [category, title])
 
+  const smartPricing = useMemo(() => {
+    if (!category || title.trim().length < 3 || !condition) return null
+    return computeSmartStartingBid({ category, title, condition })
+  }, [category, title, condition])
+
+  useEffect(() => {
+    if (step !== 3 || !smartPricing || priceTouched) return
+    setStartPrice(String(smartPricing.suggestedStart))
+    setIncrement(String(smartPricing.suggestedIncrement))
+  }, [step, smartPricing, priceTouched])
+
   const goStep3 = () => {
     if (imagesUploading) {
       setError('يرجى انتظار اكتمال رفع الصور')
@@ -91,6 +109,10 @@ export default function CreatePage() {
 
   const handlePublish = async () => {
     if (!user) return
+    if (!isRegionActive(city)) {
+      setError(`🚀 قريباً في ${city}! حالياً قبو متاح في الرياض فقط`)
+      return
+    }
     if (imagesUploading) {
       setError('يرجى انتظار اكتمال رفع الصور قبل النشر')
       return
@@ -122,12 +144,14 @@ export default function CreatePage() {
           description,
           category,
           condition,
-          city,
+          city: city || ACTIVE_CITY,
           start_price: Number(startPrice),
           buy_now_price: bnp,
           bid_increment: Number(increment) || 100,
           duration_hours: duration,
           images: imageUrls,
+          delivery_method: deliveryMethod,
+          ai_description_accepted: aiDescriptionAccepted,
         }),
       })
       const data = await res.json()
@@ -280,16 +304,6 @@ export default function CreatePage() {
             </motion.div>
           ) : null}
           <div>
-            <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">الوصف</label>
-            <textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="اكتب وصف تفصيلي..."
-              rows={4}
-              className={fieldClass + ' resize-none'}
-            />
-          </div>
-          <div>
             <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">الحالة</label>
             <div className="flex gap-3">
               {[
@@ -313,13 +327,29 @@ export default function CreatePage() {
               ))}
             </div>
           </div>
+          <AIDescriptionGenerator
+            title={title}
+            condition={condition}
+            onDescriptionChange={setDescription}
+            onAcceptedChange={setAiDescriptionAccepted}
+          />
+          <div>
+            <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">الوصف</label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="اكتب وصف تفصيلي..."
+              rows={4}
+              className={fieldClass + ' resize-none'}
+            />
+          </div>
           <div>
             <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">المدينة</label>
             <select value={city} onChange={(e) => setCity(e.target.value)} className={fieldClass}>
-              <option value="">اختر المدينة</option>
-              {CITIES.map((c) => (
-                <option key={c} value={c}>
-                  {c}
+              {REGION_CITIES.map((c) => (
+                <option key={c.name} value={c.name} disabled={!c.active}>
+                  {c.name}
+                  {!c.active ? ' — قريباً' : ''}
                 </option>
               ))}
             </select>
@@ -347,16 +377,18 @@ export default function CreatePage() {
       {step === 3 && (
         <div className="space-y-4 px-4">
           <h2 className="font-bold text-gray-900 dark:text-slate-100">التسعير والمدة</h2>
-          {priceHint ? (
+          {smartPricing ? (
             <motion.div
               initial={{ opacity: 0, y: 6 }}
               animate={{ opacity: 1, y: 0 }}
               className="flex items-start gap-2 rounded-xl border border-[#1B7F7A]/20 bg-[#E6F4F3]/50 p-3 dark:border-slate-600 dark:bg-[#134e4a]/30"
             >
-              <Sparkle className="h-5 w-5 shrink-0 text-[#1B7F7A] dark:text-slate-200" weight="fill" />
+              <span className="text-xl" aria-hidden>
+                🤖
+              </span>
               <p className="text-sm font-medium text-[#1F2937] dark:text-slate-100">
-                {t('create_priceSmart')}: {priceHint.min.toLocaleString()} —{' '}
-                {priceHint.max.toLocaleString()} {t('common_currency')}
+                سعر البدء المقترح: {smartPricing.suggestedStart.toLocaleString()} {t('common_currency')} — أقل
+                زيادة مزايدة مقترحة: {smartPricing.suggestedIncrement.toLocaleString()}
               </p>
             </motion.div>
           ) : null}
@@ -365,7 +397,10 @@ export default function CreatePage() {
             <input
               type="number"
               value={startPrice}
-              onChange={(e) => setStartPrice(e.target.value)}
+              onChange={(e) => {
+                setPriceTouched(true)
+                setStartPrice(e.target.value)
+              }}
               placeholder="0"
               className={fieldClass}
             />
@@ -389,11 +424,15 @@ export default function CreatePage() {
             <input
               type="number"
               value={increment}
-              onChange={(e) => setIncrement(e.target.value)}
+              onChange={(e) => {
+                setPriceTouched(true)
+                setIncrement(e.target.value)
+              }}
               placeholder="100"
               className={fieldClass}
             />
           </div>
+          <DeliveryMethodPicker value={deliveryMethod} onChange={setDeliveryMethod} />
           <div>
             <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">مدة المزاد</label>
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">

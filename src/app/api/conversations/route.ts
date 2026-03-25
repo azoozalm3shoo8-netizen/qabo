@@ -22,6 +22,32 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'invalid pair' }, { status: 400 })
   }
 
+  if (auction_id) {
+    const { data: auc } = await supabase
+      .from('auctions')
+      .select('seller_id, highest_bidder_id, status, ends_at')
+      .eq('id', auction_id)
+      .maybeSingle()
+    if (auc) {
+      const ended =
+        auc.status !== 'active' || new Date(String(auc.ends_at)).getTime() <= Date.now()
+      if (ended) {
+        const winner = auc.highest_bidder_id as string | null
+        const seller = String(auc.seller_id)
+        const ok =
+          winner &&
+          ((user_id === seller && other_user_id === winner) ||
+            (user_id === winner && other_user_id === seller))
+        if (!ok) {
+          return NextResponse.json(
+            { error: 'محادثة المزاد المنتهي متاحة للبائع والفائز فقط' },
+            { status: 403 }
+          )
+        }
+      }
+    }
+  }
+
   const [p1, p2] = sortParticipants(user_id, other_user_id)
   const aid = auction_id || null
 

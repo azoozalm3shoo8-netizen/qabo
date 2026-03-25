@@ -69,6 +69,8 @@ export async function POST(req: NextRequest) {
     bid_increment,
     duration_hours,
     images: rawImages,
+    delivery_method: rawDelivery,
+    ai_description_accepted: rawAiAccepted,
   } = body
 
   if (!isValidUserId(user_id)) return unauthorized()
@@ -116,13 +118,20 @@ export async function POST(req: NextRequest) {
 
   const ends_at = new Date(Date.now() + dh * 60 * 60 * 1000).toISOString()
 
+  const cityNorm =
+    typeof city === 'string' && city.trim() ? city.trim().slice(0, 80) : 'الرياض'
+  const dm =
+    typeof rawDelivery === 'string' && rawDelivery.trim()
+      ? rawDelivery.trim().slice(0, 40)
+      : 'flexible'
+
   const row: Record<string, unknown> = {
     seller_id,
     title,
     description,
     category,
     condition: condition || 'new',
-    city: typeof city === 'string' ? city.trim().slice(0, 80) : '',
+    city: cityNorm,
     start_price: price,
     current_bid: price,
     buy_now_price:
@@ -130,8 +139,11 @@ export async function POST(req: NextRequest) {
         ? Number(buy_now_price)
         : null,
     bid_increment: increment,
+    min_increment: increment,
     ends_at,
     images,
+    delivery_method: dm,
+    ai_description_accepted: Boolean(rawAiAccepted),
   }
 
   if (isValidUserId(clientId)) {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { MAX_AUCTION_EXTENSIONS, shouldExtendAuction } from '@/lib/anti-snipe'
 import { checkRateLimit } from '@/lib/server/rate-limit'
 import { isValidUserId, unauthorized } from '@/lib/server/require-user'
 
@@ -66,14 +67,20 @@ export async function POST(req: NextRequest) {
   const { error: bidError } = await supabase.from('bids').insert({ auction_id, bidder_id, amount: amt })
   if (bidError) return NextResponse.json({ error: bidError.message }, { status: 500 })
 
-  const { error: updateError } = await supabase
-    .from('auctions')
-    .update({
-      current_bid: amt,
-      highest_bidder_id: bidder_id,
-      bid_count: auction.bid_count + 1,
-    })
-    .eq('id', auction_id)
+  const extCount = Number((auction as { extension_count?: number }).extension_count ?? 0)
+  const { shouldExtend, newEndTime } = shouldExtendAuction(auction.ends_at as string)
+
+  const baseUpdate: Record<string, unknown> = {
+    current_bid: amt,
+    highest_bidder_id: bidder_id,
+    bid_count: auction.bid_count + 1,
+  }
+  if (shouldExtend && extCount < MAX_AUCTION_EXTENSIONS) {
+    baseUpdate.ends_at = newEndTime
+    baseUpdate.extension_count = extCount + 1
+  }
+
+  const { error: updateError } = await supabase.from('auctions').update(baseUpdate).eq('id', auction_id)
 
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
 

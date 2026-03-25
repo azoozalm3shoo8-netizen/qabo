@@ -9,6 +9,7 @@ import {
   compressImage,
   enhanceBrightness,
   generateImageHash,
+  hashSimilarity,
   removeBackground,
 } from '@/lib/image-processing'
 import { useLocale } from '@/lib/locale-context'
@@ -68,6 +69,10 @@ export function ImageUploader({
   )
 
   useEffect(() => {
+    slotsRef.current = slots
+  }, [slots])
+
+  useEffect(() => {
     const urls = slots.map((s) => s.url).filter((u): u is string => Boolean(u))
     const key = urls.join('\0')
     if (lastNotifiedUrlsKeyRef.current === key) return
@@ -86,6 +91,13 @@ export function ImageUploader({
     try {
       const compressed = await compressImage(file)
       const dna = await generateImageHash(compressed)
+      for (const s of slotsRef.current) {
+        if (s.id === slotId || !s.dna) continue
+        if (hashSimilarity(dna, s.dna) > 0.9) {
+          show('صورة مشابهة موجودة — تحقق قبل المتابعة', 'info')
+          break
+        }
+      }
       const watermarked = await addWatermark(compressed, 'qabboo')
       const jpegFile = await blobToJpegFile(watermarked, file.name)
       const url = await uploadImage(jpegFile, path, { skipCompression: true })
@@ -119,7 +131,7 @@ export function ImageUploader({
     setSlots((prev) =>
       prev.map((s) => (s.id === slotId ? { ...s, uploading: false, error: true, removingBg: false } : s))
     )
-  }, [])
+  }, [show])
 
   const handleFile = useCallback(
     async (file: File) => {

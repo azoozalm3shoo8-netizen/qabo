@@ -8,7 +8,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BottomNav } from '@/components/BottomNav'
 import { EmptyState } from '@/components/EmptyState'
 import { FavoriteHeart } from '@/components/FavoriteHeart'
-import { CATEGORY_CATALOG, SAUDI_CITIES } from '@/lib/constants'
+import { CATEGORY_CATALOG } from '@/lib/constants'
+import { REGION_CITIES } from '@/lib/region-lock'
 import { normalizeAuctionImages } from '@/lib/auction-images'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { auctionCountdownParts } from '@/lib/time'
@@ -178,7 +179,7 @@ export default function SearchPage() {
 
   const resetFilters = () => {
     setCategory('')
-    setCity('')
+    setCity('الرياض')
     setMinPrice('')
     setMaxPrice('')
     setStatusFilter('active')
@@ -321,16 +322,20 @@ export default function SearchPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1">المدينة</label>
+              <label className="block text-sm font-bold text-gray-900 mb-1 dark:text-slate-100">المدينة</label>
+              <p className="mb-1 text-[11px] text-[#1B7F7A] dark:text-slate-400">
+                حالياً البحث في الرياض فقط — مدن أخرى قريباً
+              </p>
               <select
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white"
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               >
-                <option value="">كل المدن</option>
-                {SAUDI_CITIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
+                <option value="">كل النتائج (بدون فلتر مدينة)</option>
+                {REGION_CITIES.map((c) => (
+                  <option key={c.name} value={c.name} disabled={!c.active}>
+                    {c.name}
+                    {!c.active ? ' — قريباً' : ''}
                   </option>
                 ))}
               </select>

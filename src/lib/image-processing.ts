@@ -141,6 +141,25 @@ export async function generateImageHash(file: File | Blob): Promise<string> {
   return bits.toString(16).padStart(16, '0')
 }
 
+/** 1 = identical perceptual hash, 0 = completely different (Hamming on full hash). */
+export function hashSimilarity(hexA: string, hexB: string): number {
+  if (!hexA || !hexB || hexA.length !== hexB.length) return 0
+  try {
+    const a = BigInt('0x' + hexA)
+    const b = BigInt('0x' + hexB)
+    let x = a ^ b
+    let bits = 0
+    while (x > 0n) {
+      if (x & 1n) bits += 1
+      x >>= 1n
+    }
+    const maxBits = hexA.length * 4
+    return maxBits > 0 ? 1 - bits / maxBits : 0
+  } catch {
+    return 0
+  }
+}
+
 export async function blobToJpegFile(blob: Blob, baseName: string): Promise<File> {
   const name = baseName.replace(/\.[^.]+$/, '') || 'image'
   return new File([blob], `${name}.jpg`, { type: 'image/jpeg' })

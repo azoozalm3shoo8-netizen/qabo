@@ -6,7 +6,6 @@ import {
   ChatCircle,
   Confetti,
   Folder,
-  Gavel,
   MapPin,
   Robot,
   ShieldCheck,
@@ -14,11 +13,12 @@ import {
   UserCircle,
   X,
 } from '@phosphor-icons/react'
-import { motion } from 'framer-motion'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { AuctionCountdown } from '@/components/AuctionCountdown'
+import { AuctionQA } from '@/components/AuctionQA'
+import { LiveBidPanel } from '@/components/LiveBidPanel'
 import { AuctionImageGallery } from '@/components/AuctionImageGallery'
 import { BottomNav } from '@/components/BottomNav'
 import { FavoriteHeart } from '@/components/FavoriteHeart'
@@ -83,10 +83,6 @@ export default function AuctionDetailPage() {
   )
   const [ended, setEnded] = useState(false)
 
-  const [showBidModal, setShowBidModal] = useState(false)
-  const [bidAmount, setBidAmount] = useState(0)
-  const [bidSubmitting, setBidSubmitting] = useState(false)
-  const [bidError, setBidError] = useState('')
   const [msgLoading, setMsgLoading] = useState(false)
   const [reviewExists, setReviewExists] = useState<boolean | null>(null)
   const [showReviewModal, setShowReviewModal] = useState(false)
@@ -308,63 +304,6 @@ export default function AuctionDetailPage() {
     auction && user && sameUserId(user.user_id, auction.seller_id)
   )
 
-  const openBidModal = () => {
-    if (!auction || auction.status !== 'active' || ended) return
-    if (!user) return
-    if (sameUserId(user.user_id, auction.seller_id)) return
-    setBidError('')
-    setBidAmount(minBid)
-    setShowBidModal(true)
-  }
-
-  const handleBidButtonClick = () => {
-    if (!auction || auction.status !== 'active' || ended) return
-    if (!user) {
-      window.location.href = '/auth/login'
-      return
-    }
-    openBidModal()
-  }
-
-  const submitBid = async () => {
-    if (!auction || !user) return
-    setBidError('')
-    if (bidAmount < minBid) {
-      setBidError(
-        `${t('auction_minBidError')}: ${minBid.toLocaleString()} ${t('common_currency')}`
-      )
-      return
-    }
-    setBidSubmitting(true)
-    try {
-      const res = await fetch('/api/bids', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          user_id: user.user_id,
-          auction_id: auction.id,
-          bidder_id: user.user_id,
-          amount: bidAmount,
-        }),
-      })
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || t('auction_bidFailed'))
-      show(t('auction_bidSuccess'), 'success')
-      setShowBidModal(false)
-      await loadAuction()
-    } catch (e: unknown) {
-      setBidError(e instanceof Error ? e.message : 'حدث خطأ')
-    } finally {
-      setBidSubmitting(false)
-    }
-  }
-
-  const bidButtonDisabled =
-    !auction ||
-    auction.status !== 'active' ||
-    ended ||
-    (user != null && isSeller)
-
   const auctionClosed = !auction || auction.status !== 'active' || ended
 
   const isWinner = Boolean(
@@ -375,12 +314,12 @@ export default function AuctionDetailPage() {
       sameUserId(user.user_id, auction.highest_bidder_id)
   )
 
-  const openSellerChat = async () => {
+  const openChatWith = async (otherUserId: string) => {
     if (!user || !auction) {
       window.location.href = '/auth/login'
       return
     }
-    if (sameUserId(user.user_id, auction.seller_id)) return
+    if (sameUserId(user.user_id, otherUserId)) return
     setMsgLoading(true)
     try {
       const res = await fetch('/api/conversations', {
@@ -388,18 +327,23 @@ export default function AuctionDetailPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           user_id: user.user_id,
-          other_user_id: auction.seller_id,
+          other_user_id: otherUserId,
           auction_id: auction.id,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || t('auction_chatOpenError'))
-      router.push('/messages/' + data.conversation_id)
+      router.push('/chat/' + data.conversation_id)
     } catch (e: unknown) {
       show(e instanceof Error ? e.message : 'خطأ', 'error')
     } finally {
       setMsgLoading(false)
     }
+  }
+
+  const openSellerChat = async () => {
+    if (!auction) return
+    await openChatWith(auction.seller_id)
   }
 
   const sellerDisplayName =
@@ -572,66 +516,17 @@ export default function AuctionDetailPage() {
               onEndedChange={handleEndedChange}
             />
 
-            <div className="rounded-2xl border border-[#1B7F7A]/25 bg-white p-5 text-center shadow-md dark:border-slate-600 dark:bg-slate-800">
-              <p className="mb-1 text-sm text-gray-500 dark:text-slate-400">{t('auction_currentPrice')}</p>
-              <p className="text-4xl font-extrabold text-[#1B7F7A] dark:text-slate-100">
-                {Number(auction.current_bid).toLocaleString()}{' '}
-                <span className="text-xl font-bold text-[#156661] dark:text-slate-300">
-                  {t('common_currency')}
-                </span>
-              </p>
-              <div className="mt-4 flex justify-center divide-x divide-gray-200 pt-4 text-sm text-gray-600 dark:divide-slate-600">
-                <div className="flex flex-1 flex-col items-center px-4">
-                  <span className="mb-0.5 block text-xs text-gray-400 dark:text-slate-500">
-                    {t('auction_bids')}
-                  </span>
-                  <span className="font-semibold text-[#1F2937] dark:text-slate-100">{auction.bid_count}</span>
-                </div>
-                <div className="flex flex-1 flex-col items-center px-4">
-                  <span className="mb-0.5 block text-xs text-gray-400 dark:text-slate-500">
-                    {t('auction_highestBidder')}
-                  </span>
-                  <span className="font-semibold text-[#1F2937] dark:text-slate-100">
-                    {auction.highest_bidder?.full_name ?? '—'}
-                  </span>
-                </div>
-              </div>
-              <p className="mt-3 text-xs text-gray-500 dark:text-slate-400">
-                {t('auction_minNext')}:{' '}
-                <span className="rounded-full bg-[#E6F4F3] px-2 py-0.5 font-semibold text-[#1B7F7A] dark:bg-[#134e4a] dark:text-slate-100">
-                  {minBid.toLocaleString()} {t('common_currency')}
-                </span>
-              </p>
-            </div>
-
-            <motion.button
-              type="button"
-              onClick={handleBidButtonClick}
-              disabled={bidButtonDisabled}
-              animate={
-                pulseBid && !bidButtonDisabled
-                  ? { scale: [1, 1.04, 1], boxShadow: ['0 10px 25px rgba(255,140,66,0.35)', '0 14px 32px rgba(255,140,66,0.5)', '0 10px 25px rgba(255,140,66,0.35)'] }
-                  : {}
-              }
-              transition={{ repeat: pulseBid && !bidButtonDisabled ? Infinity : 0, duration: 1.15 }}
-              whileHover={bidButtonDisabled ? undefined : { scale: 1.02 }}
-              whileTap={bidButtonDisabled ? undefined : { scale: 0.98 }}
-              className={
-                'flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-lg font-bold shadow-lg transition-colors ' +
-                (bidButtonDisabled
-                  ? 'cursor-not-allowed bg-gray-200 text-gray-400 dark:bg-slate-700 dark:text-slate-500'
-                  : 'bg-gradient-to-r from-[#FF8C42] to-[#E87A35] text-white hover:from-[#E87A35] hover:to-[#d96d2e]')
-              }
-            >
-              <Gavel className="h-6 w-6" weight="bold" />
-              {!user
-                ? t('auction_loginToBid')
-                : isSeller
-                  ? t('auction_ownAuction')
-                  : auctionClosed
-                    ? t('auction_inactive')
-                    : t('auction_bidNow')}
-            </motion.button>
+            <LiveBidPanel
+              auctionId={auction.id}
+              bidIncrement={Number(auction.bid_increment)}
+              isOwner={isSeller}
+              biddingOpen={auction.status === 'active' && !ended}
+              userId={user?.user_id ?? null}
+              initialCurrentBid={Number(auction.current_bid)}
+              initialBidCount={Number(auction.bid_count)}
+              pulseEnding={pulseBid && !isSeller}
+              onBidPlaced={() => void loadAuction()}
+            />
 
             {user && !isSeller && !auctionClosed && (
               <div className="flex flex-col gap-2">
@@ -735,6 +630,14 @@ export default function AuctionDetailPage() {
                 >
                   {t('auction_payNow')}
                 </button>
+                <button
+                  type="button"
+                  onClick={() => void openChatWith(auction.seller_id)}
+                  disabled={msgLoading}
+                  className="mt-3 w-full rounded-xl border-2 border-white/80 bg-white/10 py-3 text-sm font-bold text-white backdrop-blur-sm transition-transform active:scale-95 disabled:opacity-50 hover:bg-white/20"
+                >
+                  💬 تواصل مع البائع
+                </button>
                 <p className="mt-3 flex items-center justify-center gap-1.5 text-xs leading-relaxed text-white/95">
                   <ShieldCheck className="h-4 w-4 shrink-0" weight="fill" aria-hidden />
                   {t('auction_escrowHint')}
@@ -773,6 +676,16 @@ export default function AuctionDetailPage() {
                     {t('auction_salePriceLabel')}: {Number(auction.current_bid).toLocaleString()}{' '}
                     {t('common_currency')}
                   </p>
+                  {auction.highest_bidder_id ? (
+                    <button
+                      type="button"
+                      onClick={() => void openChatWith(auction.highest_bidder_id as string)}
+                      disabled={msgLoading}
+                      className="mt-4 w-full rounded-xl border-2 border-[#1B7F7A] bg-white py-3 text-sm font-bold text-[#1B7F7A] transition-transform active:scale-95 disabled:opacity-50 dark:border-[#1B7F7A] dark:bg-slate-800 dark:text-slate-100"
+                    >
+                      💬 تواصل مع المشتري
+                    </button>
+                  ) : null}
                 </div>
               )}
 
@@ -822,6 +735,8 @@ export default function AuctionDetailPage() {
                 </button>
               </div>
             )}
+
+            <AuctionQA auctionId={auction.id} isOwner={isSeller} />
 
             {similarAuctions.length > 0 && (
               <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
@@ -930,79 +845,6 @@ export default function AuctionDetailPage() {
                 className="w-full rounded-xl bg-[#FF8C42] py-3 font-bold text-white transition-transform active:scale-95 disabled:opacity-50 hover:bg-[#E87A35]"
               >
                 {reportSubmitting ? t('auction_reportSending') : t('auction_reportSubmit')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {showBidModal && auction && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 p-0 backdrop-blur-sm sm:items-center sm:p-4"
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="bid-modal-title"
-        >
-          <div className="w-full max-w-md overflow-hidden rounded-t-[2rem] bg-white shadow-xl sm:rounded-2xl dark:bg-slate-900">
-            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3 dark:border-slate-700">
-              <h2 id="bid-modal-title" className="text-lg font-bold text-gray-900 dark:text-slate-100">
-                {t('auction_bidModalTitle')}
-              </h2>
-              <button
-                type="button"
-                onClick={() => setShowBidModal(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-600 dark:bg-slate-700 dark:text-slate-300"
-                aria-label={t('auction_close')}
-              >
-                <X className="h-5 w-5" weight="bold" />
-              </button>
-            </div>
-            <div className="space-y-4 p-4">
-              <p className="text-sm text-gray-600 dark:text-slate-300">
-                {t('auction_bidMinLine')}:{' '}
-                <span className="font-bold text-[#1B7F7A]">
-                  {minBid.toLocaleString()} {t('common_currency')}
-                </span>
-              </p>
-              <div>
-                <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-200">
-                  {t('auction_bidAmountLabel')}
-                </label>
-                <input
-                  type="number"
-                  min={minBid}
-                  step={auction.bid_increment}
-                  value={bidAmount || ''}
-                  onChange={(e) => setBidAmount(Number(e.target.value))}
-                  className="w-full rounded-xl border border-gray-200 px-4 py-3 text-center text-lg font-bold outline-none focus:ring-2 focus:ring-[#1B7F7A] dark:border-slate-600 dark:bg-slate-800 dark:text-white"
-                />
-              </div>
-              <div className="flex gap-2">
-                <button
-                  type="button"
-                  onClick={() => setBidAmount((v) => Math.max(minBid, v - auction.bid_increment))}
-                  className="flex-1 rounded-xl bg-gray-100 py-3 font-bold text-gray-700 transition-transform active:scale-95 dark:bg-slate-700 dark:text-slate-200"
-                >
-                  −
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setBidAmount((v) => v + auction.bid_increment)}
-                  className="flex-1 rounded-xl bg-gray-100 py-3 font-bold text-gray-700 transition-transform active:scale-95 dark:bg-slate-700 dark:text-slate-200"
-                >
-                  +
-                </button>
-              </div>
-              {bidError && (
-                <p className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-600">{bidError}</p>
-              )}
-              <button
-                type="button"
-                onClick={() => void submitBid()}
-                disabled={bidSubmitting || bidAmount < minBid}
-                className="w-full rounded-xl bg-gradient-to-r from-[#FF8C42] to-[#E87A35] py-3.5 font-bold text-white transition-transform active:scale-95 disabled:opacity-50"
-              >
-                {bidSubmitting ? 'جاري الإرسال...' : 'تأكيد المزايدة'}
               </button>
             </div>
           </div>
