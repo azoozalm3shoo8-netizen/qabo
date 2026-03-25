@@ -16,7 +16,6 @@ import {
   TShirt,
   UserCircle,
 } from '@phosphor-icons/react'
-import Image from 'next/image'
 import Link from 'next/link'
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
@@ -49,18 +48,18 @@ function AuctionListingThumb({ src }: { src: string | null }) {
   const [failed, setFailed] = useState(false)
   if (!src || failed) {
     return (
-      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1 bg-[#F3F4F6] text-gray-400">
-        <MagnifyingGlass className="h-10 w-10 opacity-40" />
+      <div className="flex h-full w-full flex-col items-center justify-center gap-1 bg-[#F3F4F6] text-gray-400">
+        <MagnifyingGlass className="h-8 w-8 opacity-40" />
       </div>
     )
   }
   return (
-    <Image
+    <img
       src={src}
       alt=""
-      fill
-      className="object-cover"
-      sizes="(max-width: 640px) 50vw, 33vw"
+      className="h-full w-full object-cover"
+      loading="lazy"
+      decoding="async"
       onError={() => setFailed(true)}
     />
   )
@@ -270,45 +269,47 @@ export default function HomePage() {
                     <Link
                       key={a.id}
                       href={'/auction/' + a.id}
-                      className="group relative overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg dark:border-slate-700 dark:bg-slate-800"
+                      className="group relative flex flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm transition-all duration-200 active:scale-[0.99] hover:-translate-y-0.5 hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
                     >
-                      <div className="absolute top-2 left-2 z-10 rounded-full bg-white p-1 shadow-md ring-1 ring-white/80">
+                      <div className="absolute top-1.5 left-1.5 z-10 rounded-full bg-white/95 p-0.5 shadow-sm ring-1 ring-white/80">
                         <FavoriteHeart auctionId={a.id} userId={user?.user_id ?? null} />
                       </div>
-                      <div className="relative aspect-square w-full overflow-hidden rounded-t-2xl bg-gray-100">
+                      <div className="relative h-40 w-full shrink-0 overflow-hidden rounded-t-xl bg-gray-100">
                         <AuctionListingThumb src={firstImg} />
                       </div>
-                      <div className="p-3">
-                        <h3 className="truncate text-sm font-medium leading-snug text-gray-900 dark:text-slate-100">
+                      <div className="flex min-w-0 flex-1 flex-col p-2">
+                        <h3 className="line-clamp-2 text-xs font-semibold leading-tight text-gray-900 dark:text-slate-100">
                           {a.title}
                         </h3>
-                        <p className="mt-1 text-base font-bold text-[#1B7F7A]">
+                        <p className="mt-1 text-sm font-bold tabular-nums text-[#1B7F7A]">
                           {Number(a.current_bid).toLocaleString()} ر.س
                         </p>
-                        <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
-                          <span className="flex items-center gap-1 truncate">
-                            <MapPin className="h-3.5 w-3.5 shrink-0 text-[#1B7F7A]" weight="bold" />
-                            {a.city || 'غير محدد'}
-                          </span>
-                          <span
-                            className={
-                              parts.ended
-                                ? 'rounded-md bg-red-50 px-2 py-0.5 font-semibold text-red-600'
-                                : underOneHour
-                                  ? 'flex items-center gap-1 font-semibold text-red-600'
-                                  : ''
-                            }
-                          >
-                            {underOneHour && !parts.ended && (
-                              <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-red-500" />
-                            )}
-                            {label}
-                          </span>
+                        <div className="mt-1.5 flex flex-1 flex-col justify-end gap-0.5">
+                          <div className="flex items-start justify-between gap-1 text-[10px] leading-tight text-gray-500">
+                            <span className="flex min-w-0 items-center gap-0.5">
+                              <MapPin className="h-3 w-3 shrink-0 text-[#1B7F7A]" weight="bold" />
+                              <span className="truncate">{a.city || 'غير محدد'}</span>
+                            </span>
+                            <span
+                              className={
+                                parts.ended
+                                  ? 'shrink-0 rounded bg-red-50 px-1 py-0.5 font-semibold text-red-600'
+                                  : underOneHour
+                                    ? 'flex shrink-0 items-center gap-0.5 font-semibold text-red-600'
+                                    : 'shrink-0 font-medium text-gray-600 dark:text-slate-400'
+                              }
+                            >
+                              {underOneHour && !parts.ended && (
+                                <span className="h-1.5 w-1.5 animate-pulse-dot rounded-full bg-red-500" />
+                              )}
+                              {label}
+                            </span>
+                          </div>
+                          <p className="flex items-center gap-0.5 text-[10px] text-gray-400">
+                            <Gavel className="h-3 w-3 text-[#1B7F7A]" weight="bold" />
+                            {a.bid_count} مزايدة
+                          </p>
                         </div>
-                        <p className="mt-1 flex items-center gap-1 text-xs text-gray-400">
-                          <Gavel className="h-3.5 w-3.5 text-[#1B7F7A]" weight="bold" />
-                          {a.bid_count} مزايدة
-                        </p>
                       </div>
                     </Link>
                   )
