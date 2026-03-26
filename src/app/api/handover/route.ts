@@ -75,26 +75,66 @@ export async function POST(req: NextRequest) {
   return NextResponse.json(data)
 }
 
+async function releaseEscrowForAuction(auctionId: string) {
+  const { data: escrow } = await supabase
+    .from('escrows')
+    .select('id')
+    .eq('auction_id', auctionId)
+    .eq('status', 'held')
+    .maybeSingle()
+  if (!escrow?.id) return
+  const base =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '') ||
+    'http://127.0.0.1:3000'
+  const url = `${base.replace(/\/$/, '')}/api/escrow/release`
+  const res = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ escrow_id: escrow.id }),
+  })
+  if (!res.ok) {
+    console.error('handover escrow release failed', await res.text())
+  }
+}
+
 export async function PATCH(req: NextRequest) {
   const body = await req.json()
-  const { user_id, auction_id, action, qr_data, verification_code } = body as {
+  const {
+    user_id,
+    auction_id,
+    session_id,
+    action,
+    qr_data,
+    verification_code,
+    skipped_qr: rawSkippedQr,
+  } = body as {
     user_id?: string
     auction_id?: string
+    session_id?: string
     action?: 'scan' | 'confirm' | 'dispute'
     qr_data?: string
     verification_code?: string
+    skipped_qr?: boolean
   }
+
+  const skipped_qr = rawSkippedQr === true
 
   if (!isValidUserId(user_id)) return unauthorized()
-  if (!auction_id || !action) {
+  if (!action) {
     return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 })
   }
+  if (!auction_id && !session_id) {
+    return NextResponse.json({ error: 'auction_id أو session_id مطلوب' }, { status: 400 })
+  }
 
-  const { data: row, error: fErr } = await supabase
-    .from('handover_sessions')
-    .select('*')
-    .eq('auction_id', auction_id)
-    .maybeSingle()
+  let q = supabase.from('handover_sessions').select('*')
+  if (session_id && typeof session_id === 'string') {
+    q = q.eq('id', session_id.trim())
+  } else if (auction_id) {
+    q = q.eq('auction_id', auction_id)
+  }
+  const { data: row, error: fErr } = await q.maybeSingle()
 
   if (fErr || !row) return NextResponse.json({ error: 'جلسة غير موجودة' }, { status: 404 })
 
@@ -120,16 +160,26 @@ export async function PATCH(req: NextRequest) {
     if (row.buyer_id !== user_id) {
       return NextResponse.json({ error: 'فقط المشتري يؤكد' }, { status: 403 })
     }
-    if (row.status !== 'scanned' && row.status !== 'pending') {
+    const okScanned = row.status === 'scanned'
+    const okSkip = row.status === 'pending' && skipped_qr
+    if (!okScanned && !okSkip) {
       return NextResponse.json({ error: 'حالة غير صالحة' }, { status: 400 })
     }
+
     const { data, error } = await supabase
       .from('handover_sessions')
-      .update({ status: 'confirmed', confirmed_at: new Date().toISOString() })
+      .update({
+        status: 'confirmed',
+        confirmed_at: new Date().toISOString(),
+        skipped_qr,
+      })
       .eq('id', row.id)
       .select()
       .single()
     if (error) return NextResponse.json({ error: error.message }, { status: 500 })
+
+    await releaseEscrowForAuction(row.auction_id as string)
+
     return NextResponse.json(data)
   }
 

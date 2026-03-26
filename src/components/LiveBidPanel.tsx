@@ -2,10 +2,11 @@
 
 import { CaretDown, CaretUp, Lightning } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useToast } from '@/components/Toast'
 import { useRealtimeAuction } from '@/hooks/useRealtimeAuction'
 import { useLocale } from '@/lib/locale-context'
+import { playBidSound } from '@/lib/sound'
 
 type Props = {
   auctionId: string
@@ -39,6 +40,23 @@ export function LiveBidPanel({
     initialCurrentBid,
     initialBidCount
   )
+  const isFirstLoad = useRef(true)
+  const prevBidRef = useRef(initialCurrentBid)
+  useEffect(() => {
+    isFirstLoad.current = true
+    prevBidRef.current = initialCurrentBid
+  }, [auctionId, initialCurrentBid])
+  useEffect(() => {
+    if (isFirstLoad.current) {
+      isFirstLoad.current = false
+      prevBidRef.current = currentBid
+      return
+    }
+    if (currentBid > prevBidRef.current) {
+      playBidSound()
+    }
+    prevBidRef.current = currentBid
+  }, [currentBid])
   const [custom, setCustom] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showLog, setShowLog] = useState(false)

@@ -176,7 +176,7 @@ export default function ProfilePage() {
               <span className="text-sm font-medium">إعلان جديد</span>
             </Link>
             <Link
-              href="/orders"
+              href="/my-auctions"
               className="flex items-center gap-3 rounded-xl border border-green-100 bg-green-50 p-3 transition-transform hover:scale-[1.02]"
             >
               <Package className="h-7 w-7 shrink-0 text-green-700" weight="fill" />

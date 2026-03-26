@@ -22,6 +22,8 @@ export function HandoverBuyer({
 }) {
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
+  const [showSkipConfirm, setShowSkipConfirm] = useState(false)
+  const [skipLoading, setSkipLoading] = useState(false)
   const [c1, setC1] = useState(false)
   const [c2, setC2] = useState(false)
   const [c3, setC3] = useState(false)
@@ -79,6 +81,7 @@ export function HandoverBuyer({
           user_id: userId,
           auction_id: session.auction_id,
           action: 'confirm',
+          skipped_qr: false,
         }),
       })
       const data = await res.json()
@@ -134,6 +137,79 @@ export function HandoverBuyer({
         >
           تأكيد المسح
         </button>
+
+        {session.status === 'pending' && !showSkipConfirm ? (
+          <button
+            type="button"
+            onClick={() => setShowSkipConfirm(true)}
+            className="mt-4 w-full text-center text-xs text-gray-400 underline dark:text-slate-500"
+          >
+            تخطي مسح الباركود
+          </button>
+        ) : null}
+
+        {showSkipConfirm && session.status === 'pending' ? (
+          <div className="mt-4 rounded-xl border-2 border-amber-400 bg-amber-50 p-4 dark:border-amber-600 dark:bg-amber-900/20">
+            <p className="mb-2 text-sm font-bold text-amber-800 dark:text-amber-300">⚠️ تحذير مهم</p>
+            <p className="mb-3 text-xs leading-relaxed text-amber-700 dark:text-amber-400">
+              بتخطيك لمسح الباركود، أنت تؤكد أنك استلمت المنتج وفحصته شخصياً وتتحمل المسؤولية الكاملة عن حالته. لن
+              تتمكن من فتح نزاع بعد التأكيد.
+            </p>
+            <label className="mb-3 flex items-start gap-2">
+              <input type="checkbox" id="skip-agree" className="mt-1 h-4 w-4 accent-[#1B7F7A]" />
+              <span className="text-xs text-amber-800 dark:text-amber-300">
+                أقر بأنني استلمت المنتج وفحصته وأتحمل كامل المسؤولية
+              </span>
+            </label>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => setShowSkipConfirm(false)}
+                className="flex-1 rounded-lg border border-gray-300 py-2 text-sm text-gray-600 dark:border-slate-600 dark:text-slate-300"
+              >
+                رجوع
+              </button>
+              <button
+                type="button"
+                onClick={async () => {
+                  const checkbox = document.getElementById('skip-agree') as HTMLInputElement
+                  if (!checkbox?.checked) {
+                    alert('يجب الموافقة على الإقرار أولاً')
+                    return
+                  }
+                  setSkipLoading(true)
+                  try {
+                    const res = await fetch('/api/handover', {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({
+                        user_id: userId,
+                        session_id: session.id,
+                        auction_id: session.auction_id,
+                        action: 'confirm',
+                        skipped_qr: true,
+                      }),
+                    })
+                    if (res.ok) {
+                      onRefresh()
+                    } else {
+                      const d = (await res.json()) as { error?: string }
+                      alert(d.error || 'حدث خطأ')
+                    }
+                  } catch {
+                    alert('حدث خطأ في الاتصال')
+                  } finally {
+                    setSkipLoading(false)
+                  }
+                }}
+                disabled={skipLoading}
+                className="flex-1 rounded-lg bg-amber-500 py-2 text-sm font-bold text-white transition hover:bg-amber-600 disabled:opacity-50"
+              >
+                {skipLoading ? 'جاري التأكيد...' : 'تأكيد الاستلام بدون مسح'}
+              </button>
+            </div>
+          </div>
+        ) : null}
       </div>
     )
   }

@@ -102,4 +102,5 @@ ALTER TABLE auctions ADD COLUMN IF NOT EXISTS city TEXT DEFAULT 'الرياض';
 ALTER TABLE auctions ADD COLUMN IF NOT EXISTS min_increment NUMERIC;
 ALTER TABLE auctions ADD COLUMN IF NOT EXISTS ai_description_accepted BOOLEAN DEFAULT false;
 ALTER TABLE auction_images ADD COLUMN IF NOT EXISTS image_hash TEXT;
+ALTER TABLE handover_sessions ADD COLUMN IF NOT EXISTS skipped_qr BOOLEAN DEFAULT false;
 ```

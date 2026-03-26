@@ -638,6 +638,19 @@ export default function AuctionDetailPage() {
                 >
                   💬 تواصل مع البائع
                 </button>
+                {ended &&
+                auction.highest_bidder_id &&
+                user &&
+                (sameUserId(user.user_id, auction.seller_id) ||
+                  sameUserId(user.user_id, auction.highest_bidder_id)) ? (
+                  <button
+                    type="button"
+                    onClick={() => router.push('/handover/' + auction.id)}
+                    className="mt-3 w-full rounded-xl bg-emerald-600 py-3 font-bold text-white transition hover:bg-emerald-700 active:scale-95"
+                  >
+                    📦 بدء عملية التسليم
+                  </button>
+                ) : null}
                 <p className="mt-3 flex items-center justify-center gap-1.5 text-xs leading-relaxed text-white/95">
                   <ShieldCheck className="h-4 w-4 shrink-0" weight="fill" aria-hidden />
                   {t('auction_escrowHint')}
@@ -684,6 +697,19 @@ export default function AuctionDetailPage() {
                       className="mt-4 w-full rounded-xl border-2 border-[#1B7F7A] bg-white py-3 text-sm font-bold text-[#1B7F7A] transition-transform active:scale-95 disabled:opacity-50 dark:border-[#1B7F7A] dark:bg-slate-800 dark:text-slate-100"
                     >
                       💬 تواصل مع المشتري
+                    </button>
+                  ) : null}
+                  {ended &&
+                  auction.highest_bidder_id &&
+                  user &&
+                  (sameUserId(user.user_id, auction.seller_id) ||
+                    sameUserId(user.user_id, auction.highest_bidder_id)) ? (
+                    <button
+                      type="button"
+                      onClick={() => router.push('/handover/' + auction.id)}
+                      className="mt-4 w-full rounded-xl bg-emerald-600 py-3 font-bold text-white transition hover:bg-emerald-700 active:scale-95"
+                    >
+                      📦 بدء عملية التسليم
                     </button>
                   ) : null}
                 </div>

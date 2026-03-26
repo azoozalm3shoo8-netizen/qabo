@@ -1,6 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { playBidSound } from '@/lib/sound'
 import { supabase } from '@/lib/supabase/client'
 
 export type LiveBidRow = {
@@ -19,6 +20,7 @@ export function useRealtimeAuction(
   const [bidCount, setBidCount] = useState(initialBidCount)
   const [recentBids, setRecentBids] = useState<LiveBidRow[]>([])
   const [isLive, setIsLive] = useState(false)
+  const isFirstLoad = useRef(true)
 
   useEffect(() => {
     setCurrentBid(initialCurrentBid)
@@ -28,6 +30,7 @@ export function useRealtimeAuction(
   useEffect(() => {
     if (!auctionId) return
 
+    isFirstLoad.current = true
     let cancelled = false
 
     const fetchBids = async () => {
@@ -38,10 +41,14 @@ export function useRealtimeAuction(
         .order('created_at', { ascending: false })
         .limit(20)
 
-      if (cancelled || !data?.length) return
+      if (cancelled || !data?.length) {
+        isFirstLoad.current = false
+        return
+      }
       const top = data.reduce((m, r) => Math.max(m, Number(r.amount)), 0)
       setCurrentBid((prev) => Math.max(prev, top))
       setRecentBids(data as LiveBidRow[])
+      isFirstLoad.current = false
     }
 
     void fetchBids()
@@ -62,18 +69,8 @@ export function useRealtimeAuction(
           setCurrentBid((prev) => Math.max(prev, amt))
           setBidCount((prev) => prev + 1)
           setRecentBids((prev) => [row, ...prev].slice(0, 20))
-          try {
-            const ctx = new AudioContext()
-            const osc = ctx.createOscillator()
-            const gain = ctx.createGain()
-            osc.connect(gain)
-            gain.connect(ctx.destination)
-            osc.frequency.value = 880
-            gain.gain.value = 0.12
-            osc.start()
-            osc.stop(ctx.currentTime + 0.12)
-          } catch {
-            /* ignore */
+          if (!isFirstLoad.current) {
+            playBidSound()
           }
         }
       )
