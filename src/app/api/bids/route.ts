@@ -64,7 +64,7 @@ export async function POST(req: NextRequest) {
 
   const prevHighest = auction.highest_bidder_id as string | null
 
-  const { error: bidError } = await supabase.from('bids').insert({ auction_id, bidder_id, amount: amt })
+  const { error: bidError } = await supabase.from('bids').insert({ auction_id, listing_id: auction_id, bidder_id, amount: amt })
   if (bidError) return NextResponse.json({ error: bidError.message }, { status: 500 })
 
   const extCount = Number((auction as { extension_count?: number }).extension_count ?? 0)
