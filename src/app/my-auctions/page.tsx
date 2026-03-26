@@ -19,7 +19,7 @@ interface AuctionItem {
   highest_bidder_id: string | null
 }
 
-type Tab = 'selling' | 'bidding' | 'won'
+type Tab = 'selling' | 'bidding' | 'won' | 'favorites'
 
 export default function MyAuctionsPage() {
   const { dir } = useLocale()
@@ -61,6 +61,22 @@ export default function MyAuctionsPage() {
           .in('id', ids)
           .eq('status', 'active')
           .order('ends_at', { ascending: true })
+      } else if (tab === 'favorites') {
+        const { data: favs } = await supabase
+          .from('favorites')
+          .select('auction_id')
+          .eq('user_id', user.user_id)
+        const favIds = (favs || []).map((f: { auction_id: string }) => f.auction_id)
+        if (favIds.length === 0) {
+          setAuctions([])
+          setLoading(false)
+          return
+        }
+        query = supabase
+          .from('auctions')
+          .select('id, title, current_bid, status, ends_at, bid_count, highest_bidder_id')
+          .in('id', favIds)
+          .order('created_at', { ascending: false })
       } else {
         query = supabase
           .from('auctions')
@@ -82,6 +98,7 @@ export default function MyAuctionsPage() {
     { key: 'selling', label: 'إعلاناتي', icon: '📦' },
     { key: 'bidding', label: 'مزايداتي', icon: '🔨' },
     { key: 'won', label: 'فزت بها', icon: '🏆' },
+    { key: 'favorites', label: 'المفضلة', icon: '❤️' },
   ]
 
   const statusBadge = (s: string) => {
@@ -111,14 +128,14 @@ export default function MyAuctionsPage() {
     >
       <h1 className="mb-6 text-xl font-bold text-[#1F2937] dark:text-slate-100">مزاداتي</h1>
 
-      <div className="mb-6 flex gap-2 rounded-xl bg-gray-100 p-1 dark:bg-slate-800">
+      <div className="mb-6 grid grid-cols-2 gap-2 rounded-xl bg-gray-100 p-1 dark:bg-slate-800 sm:grid-cols-4">
         {tabs.map((tabItem) => (
           <button
             key={tabItem.key}
             type="button"
             onClick={() => setTab(tabItem.key)}
             className={
-              'flex-1 rounded-lg py-2 text-sm font-medium transition ' +
+              'rounded-lg py-2 text-sm font-medium transition ' +
               (tab === tabItem.key
                 ? 'bg-white text-[#1B7F7A] shadow dark:bg-slate-700 dark:text-slate-100'
                 : 'text-gray-500 dark:text-slate-400')
@@ -137,7 +154,9 @@ export default function MyAuctionsPage() {
             ? 'لا توجد إعلانات بعد'
             : tab === 'bidding'
               ? 'لم تزايد على شيء بعد'
-              : 'لم تفز بأي مزاد بعد'}
+              : tab === 'favorites'
+                ? 'لا توجد مفضلات بعد'
+                : 'لم تفز بأي مزاد بعد'}
         </div>
       ) : (
         <div className="space-y-3">

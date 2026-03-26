@@ -102,6 +102,7 @@ export default function AuctionDetailPage() {
     { id: string; title: string; current_bid: number; images?: string[] | null }[]
   >([])
   const [views, setViews] = useState(0)
+  const viewsBumpedForIdRef = useRef(false)
 
   const loadAuction = useCallback(async () => {
     if (!id) return
@@ -114,6 +115,19 @@ export default function AuctionDetailPage() {
     }
     setFetchError('')
     setAuction(data as AuctionDetail)
+
+    if (!viewsBumpedForIdRef.current) {
+      viewsBumpedForIdRef.current = true
+      try {
+        await supabase.rpc('increment_views', { auction_id_input: id })
+        const { data: vd } = await supabase
+          .from('auction_views')
+          .select('view_count')
+          .eq('auction_id', id)
+          .maybeSingle()
+        if (vd && typeof vd.view_count === 'number') setViews(vd.view_count)
+      } catch {}
+    }
   }, [id, t])
 
   const loadAuctionRef = useRef(loadAuction)
@@ -131,6 +145,11 @@ export default function AuctionDetailPage() {
     setLoading(true)
     loadAuction().finally(() => setLoading(false))
   }, [id, loadAuction])
+
+  useEffect(() => {
+    viewsBumpedForIdRef.current = false
+    setViews(0)
+  }, [id])
 
   useEffect(() => {
     if (!auction?.id || !user?.user_id) {
@@ -493,9 +512,30 @@ export default function AuctionDetailPage() {
 
           <div className="px-4 mt-3 space-y-3">
             <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-              <h2 className="text-xl font-bold leading-snug text-[#1F2937] dark:text-slate-100">
-                {auction.title}
-              </h2>
+              <div className="flex items-start justify-between gap-2">
+                <h1 className="min-w-0 flex-1 text-xl font-bold text-gray-900 dark:text-slate-100">
+                  {auction.title}
+                </h1>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (navigator.share) {
+                      void navigator.share({
+                        title: auction.title,
+                        text: auction.title + ' - مزاد على قبو',
+                        url: window.location.href,
+                      })
+                    } else {
+                      void navigator.clipboard.writeText(window.location.href)
+                      show('تم نسخ الرابط', 'success')
+                    }
+                  }}
+                  className="shrink-0 rounded-lg bg-gray-100 p-2 text-gray-600 transition hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-300"
+                  aria-label="مشاركة"
+                >
+                  <ShareNetwork className="h-5 w-5" weight="bold" />
+                </button>
+              </div>
               <div className="mt-3 flex flex-wrap gap-2 text-sm text-[#1F2937]">
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#F3F4F6] px-3 py-1.5 dark:bg-slate-700 dark:text-slate-100">
                   <Folder className="h-4 w-4 text-[#1B7F7A]" weight="bold" />

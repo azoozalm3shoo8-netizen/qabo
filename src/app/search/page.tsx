@@ -482,7 +482,7 @@ export default function SearchPage() {
         )}
       </div>
 
-      <BottomNav active="home" />
+      <BottomNav active="search" />
     </div>
   )
 }

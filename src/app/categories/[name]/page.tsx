@@ -64,7 +64,7 @@ export default function CategoryAuctionsPage() {
         <Link href="/categories" className="text-[#1B7F7A] font-medium">
           العودة للتصنيفات
         </Link>
-        <BottomNav active="categories" />
+        <BottomNav active="search" />
       </div>
     )
   }
@@ -139,7 +139,7 @@ export default function CategoryAuctionsPage() {
         )}
       </div>
 
-      <BottomNav active="categories" />
+      <BottomNav active="search" />
     </div>
   )
 }

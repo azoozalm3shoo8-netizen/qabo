@@ -60,7 +60,7 @@ export default function CategoriesPage() {
             ))}
       </div>
 
-      <BottomNav active="categories" />
+      <BottomNav active="search" />
     </div>
   )
 }

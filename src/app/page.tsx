@@ -392,56 +392,6 @@ export default function HomePage() {
           </div>
         )}
 
-        <div className="mt-6 px-4">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="flex items-center gap-2 text-lg font-bold text-[#1F2937] dark:text-slate-100">
-              <span className="relative flex h-2.5 w-2.5">
-                <span className="absolute inline-flex h-full w-full animate-pulse-dot rounded-full bg-red-500 opacity-75" />
-                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
-              </span>
-              {t('home_liveAuctions')}
-            </h2>
-            <Link href="/auction" className="flex items-center gap-1 text-sm font-semibold text-[#1B7F7A] dark:text-slate-200">
-              {t('common_viewAll')}
-              <ArrowLeft className="h-4 w-4" weight="bold" />
-            </Link>
-          </div>
-          {loading ? (
-            <HomeGridSkeleton />
-          ) : auctions.length === 0 ? (
-            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-              <EmptyState
-                icon={
-                  <div className="flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-[#E6F4F3] to-[#1B7F7A]/25 text-5xl dark:from-slate-700 dark:to-[#134e4a]/50">
-                    <span aria-hidden>🏛️</span>
-                  </div>
-                }
-                title={t('home_noAuctions')}
-                subtitle={t('home_noAuctionsHint')}
-                actionLabel={t('home_addAuctionCta')}
-                onAction={() => router.push('/create')}
-                actionClassName="bg-gradient-to-r from-[#1B7F7A] to-[#156661] shadow-lg hover:opacity-95"
-              />
-            </div>
-          ) : (
-            <>
-              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
-                {auctions.slice(0, 6).map((a) => (
-                  <HomeAuctionCard key={a.id} a={a} user={user} locale={locale} t={t} />
-                ))}
-              </div>
-              {auctions.length > 6 && (
-                <Link
-                  href="/auction"
-                  className="mt-4 block rounded-2xl border border-gray-200 bg-white py-3 text-center text-sm font-semibold text-[#1B7F7A] shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
-                >
-                  {t('home_showMore')} ({auctions.length - 6}+)
-                </Link>
-              )}
-            </>
-          )}
-        </div>
-
         {hotAuctions.length > 0 && (
           <section className="mt-6 px-4">
             <div className="mb-3 flex items-center justify-between">
@@ -535,6 +485,56 @@ export default function HomePage() {
             </div>
           </section>
         )}
+
+        <div className="mt-6 px-4">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="flex items-center gap-2 text-lg font-bold text-[#1F2937] dark:text-slate-100">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="absolute inline-flex h-full w-full animate-pulse-dot rounded-full bg-red-500 opacity-75" />
+                <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-red-500" />
+              </span>
+              {t('home_liveAuctions')}
+            </h2>
+            <Link href="/auction" className="flex items-center gap-1 text-sm font-semibold text-[#1B7F7A] dark:text-slate-200">
+              {t('common_viewAll')}
+              <ArrowLeft className="h-4 w-4" weight="bold" />
+            </Link>
+          </div>
+          {loading ? (
+            <HomeGridSkeleton />
+          ) : auctions.length === 0 ? (
+            <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <EmptyState
+                icon={
+                  <div className="flex h-28 w-28 items-center justify-center rounded-full bg-gradient-to-br from-[#E6F4F3] to-[#1B7F7A]/25 text-5xl dark:from-slate-700 dark:to-[#134e4a]/50">
+                    <span aria-hidden>🏛️</span>
+                  </div>
+                }
+                title={t('home_noAuctions')}
+                subtitle={t('home_noAuctionsHint')}
+                actionLabel={t('home_addAuctionCta')}
+                onAction={() => router.push('/create')}
+                actionClassName="bg-gradient-to-r from-[#1B7F7A] to-[#156661] shadow-lg hover:opacity-95"
+              />
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
+                {auctions.slice(0, 6).map((a) => (
+                  <HomeAuctionCard key={a.id} a={a} user={user} locale={locale} t={t} />
+                ))}
+              </div>
+              {auctions.length > 6 && (
+                <Link
+                  href="/auction"
+                  className="mt-4 block rounded-2xl border border-gray-200 bg-white py-3 text-center text-sm font-semibold text-[#1B7F7A] shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200"
+                >
+                  {t('home_showMore')} ({auctions.length - 6}+)
+                </Link>
+              )}
+            </>
+          )}
+        </div>
 
         <div className="mt-8 px-4">
           <h2 className="mb-3 text-lg font-bold text-[#1F2937] dark:text-slate-100">{t('home_popularCategories')}</h2>

@@ -139,7 +139,7 @@ export default function FavoritesPage() {
         )}
       </div>
 
-      <BottomNav active="favorites" />
+      <BottomNav active="myauctions" />
     </div>
   )
 }
