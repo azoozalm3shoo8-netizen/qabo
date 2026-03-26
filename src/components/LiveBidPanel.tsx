@@ -21,6 +21,7 @@ type Props = {
   onBidPlaced: () => void
   /** Pulse main bid CTA when auction ending within 1 hour */
   pulseEnding?: boolean
+  highestBidderId: string | null
 }
 
 export function LiveBidPanel({
@@ -38,7 +39,7 @@ export function LiveBidPanel({
   const { t } = useLocale()
   const { show } = useToast()
   const { currentBid, bidCount, recentBids, isLive, highestBidderId: realtimeHighestBidderId } =
-    useRealtimeAuction(auctionId, initialCurrentBid, initialBidCount)
+    useRealtimeAuction(auctionId, initialCurrentBid, initialBidCount, highestBidderId)
   const liveHighestBidder = realtimeHighestBidderId || highestBidderId
   const userHasBid = Boolean(
     userId && recentBids.some((b) => sameUserId(b.bidder_id, userId))
@@ -83,6 +84,10 @@ export function LiveBidPanel({
     if (!userId || !biddingOpen) {
       window.location.href = '/auth/login'
       return
+    }
+    if (userId && liveHighestBidder && sameUserId(userId, liveHighestBidder)) {
+      const confirmed = window.confirm('أنت بالفعل أعلى مزايد! هل تريد رفع مزايدتك؟')
+      if (!confirmed) return
     }
     setSubmitting(true)
     try {

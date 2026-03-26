@@ -14,13 +14,14 @@ export type LiveBidRow = {
 export function useRealtimeAuction(
   auctionId: string,
   initialCurrentBid: number,
-  initialBidCount: number
+  initialBidCount: number,
+  initialHighestBidderId?: string | null
 ) {
   const [currentBid, setCurrentBid] = useState(initialCurrentBid)
   const [bidCount, setBidCount] = useState(initialBidCount)
   const [recentBids, setRecentBids] = useState<LiveBidRow[]>([])
   const [isLive, setIsLive] = useState(false)
-  const [highestBidderId, setHighestBidderId] = useState<string | null>(null)
+  const [highestBidderId, setHighestBidderId] = useState<string | null>(initialHighestBidderId ?? null)
   const isFirstLoad = useRef(true)
 
   useEffect(() => {
@@ -32,7 +33,7 @@ export function useRealtimeAuction(
     if (!auctionId) return
 
     isFirstLoad.current = true
-    setHighestBidderId(null)
+    setHighestBidderId(initialHighestBidderId ?? null)
     let cancelled = false
 
     const fetchBids = async () => {
@@ -50,6 +51,11 @@ export function useRealtimeAuction(
       const top = data.reduce((m, r) => Math.max(m, Number(r.amount)), 0)
       setCurrentBid((prev) => Math.max(prev, top))
       setRecentBids(data as LiveBidRow[])
+      // حدّث أعلى مزايد من أول bid (الأحدث)
+      if (data.length > 0) {
+        const topBid = data.reduce((best, r) => (Number(r.amount) > Number(best.amount) ? r : best), data[0])
+        setHighestBidderId(topBid.bidder_id)
+      }
       isFirstLoad.current = false
     }
 
@@ -97,7 +103,7 @@ export function useRealtimeAuction(
       cancelled = true
       void supabase.removeChannel(channel)
     }
-  }, [auctionId])
+  }, [auctionId, initialHighestBidderId])
 
   return { currentBid, bidCount, recentBids, isLive, highestBidderId }
 }

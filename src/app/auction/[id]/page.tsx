@@ -564,55 +564,57 @@ export default function AuctionDetailPage() {
               </p>
             </div>
 
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-              <h3 className="mb-3 font-bold text-[#1F2937] dark:text-slate-100">{t('auction_seller')}</h3>
-              <div className="flex items-center gap-3">
-                <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#E6F4F3] text-[#1B7F7A] dark:bg-teal-900/40">
-                  <UserCircle className="h-9 w-9" weight="fill" />
-                </div>
-                <div className="min-w-0 flex-1 text-right">
-                  <p className="break-words text-base font-semibold leading-snug text-gray-900 dark:text-slate-100">
-                    {sellerDisplayName}
-                  </p>
-                  <p className="mt-0.5 flex flex-wrap items-center justify-end gap-1 text-sm text-gray-500">
-                    {auction.seller.city ? (
-                      <span className="inline-flex items-center gap-0.5">
-                        <MapPin className="h-3.5 w-3.5" />
-                        {auction.seller.city}
+            {(isSeller || (auctionClosed && isWinner)) && (
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                <h3 className="mb-3 font-bold text-[#1F2937] dark:text-slate-100">{t('auction_seller')}</h3>
+                <div className="flex items-center gap-3">
+                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#E6F4F3] text-[#1B7F7A] dark:bg-teal-900/40">
+                    <UserCircle className="h-9 w-9" weight="fill" />
+                  </div>
+                  <div className="min-w-0 flex-1 text-right">
+                    <p className="break-words text-base font-semibold leading-snug text-gray-900 dark:text-slate-100">
+                      {sellerDisplayName}
+                    </p>
+                    <p className="mt-0.5 flex flex-wrap items-center justify-end gap-1 text-sm text-gray-500">
+                      {auction.seller.city ? (
+                        <span className="inline-flex items-center gap-0.5">
+                          <MapPin className="h-3.5 w-3.5" />
+                          {auction.seller.city}
+                        </span>
+                      ) : null}
+                      {auction.seller.city ? <span>·</span> : null}
+                      <span className="inline-flex items-center gap-0.5 text-[#FF8C42]">
+                        <Star className="h-3.5 w-3.5" weight="fill" />
+                        {auction.seller.rating != null
+                          ? Number(auction.seller.rating).toFixed(1)
+                          : '—'}
                       </span>
-                    ) : null}
-                    {auction.seller.city ? <span>·</span> : null}
-                    <span className="inline-flex items-center gap-0.5 text-[#FF8C42]">
-                      <Star className="h-3.5 w-3.5" weight="fill" />
-                      {auction.seller.rating != null
-                        ? Number(auction.seller.rating).toFixed(1)
-                        : '—'}
-                    </span>
-                  </p>
+                    </p>
+                  </div>
                 </div>
+
+                {user && !isSeller && (
+                  <button
+                    type="button"
+                    onClick={() => void openSellerChat()}
+                    disabled={msgLoading}
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1B7F7A] py-3 font-bold text-[#1B7F7A] transition-transform active:scale-95 disabled:opacity-50 dark:border-[#1B7F7A] dark:text-slate-100"
+                  >
+                    <ChatCircle className="h-5 w-5" weight="bold" />
+                    {msgLoading ? t('auction_openingChat') : t('auction_chatSellerBtn')}
+                  </button>
+                )}
+
+                {!user && (
+                  <p className="mt-3 text-center text-sm text-gray-500 dark:text-slate-400">
+                    <Link href="/auth/login" className="font-semibold text-[#1B7F7A] dark:text-slate-200">
+                      {t('auction_loginChatLead')}
+                    </Link>{' '}
+                    {t('auction_loginChatTail')}
+                  </p>
+                )}
               </div>
-
-              {user && !isSeller && (
-                <button
-                  type="button"
-                  onClick={() => void openSellerChat()}
-                  disabled={msgLoading}
-                  className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1B7F7A] py-3 font-bold text-[#1B7F7A] transition-transform active:scale-95 disabled:opacity-50 dark:border-[#1B7F7A] dark:text-slate-100"
-                >
-                  <ChatCircle className="h-5 w-5" weight="bold" />
-                  {msgLoading ? t('auction_openingChat') : t('auction_chatSellerBtn')}
-                </button>
-              )}
-
-              {!user && (
-                <p className="mt-3 text-center text-sm text-gray-500 dark:text-slate-400">
-                  <Link href="/auth/login" className="font-semibold text-[#1B7F7A] dark:text-slate-200">
-                    {t('auction_loginChatLead')}
-                  </Link>{' '}
-                  {t('auction_loginChatTail')}
-                </p>
-              )}
-            </div>
+            )}
 
             {auctionClosed && isWinner && (
               <div className="rounded-2xl bg-gradient-to-br from-[#1B7F7A] to-[#134e4a] p-4 text-center text-white shadow-md">
