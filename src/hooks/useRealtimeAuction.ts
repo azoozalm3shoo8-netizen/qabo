@@ -20,6 +20,7 @@ export function useRealtimeAuction(
   const [bidCount, setBidCount] = useState(initialBidCount)
   const [recentBids, setRecentBids] = useState<LiveBidRow[]>([])
   const [isLive, setIsLive] = useState(false)
+  const [highestBidderId, setHighestBidderId] = useState<string | null>(null)
   const isFirstLoad = useRef(true)
 
   useEffect(() => {
@@ -31,6 +32,7 @@ export function useRealtimeAuction(
     if (!auctionId) return
 
     isFirstLoad.current = true
+    setHighestBidderId(null)
     let cancelled = false
 
     const fetchBids = async () => {
@@ -74,6 +76,21 @@ export function useRealtimeAuction(
           }
         }
       )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'auctions',
+          filter: `id=eq.${auctionId}`,
+        },
+        (payload) => {
+          const row = payload.new as { highest_bidder_id?: string | null }
+          if ('highest_bidder_id' in row) {
+            setHighestBidderId(row.highest_bidder_id ?? null)
+          }
+        }
+      )
       .subscribe((status) => setIsLive(status === 'SUBSCRIBED'))
 
     return () => {
@@ -82,5 +99,5 @@ export function useRealtimeAuction(
     }
   }, [auctionId])
 
-  return { currentBid, bidCount, recentBids, isLive }
+  return { currentBid, bidCount, recentBids, isLive, highestBidderId }
 }

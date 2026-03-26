@@ -5,6 +5,7 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useToast } from '@/components/Toast'
 import { useRealtimeAuction } from '@/hooks/useRealtimeAuction'
+import { sameUserId } from '@/lib/ids'
 import { useLocale } from '@/lib/locale-context'
 import { playBidSound } from '@/lib/sound'
 
@@ -32,13 +33,15 @@ export function LiveBidPanel({
   initialBidCount,
   onBidPlaced,
   pulseEnding = false,
+  highestBidderId,
 }: Props) {
   const { t } = useLocale()
   const { show } = useToast()
-  const { currentBid, bidCount, recentBids, isLive } = useRealtimeAuction(
-    auctionId,
-    initialCurrentBid,
-    initialBidCount
+  const { currentBid, bidCount, recentBids, isLive, highestBidderId: realtimeHighestBidderId } =
+    useRealtimeAuction(auctionId, initialCurrentBid, initialBidCount)
+  const liveHighestBidder = realtimeHighestBidderId || highestBidderId
+  const userHasBid = Boolean(
+    userId && recentBids.some((b) => sameUserId(b.bidder_id, userId))
   )
   const isFirstLoad = useRef(true)
   const prevBidRef = useRef(initialCurrentBid)
@@ -171,6 +174,19 @@ export function LiveBidPanel({
         <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
           {t('auction_minNext')}: {minNext.toLocaleString()} {t('common_currency')}
         </p>
+        {userId && liveHighestBidder ? (
+          sameUserId(userId, liveHighestBidder) ? (
+            <div className="mt-2 flex items-center justify-center gap-1 rounded-full bg-emerald-100 px-3 py-1.5 dark:bg-emerald-900/30">
+              <span className="text-sm">👑</span>
+              <span className="text-xs font-bold text-emerald-700 dark:text-emerald-300">أنت أعلى مزايد</span>
+            </div>
+          ) : userHasBid ? (
+            <div className="mt-2 flex items-center justify-center gap-1 rounded-full bg-red-100 px-3 py-1.5 dark:bg-red-900/30">
+              <span className="text-sm">⚠️</span>
+              <span className="text-xs font-bold text-red-700 dark:text-red-300">تم تجاوز مزايدتك</span>
+            </div>
+          ) : null
+        ) : null}
       </div>
 
       <div className="grid grid-cols-2 gap-2">
@@ -217,13 +233,22 @@ export function LiveBidPanel({
         <button
           type="button"
           disabled={submitting}
-          onClick={() => void placeBid(minNext)}
+          onClick={() => {
+            const customVal = Number(custom.replace(/,/g, ''))
+            const finalAmount =
+              custom.trim() && Number.isFinite(customVal) && customVal >= minNext ? customVal : minNext
+            void placeBid(finalAmount)
+          }}
           className={
             'flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-[#FF8C42] to-[#E87A35] py-4 text-lg font-bold text-white shadow-lg transition-transform hover:from-[#E87A35] hover:to-[#d96d2e] active:scale-[0.98] disabled:opacity-50 ' +
             (pulseEnding ? 'animate-pulse' : '')
           }
         >
-          {t('auction_bidNow')}
+          {custom.trim() &&
+          Number.isFinite(Number(custom.replace(/,/g, ''))) &&
+          Number(custom.replace(/,/g, '')) >= minNext
+            ? `زايد بـ ${Number(custom.replace(/,/g, '')).toLocaleString()} ر.س`
+            : t('auction_bidNow')}
         </button>
 
       <div className="border-t border-gray-100 pt-2 dark:border-slate-700">

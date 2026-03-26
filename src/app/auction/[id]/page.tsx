@@ -526,6 +526,7 @@ export default function AuctionDetailPage() {
               initialBidCount={Number(auction.bid_count)}
               pulseEnding={pulseBid && !isSeller}
               onBidPlaced={() => void loadAuction()}
+              highestBidderId={auction.highest_bidder_id}
             />
 
             {user && !isSeller && !auctionClosed && (
