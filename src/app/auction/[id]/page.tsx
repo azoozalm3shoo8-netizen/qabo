@@ -8,6 +8,7 @@ import {
   Folder,
   MapPin,
   Robot,
+  ShareNetwork,
   ShieldCheck,
   Star,
   UserCircle,
@@ -100,6 +101,7 @@ export default function AuctionDetailPage() {
   const [similarAuctions, setSimilarAuctions] = useState<
     { id: string; title: string; current_bid: number; images?: string[] | null }[]
   >([])
+  const [views, setViews] = useState(0)
 
   const loadAuction = useCallback(async () => {
     if (!id) return
@@ -524,6 +526,7 @@ export default function AuctionDetailPage() {
               userId={user?.user_id ?? null}
               initialCurrentBid={Number(auction.current_bid)}
               initialBidCount={Number(auction.bid_count)}
+              viewCount={views > 0 ? views : undefined}
               pulseEnding={pulseBid && !isSeller}
               onBidPlaced={() => void loadAuction()}
               highestBidderId={auction.highest_bidder_id}

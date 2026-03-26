@@ -104,3 +104,15 @@ ALTER TABLE auctions ADD COLUMN IF NOT EXISTS ai_description_accepted BOOLEAN DE
 ALTER TABLE auction_images ADD COLUMN IF NOT EXISTS image_hash TEXT;
 ALTER TABLE handover_sessions ADD COLUMN IF NOT EXISTS skipped_qr BOOLEAN DEFAULT false;
 ```
+
+## إغلاق المزادات تلقائياً (Cron)
+
+لإغلاق المزادات المنتهية تلقائياً، أعد Cron Job خارجي:
+
+1. افتح https://cron-job.org واعمل حساب مجاني
+2. أضف Job جديد:
+   - URL: `https://qabboo.com/api/cron/close-auctions`
+   - Schedule: كل دقيقة
+   - Method: GET
+   - Header: `Authorization: Bearer YOUR_CRON_SECRET`
+3. أضف CRON_SECRET في Coolify Environment Variables

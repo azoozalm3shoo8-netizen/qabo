@@ -163,7 +163,7 @@ export default function MyAuctionsPage() {
         </div>
       )}
 
-      <BottomNav active="profile" />
+      <BottomNav active="myauctions" />
     </div>
   )
 }

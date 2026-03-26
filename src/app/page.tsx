@@ -20,7 +20,7 @@ import {
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
-import { memo, useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { AppHeader } from '@/components/AppHeader'
 import { BottomNav } from '@/components/BottomNav'
@@ -35,6 +35,7 @@ import { CATEGORY_OPTIONS } from '@/lib/category-labels'
 import { useLocale } from '@/lib/locale-context'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { ACTIVE_CITY } from '@/lib/region-lock'
+import { supabase } from '@/lib/supabase/client'
 import { auctionCountdownParts } from '@/lib/time'
 import type { TranslationKey } from '@/lib/translations'
 
@@ -207,6 +208,12 @@ export default function HomePage() {
     name?: string
   } | null>(null)
   const [tick, setTick] = useState(0)
+  const [hotAuctions, setHotAuctions] = useState<
+    { id: string; title: string; current_bid: number; bid_count: number; images?: unknown; ends_at: string }[]
+  >([])
+  const [endingSoon, setEndingSoon] = useState<
+    { id: string; title: string; current_bid: number; bid_count: number; images?: unknown; ends_at: string }[]
+  >([])
 
   const buildUrl = useCallback(() => {
     const p = new URLSearchParams()
@@ -223,8 +230,29 @@ export default function HomePage() {
       const data = await res.json()
       if (Array.isArray(data)) setAuctions(data)
       else setAuctions([])
+
+      const { data: hot } = await supabase
+        .from('auctions')
+        .select('id, title, current_bid, bid_count, images, ends_at')
+        .eq('status', 'active')
+        .eq('city', ACTIVE_CITY)
+        .order('bid_count', { ascending: false })
+        .limit(6)
+      if (hot) setHotAuctions(hot)
+
+      const { data: ending } = await supabase
+        .from('auctions')
+        .select('id, title, current_bid, bid_count, images, ends_at')
+        .eq('status', 'active')
+        .eq('city', ACTIVE_CITY)
+        .gt('ends_at', new Date().toISOString())
+        .order('ends_at', { ascending: true })
+        .limit(6)
+      if (ending) setEndingSoon(ending)
     } catch {
       setAuctions([])
+      setHotAuctions([])
+      setEndingSoon([])
     } finally {
       setLoading(false)
     }
@@ -246,15 +274,6 @@ export default function HomePage() {
   }, [])
 
   void tick
-
-  const endingSoon = useMemo(() => {
-    const now = Date.now()
-    const day = 86400000
-    return auctions
-      .filter((a) => a.status === 'active' && new Date(a.ends_at).getTime() - now > 0)
-      .filter((a) => new Date(a.ends_at).getTime() - now < day)
-      .slice(0, 8)
-  }, [auctions])
 
   const popularCats = CATEGORY_OPTIONS.filter((c) => c.api !== 'الكل').slice(0, 6)
 
@@ -423,45 +442,98 @@ export default function HomePage() {
           )}
         </div>
 
-        {endingSoon.length > 0 && (
-          <div className="mt-8 px-4">
+        {hotAuctions.length > 0 && (
+          <section className="mt-6 px-4">
             <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-[#1F2937] dark:text-slate-100">{t('home_endingSoon')}</h2>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">🔥 الأكثر مزايدة</h2>
+              <Link href="/search?sort=popular" className="text-xs text-[#1B7F7A] dark:text-slate-300">
+                عرض الكل
+              </Link>
             </div>
-            <div className="-mx-1 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 scrollbar-thin">
-              {endingSoon.map((a) => {
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              {hotAuctions.map((a) => {
                 const imgs = normalizeAuctionImages(a.images)
-                const src = imgs[0]
-                const label = countdownLabel(locale, t, a.ends_at, a.status)
                 return (
                   <Link
                     key={a.id}
                     href={'/auction/' + a.id}
-                    className="w-36 shrink-0 snap-center overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800"
+                    className="min-w-[160px] max-w-[160px] shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800"
                   >
-                    <div className="relative aspect-square bg-gray-100 dark:bg-slate-700">
-                      {src ? (
-                        <img src={src} alt="" className="h-full w-full object-cover" loading="lazy" />
+                    <div className="relative h-28 w-full bg-gray-100 dark:bg-slate-700">
+                      {imgs[0] ? (
+                        <img
+                          src={imgs[0]}
+                          alt={a.title}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
                       ) : (
-                        <div className="flex h-full items-center justify-center text-gray-300">
-                          <MagnifyingGlass className="h-8 w-8" />
-                        </div>
+                        <div className="flex h-full items-center justify-center text-gray-400">📷</div>
                       )}
+                      <span className="absolute bottom-1 right-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-white">
+                        {a.bid_count} مزايدة
+                      </span>
                     </div>
                     <div className="p-2">
-                      <p className="line-clamp-2 text-[11px] font-bold leading-tight text-[#1F2937] dark:text-slate-100">
-                        {a.title}
+                      <p className="truncate text-xs font-bold text-gray-900 dark:text-slate-100">{a.title}</p>
+                      <p className="text-xs font-bold text-[#1B7F7A]">
+                        {Number(a.current_bid).toLocaleString()} ر.س
                       </p>
-                      <p className="mt-1 text-xs font-extrabold text-[#1B7F7A]">
-                        {Number(a.current_bid).toLocaleString()} {t('common_currency')}
-                      </p>
-                      <p className="mt-0.5 text-[10px] font-semibold text-red-600 dark:text-red-400">{label}</p>
                     </div>
                   </Link>
                 )
               })}
             </div>
-          </div>
+          </section>
+        )}
+
+        {endingSoon.length > 0 && (
+          <section className="mt-6 px-4">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">⏰ ينتهي قريباً</h2>
+              <Link href="/search?sort=ending" className="text-xs text-[#1B7F7A] dark:text-slate-300">
+                عرض الكل
+              </Link>
+            </div>
+            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
+              {endingSoon.map((a) => {
+                const imgs = normalizeAuctionImages(a.images)
+                const parts = auctionCountdownParts(a.ends_at, 'active')
+                const timeStr = !parts.ended
+                  ? `${String(parts.hours).padStart(2, '0')}:${String(parts.minutes).padStart(2, '0')}:${String(parts.seconds).padStart(2, '0')}`
+                  : null
+                return (
+                  <Link
+                    key={a.id}
+                    href={'/auction/' + a.id}
+                    className="min-w-[160px] max-w-[160px] shrink-0 overflow-hidden rounded-xl border border-red-200 bg-white shadow-sm dark:border-red-900/40 dark:bg-slate-800"
+                  >
+                    <div className="relative h-28 w-full bg-gray-100 dark:bg-slate-700">
+                      {imgs[0] ? (
+                        <img
+                          src={imgs[0]}
+                          alt={a.title}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-gray-400">📷</div>
+                      )}
+                      <span className="absolute bottom-1 right-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                        {timeStr ?? 'انتهى'}
+                      </span>
+                    </div>
+                    <div className="p-2">
+                      <p className="truncate text-xs font-bold text-gray-900 dark:text-slate-100">{a.title}</p>
+                      <p className="text-xs font-bold text-[#1B7F7A]">
+                        {Number(a.current_bid).toLocaleString()} ر.س
+                      </p>
+                    </div>
+                  </Link>
+                )
+              })}
+            </div>
+          </section>
         )}
 
         <div className="mt-8 px-4">

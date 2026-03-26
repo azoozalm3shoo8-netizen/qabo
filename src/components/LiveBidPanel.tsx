@@ -18,6 +18,8 @@ type Props = {
   userId: string | null
   initialCurrentBid: number
   initialBidCount: number
+  /** من جدول المشاهدات؛ يُعرض بجانب عدد المزايدات عندما > 0 */
+  viewCount?: number
   onBidPlaced: () => void
   /** Pulse main bid CTA when auction ending within 1 hour */
   pulseEnding?: boolean
@@ -32,6 +34,7 @@ export function LiveBidPanel({
   userId,
   initialCurrentBid,
   initialBidCount,
+  viewCount,
   onBidPlaced,
   pulseEnding = false,
   highestBidderId,
@@ -134,6 +137,9 @@ export function LiveBidPanel({
         <p className="mt-2 text-2xl font-extrabold text-[#1B7F7A] dark:text-slate-100">
           {Number(currentBid).toLocaleString()} {t('common_currency')}
         </p>
+        {viewCount != null && viewCount > 0 ? (
+          <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">👁 {viewCount} مشاهدة</p>
+        ) : null}
       </div>
     )
   }
@@ -154,8 +160,11 @@ export function LiveBidPanel({
             <span className="text-gray-400 dark:text-slate-500">جاري الاتصال…</span>
           )}
         </div>
-        <span className="text-xs text-gray-500 dark:text-slate-400">
-          {bidCount} {t('auction_bids')}
+        <span className="flex flex-wrap items-center justify-end gap-2 text-xs text-gray-500 dark:text-slate-400">
+          <span>
+            {bidCount} {t('auction_bids')}
+          </span>
+          {viewCount != null && viewCount > 0 ? <span>👁 {viewCount} مشاهدة</span> : null}
         </span>
       </div>
 

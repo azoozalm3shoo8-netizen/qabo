@@ -1,10 +1,10 @@
 'use client'
 
 import Link from 'next/link'
-import { FolderSimple, Heart, House, Plus, UserCircle } from '@phosphor-icons/react'
+import { FolderSimple, Gavel, Heart, House, Plus, UserCircle } from '@phosphor-icons/react'
 import { useLocale } from '@/lib/locale-context'
 
-export type BottomNavKey = 'home' | 'categories' | 'favorites' | 'profile'
+export type BottomNavKey = 'home' | 'categories' | 'myauctions' | 'favorites' | 'profile'
 
 export function BottomNav({ active }: { active: BottomNavKey }) {
   const { t, dir } = useLocale()
@@ -28,7 +28,7 @@ export function BottomNav({ active }: { active: BottomNavKey }) {
 
   return (
     <nav
-      className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-5 items-end border-t border-gray-200 bg-white/95 px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 shadow-[0_-4px_24px_rgba(0,0,0,0.08)] backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/95"
+      className="fixed bottom-0 left-0 right-0 z-40 grid grid-cols-6 items-end border-t border-gray-200 bg-white/95 px-1 pb-[max(0.5rem,env(safe-area-inset-bottom))] pt-1 shadow-[0_-4px_24px_rgba(0,0,0,0.08)] backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/95"
       aria-label={t('nav_bottomLabel')}
       dir={dir}
     >
@@ -52,6 +52,13 @@ export function BottomNav({ active }: { active: BottomNavKey }) {
           <Plus className="h-8 w-8" weight="bold" />
         </Link>
       </div>
+      <Link href="/my-auctions" className={navCls('myauctions')}>
+        {iconWrap(
+          'myauctions',
+          <Gavel className="h-6 w-6 sm:h-7 sm:w-7" weight={active === 'myauctions' ? 'fill' : 'regular'} />
+        )}
+        مزاداتي
+      </Link>
       <Link href="/favorites" className={navCls('favorites')}>
         {iconWrap(
           'favorites',
