@@ -134,34 +134,54 @@ export default function AdminPage() {
 
       {!loading && stats && (
         <div className="px-4 mt-4 space-y-4">
-          <div className="grid grid-cols-2 gap-3">
-            <div className="rounded-2xl border border-[#1B7F7A]/20 bg-[#E6F4F3] p-4">
-              <p className="text-2xl mb-1">🏷️</p>
-              <p className="text-2xl font-extrabold text-[#1B7F7A]">{stats.total_auctions}</p>
-              <p className="text-xs font-medium text-[#156661]">إجمالي المزادات</p>
-            </div>
-            <div className="bg-green-50 rounded-2xl p-4 border border-green-100">
-              <p className="text-2xl mb-1">✅</p>
-              <p className="text-2xl font-extrabold text-green-800">{stats.active_auctions}</p>
-              <p className="text-xs text-green-900 font-medium">مزادات نشطة</p>
-            </div>
-            <div className="bg-blue-50 rounded-2xl p-4 border border-blue-100">
-              <p className="text-2xl mb-1">👥</p>
-              <p className="text-2xl font-extrabold text-blue-800">{stats.total_users}</p>
-              <p className="text-xs text-blue-900 font-medium">المستخدمين</p>
-            </div>
-            <div className="bg-purple-50 rounded-2xl p-4 border border-purple-100">
-              <p className="text-2xl mb-1">📦</p>
-              <p className="text-2xl font-extrabold text-purple-800">{stats.total_orders}</p>
-              <p className="text-xs text-purple-900 font-medium">الطلبات</p>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-2xl p-4 border border-gray-100 shadow-sm">
-            <p className="text-sm text-gray-600 mb-1">إيرادات المبيعات المكتملة</p>
-            <p className="text-2xl font-extrabold text-gray-900">
-              {Number(stats.total_revenue).toLocaleString()} ر.س
-            </p>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            {[
+              {
+                label: 'إجمالي المزادات',
+                value: stats.total_auctions,
+                icon: '📊',
+                color: 'bg-blue-50 dark:bg-blue-900/20',
+              },
+              {
+                label: 'مزادات نشطة',
+                value: stats.active_auctions,
+                icon: '🟢',
+                color: 'bg-green-50 dark:bg-green-900/20',
+              },
+              {
+                label: 'مزادات منتهية',
+                value: stats.ended_auctions,
+                icon: '🔴',
+                color: 'bg-red-50 dark:bg-red-900/20',
+              },
+              {
+                label: 'المستخدمين',
+                value: stats.total_users,
+                icon: '👥',
+                color: 'bg-purple-50 dark:bg-purple-900/20',
+              },
+              {
+                label: 'الطلبات',
+                value: stats.total_orders,
+                icon: '📦',
+                color: 'bg-orange-50 dark:bg-orange-900/20',
+              },
+              {
+                label: 'الإيرادات',
+                value: (stats.total_revenue || 0).toLocaleString() + ' ر.س',
+                icon: '💰',
+                color: 'bg-emerald-50 dark:bg-emerald-900/20',
+              },
+            ].map((s) => (
+              <div
+                key={s.label}
+                className={'rounded-xl border border-gray-100 p-4 shadow-sm dark:border-slate-700 ' + s.color}
+              >
+                <span className="text-2xl">{s.icon}</span>
+                <p className="mt-2 text-2xl font-bold text-gray-900 dark:text-slate-100">{s.value}</p>
+                <p className="text-xs text-gray-500 dark:text-slate-400">{s.label}</p>
+              </div>
+            ))}
           </div>
 
           <section>

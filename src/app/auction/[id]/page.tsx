@@ -240,6 +240,26 @@ export default function AuctionDetailPage() {
   }, [auction?.id, auction?.category])
 
   useEffect(() => {
+    if (!auction) return
+    document.title = auction.title + ' — مزاد على قبو Qabboo'
+    const setMeta = (property: string, content: string) => {
+      let el = document.querySelector(`meta[property="${property}"]`) as HTMLMetaElement | null
+      if (!el) {
+        el = document.createElement('meta')
+        el.setAttribute('property', property)
+        document.head.appendChild(el)
+      }
+      el.content = content
+    }
+    setMeta('og:title', auction.title + ' — قبو')
+    setMeta('og:description', (auction.description || '').slice(0, 160))
+    setMeta('og:type', 'product')
+    const imgs = normalizeAuctionImages(auction.images)
+    if (imgs[0]) setMeta('og:image', imgs[0])
+    setMeta('og:url', typeof window !== 'undefined' ? window.location.href : '')
+  }, [auction])
+
+  useEffect(() => {
     if (!id) return
 
     let debounce: ReturnType<typeof setTimeout>

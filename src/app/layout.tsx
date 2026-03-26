@@ -20,8 +20,13 @@ const inter = Inter({
 })
 
 export const metadata: Metadata = {
-  title: 'قبو Qabboo — منصة المزادات',
-  description: 'منصة مزادات عربية في السعودية',
+  title: {
+    default: 'قبو Qabboo — منصة المزادات الذكية',
+    template: '%s — قبو Qabboo',
+  },
+  description:
+    'منصة مزادات سعودية في السعودية. زايد، اربح، واستلم بأمان. متاح حالياً في الرياض.',
+  keywords: ['مزاد', 'مزادات', 'قبو', 'Qabboo', 'auction', 'السعودية', 'الرياض', 'بيع', 'شراء'],
   manifest: '/manifest.json',
   appleWebApp: {
     capable: true,
@@ -30,6 +35,22 @@ export const metadata: Metadata = {
   },
   icons: {
     apple: '/icon-192.png',
+  },
+  openGraph: {
+    title: 'قبو Qabboo — منصة المزادات',
+    description: 'زايد على آلاف المنتجات بأسعار تنافسية.',
+    type: 'website',
+    locale: 'ar_SA',
+    siteName: 'قبو Qabboo',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'قبو Qabboo',
+    description: 'منصة مزادات عربية ذكية',
+  },
+  robots: {
+    index: true,
+    follow: true,
   },
 }
 
