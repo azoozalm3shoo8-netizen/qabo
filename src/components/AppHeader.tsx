@@ -2,10 +2,11 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { Bell, GlobeSimple, UserCircle } from '@phosphor-icons/react'
+import { Bell, GlobeSimple, ShieldStar, UserCircle } from '@phosphor-icons/react'
 import { QabbooLogo } from '@/components/QabbooLogo'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications'
+import { isAdminUserId } from '@/lib/admin-ids'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { useLocale } from '@/lib/locale-context'
 
@@ -24,6 +25,7 @@ export function AppHeader({
   const [pollUnread, setPollUnread] = useState(0)
   const [headerUserId, setHeaderUserId] = useState<string | null>(null)
   const [hasUser, setHasUser] = useState(false)
+  const [isAdmin, setIsAdmin] = useState(false)
   const [shakeBell, setShakeBell] = useState(false)
   const { realtimeUnread, resetUnread } = useRealtimeNotifications(headerUserId)
 
@@ -31,6 +33,7 @@ export function AppHeader({
     const u = readQaboUserFromStorage()
     setHeaderUserId(u?.user_id ?? null)
     setHasUser(Boolean(u?.user_id))
+    setIsAdmin(isAdminUserId(u?.user_id ?? null))
   }, [])
 
   useEffect(() => {
@@ -99,18 +102,33 @@ export function AppHeader({
         <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-2">
           {rightSlot ??
             (hasUser ? (
-              <Link
-                href="/profile"
-                className={
-                  'flex h-9 w-9 items-center justify-center rounded-full shadow-sm transition-transform active:scale-95 ' +
-                  (hero
-                    ? 'bg-white/15 text-white hover:bg-white/25'
-                    : 'bg-[#E6F4F3] text-[#1B7F7A] dark:bg-[#134e4a] dark:text-slate-100')
-                }
-                aria-label={t('header_profile')}
-              >
-                <UserCircle className="h-6 w-6" weight="fill" />
-              </Link>
+              <>
+                <Link
+                  href="/profile"
+                  className={
+                    'flex h-9 w-9 items-center justify-center rounded-full shadow-sm transition-transform active:scale-95 ' +
+                    (hero
+                      ? 'bg-white/15 text-white hover:bg-white/25'
+                      : 'bg-[#E6F4F3] text-[#1B7F7A] dark:bg-[#134e4a] dark:text-slate-100')
+                  }
+                  aria-label={t('header_profile')}
+                >
+                  <UserCircle className="h-6 w-6" weight="fill" />
+                </Link>
+                {isAdmin ? (
+                  <Link
+                    href="/admin"
+                    className={
+                      hero
+                        ? 'flex h-9 w-9 items-center justify-center rounded-full bg-[#FF8C42]/80 text-white hover:bg-[#FF8C42] transition-transform hover:scale-105 active:scale-95'
+                        : 'flex h-9 w-9 items-center justify-center rounded-full bg-[#FF8C42]/15 text-[#FF8C42] hover:bg-[#FF8C42]/25 dark:bg-[#FF8C42]/20 transition-transform hover:scale-105 active:scale-95'
+                    }
+                    aria-label="لوحة التحكم"
+                  >
+                    <ShieldStar className="h-5 w-5" weight="fill" />
+                  </Link>
+                ) : null}
+              </>
             ) : (
               <Link
                 href="/auth/login"

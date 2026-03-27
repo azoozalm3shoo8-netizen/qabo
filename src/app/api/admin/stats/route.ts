@@ -1,17 +1,16 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { isAdminUserId } from '@/lib/admin-ids'
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+import { createClient } from '@/lib/supabase-server'
+import { requirePermission } from '@/lib/admin-guard'
 
 export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get('user_id')
-  if (!isAdminUserId(userId)) {
-    return NextResponse.json({ error: 'غير مصرّح' }, { status: 403 })
-  }
+  const gate = await requirePermission(userId, 'dashboard')
+  if (!gate.ok) return gate.res
+
+  const supabase = createClient()
+
+  const sod = new Date()
+  sod.setUTCHours(0, 0, 0, 0)
 
   const [
     { count: total_auctions, error: e1 },
@@ -21,6 +20,8 @@ export async function GET(req: NextRequest) {
     { count: total_orders, error: e5 },
     { data: deliveredOrders, error: e6 },
     { data: recentAuctions, error: e7 },
+    { count: pending_reports, error: e8 },
+    { count: new_users_today, error: e9 },
   ] = await Promise.all([
     supabase.from('auctions').select('*', { count: 'exact', head: true }),
     supabase.from('auctions').select('*', { count: 'exact', head: true }).eq('status', 'active'),
@@ -33,10 +34,12 @@ export async function GET(req: NextRequest) {
       .select('id, title, status, current_bid, created_at, seller_id')
       .order('created_at', { ascending: false })
       .limit(20),
+    supabase.from('reports').select('*', { count: 'exact', head: true }).eq('status', 'pending'),
+    supabase.from('profiles').select('*', { count: 'exact', head: true }).gte('created_at', sod.toISOString()),
   ])
 
-  if (e1 || e2 || e3 || e4 || e5 || e6 || e7) {
-    const err = e1 || e2 || e3 || e4 || e5 || e6 || e7
+  if (e1 || e2 || e3 || e4 || e5 || e6 || e7 || e8 || e9) {
+    const err = e1 || e2 || e3 || e4 || e5 || e6 || e7 || e8 || e9
     return NextResponse.json({ error: err?.message || 'خطأ في الاستعلام' }, { status: 500 })
   }
 
@@ -96,6 +99,59 @@ export async function GET(req: NextRequest) {
     recent_reports = []
   }
 
+  const labels: string[] = []
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date()
+    d.setUTCDate(d.getUTCDate() - i)
+    d.setUTCHours(0, 0, 0, 0)
+    labels.push(d.toISOString().slice(0, 10))
+  }
+
+  const start7 = new Date(labels[0] + 'T00:00:00.000Z')
+  const { data: auc7 } = await supabase
+    .from('auctions')
+    .select('created_at')
+    .gte('created_at', start7.toISOString())
+
+  const dayCounts: Record<string, number> = {}
+  for (const day of labels) dayCounts[day] = 0
+  for (const row of auc7 ?? []) {
+    const day = new Date(row.created_at as string).toISOString().slice(0, 10)
+    if (day in dayCounts) dayCounts[day]++
+  }
+  const auctions_by_day = labels.map((date) => ({ date, count: dayCounts[date] ?? 0 }))
+
+  const { data: ord7 } = await supabase
+    .from('orders')
+    .select('product_amount, created_at')
+    .eq('status', 'delivered')
+    .gte('created_at', start7.toISOString())
+
+  const revByDay: Record<string, number> = {}
+  for (const day of labels) revByDay[day] = 0
+  for (const row of ord7 ?? []) {
+    const day = new Date(row.created_at as string).toISOString().slice(0, 10)
+    if (day in revByDay) revByDay[day] += Number((row as { product_amount: number }).product_amount ?? 0)
+  }
+  const revenue_by_day = labels.map((date) => ({ date, amount: Math.round((revByDay[date] ?? 0) * 100) / 100 }))
+
+  const { count: users_active_today } = await supabase
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+    .gte('updated_at', sod.toISOString())
+
+  let audit_preview: unknown[] = []
+  try {
+    const { data: aud } = await supabase
+      .from('audit_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(5)
+    audit_preview = aud ?? []
+  } catch {
+    audit_preview = []
+  }
+
   return NextResponse.json({
     total_auctions: total_auctions ?? 0,
     active_auctions: active_auctions ?? 0,
@@ -103,7 +159,13 @@ export async function GET(req: NextRequest) {
     total_users: total_users ?? 0,
     total_orders: total_orders ?? 0,
     total_revenue,
+    pending_reports: pending_reports ?? 0,
+    new_users_today: new_users_today ?? 0,
     recent_auctions: recent_auctions_enriched,
     recent_reports,
+    auctions_by_day,
+    revenue_by_day,
+    users_active_today: users_active_today ?? 0,
+    audit_preview,
   })
 }

@@ -1,12 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
-import { isAdminUserId } from '@/lib/admin-ids'
+import { createClient } from '@/lib/supabase-server'
+import { requirePermission } from '@/lib/admin-guard'
 import { isValidUserId } from '@/lib/server/require-user'
 
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
-)
+const supabase = createClient()
 
 const REASONS = new Set([
   'محتوى مخالف',
@@ -54,16 +51,18 @@ export async function POST(req: NextRequest) {
 }
 
 export async function GET(req: NextRequest) {
-  const userId = req.nextUrl.searchParams.get('user_id')
-  if (!isAdminUserId(userId)) {
-    return NextResponse.json({ error: 'غير مصرّح' }, { status: 403 })
-  }
+  const actorId = req.nextUrl.searchParams.get('user_id')
+  const gate = await requirePermission(actorId, 'reports_view')
+  if (!gate.ok) return gate.res
+
+  const statusFilter = (req.nextUrl.searchParams.get('status') || '').trim().toLowerCase()
 
   try {
-    const { data: reports, error } = await supabase
-      .from('reports')
-      .select('*')
-      .order('created_at', { ascending: false })
+    let q = supabase.from('reports').select('*').order('created_at', { ascending: false })
+    if (statusFilter && ['pending', 'reviewed', 'resolved', 'dismissed'].includes(statusFilter)) {
+      q = q.eq('status', statusFilter)
+    }
+    const { data: reports, error } = await q
 
     if (error) throw error
 
@@ -119,8 +118,11 @@ export async function PATCH(req: NextRequest) {
   }
 
   const { report_id, status, admin_notes, user_id } = body
-  if (!report_id || !isAdminUserId(user_id)) {
-    return NextResponse.json({ error: 'غير مصرّح' }, { status: 403 })
+  const gate = await requirePermission(user_id, 'reports_action')
+  if (!gate.ok) return gate.res
+
+  if (!report_id) {
+    return NextResponse.json({ error: 'بيانات ناقصة' }, { status: 400 })
   }
 
   const allowed = new Set(['pending', 'reviewed', 'resolved', 'dismissed'])

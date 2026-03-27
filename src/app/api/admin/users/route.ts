@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
   const page = Math.max(1, Number(sp.get('page')) || 1)
   const limit = Math.min(100, Math.max(1, Number(sp.get('limit')) || 20))
   const status = (sp.get('status') || 'all').toLowerCase()
+  const dateFrom = (sp.get('date_from') || '').trim()
 
   const from = (page - 1) * limit
   const to = from + limit - 1
@@ -63,6 +64,10 @@ export async function GET(req: NextRequest) {
 
   if (search.length > 0) {
     query = query.or(`full_name.ilike.%${search}%,phone.ilike.%${search}%`)
+  }
+
+  if (dateFrom) {
+    query = query.gte('created_at', dateFrom)
   }
 
   if (status === 'suspended') {
@@ -81,6 +86,9 @@ export async function GET(req: NextRequest) {
       .order('created_at', { ascending: false })
     if (search.length > 0) {
       query = query.or(`full_name.ilike.%${search}%,phone.ilike.%${search}%`)
+    }
+    if (dateFrom) {
+      query = query.gte('created_at', dateFrom)
     }
   }
 
