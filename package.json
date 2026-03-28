@@ -9,6 +9,8 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@cloudimage/360-view": "^4.9.5",
+    "@google/genai": "^1.47.0",
     "@imgly/background-removal": "^1.7.0",
     "@phosphor-icons/react": "^2.1.10",
     "@supabase/ssr": "^0.9.0",

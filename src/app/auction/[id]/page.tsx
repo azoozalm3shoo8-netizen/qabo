@@ -21,6 +21,7 @@ import { AuctionCountdown } from '@/components/AuctionCountdown'
 import { AuctionQA } from '@/components/AuctionQA'
 import { LiveBidPanel } from '@/components/LiveBidPanel'
 import { AuctionImageGallery } from '@/components/AuctionImageGallery'
+import { Video360Viewer } from '@/components/Video360Viewer'
 import { BottomNav } from '@/components/BottomNav'
 import { FavoriteHeart } from '@/components/FavoriteHeart'
 import { OrderStatusTracker } from '@/components/OrderStatusTracker'
@@ -30,6 +31,7 @@ import { normalizeAuctionImages } from '@/lib/auction-images'
 import { sameUserId } from '@/lib/ids'
 import { useLocale } from '@/lib/locale-context'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
+import type { CI360Hotspot, Defect } from '@/lib/video360-types'
 import { supabase } from '@/lib/supabase/client'
 
 type Seller = {
@@ -103,6 +105,15 @@ export default function AuctionDetailPage() {
   >([])
   const [views, setViews] = useState(0)
   const viewsBumpedForIdRef = useRef(false)
+  const [v360, setV360] = useState<{
+    frame_urls: string[]
+    annotated_urls: string[]
+    hotspots: CI360Hotspot[]
+    defects: Defect[]
+    overall_condition: string
+    condition_score: number
+    summary_ar: string
+  } | null>(null)
 
   const loadAuction = useCallback(async () => {
     if (!id) return
@@ -136,6 +147,33 @@ export default function AuctionDetailPage() {
   useEffect(() => {
     setUser(readQaboUserFromStorage())
   }, [])
+
+  useEffect(() => {
+    if (!id) return
+    let cancel = false
+    void fetch('/api/video360/view?auction_id=' + encodeURIComponent(id))
+      .then((r) => r.json())
+      .then((d: { available?: boolean; frame_urls?: string[] }) => {
+        if (cancel) return
+        if (d.available !== false && Array.isArray(d.frame_urls) && d.frame_urls.length >= 2) {
+          setV360({
+            frame_urls: d.frame_urls,
+            annotated_urls: (d as { annotated_urls?: string[] }).annotated_urls ?? [],
+            hotspots: ((d as { hotspots?: CI360Hotspot[] }).hotspots ?? []) as CI360Hotspot[],
+            defects: ((d as { defects?: Defect[] }).defects ?? []) as Defect[],
+            overall_condition: String((d as { overall_condition?: string }).overall_condition ?? 'unknown'),
+            condition_score: Number((d as { condition_score?: number }).condition_score) || 0,
+            summary_ar: String((d as { summary_ar?: string }).summary_ar ?? ''),
+          })
+        } else setV360(null)
+      })
+      .catch(() => {
+        if (!cancel) setV360(null)
+      })
+    return () => {
+      cancel = true
+    }
+  }, [id])
 
   useEffect(() => {
     if (!id) {
@@ -528,6 +566,22 @@ export default function AuctionDetailPage() {
             <div className="relative w-full px-2 pt-2">
               <AuctionImageGallery images={auction.images} />
             </div>
+            {v360 ? (
+              <div className="border-t border-gray-100 px-2 pb-4 pt-4 dark:border-slate-700">
+                <h2 className="mb-3 px-1 text-center text-sm font-bold text-[#1B7F7A] dark:text-emerald-400">
+                  عرض 360° تفاعلي
+                </h2>
+                <Video360Viewer
+                  frameUrls={v360.frame_urls}
+                  annotatedUrls={v360.annotated_urls}
+                  hotspots={v360.hotspots}
+                  defects={v360.defects}
+                  overallCondition={v360.overall_condition}
+                  conditionScore={v360.condition_score}
+                  summaryAr={v360.summary_ar}
+                />
+              </div>
+            ) : null}
           </div>
 
           <div className="px-4 mt-3 space-y-3">

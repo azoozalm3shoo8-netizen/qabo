@@ -6,6 +6,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { AIDescriptionGenerator } from '@/components/AIDescriptionGenerator'
 import { DeliveryMethodPicker } from '@/components/DeliveryMethodPicker'
 import { ImageUploader } from '@/components/ImageUploader'
+import { Video360Upload } from '@/components/Video360Upload'
 import { suggestCategoryFromTitle } from '@/lib/ai-classifier'
 import { estimatePrice } from '@/lib/ai-pricing'
 import { CATEGORY_CATALOG } from '@/lib/constants'
@@ -14,6 +15,7 @@ import { ACTIVE_CITY, isRegionActive, REGION_CITIES } from '@/lib/region-lock'
 import { computeSmartStartingBid } from '@/lib/smart-pricing'
 import { useLocale } from '@/lib/locale-context'
 import { readQaboUserFromStorage, type QaboUserLocal } from '@/lib/qabo-user'
+import type { Video360Result } from '@/lib/video360-types'
 
 const CATEGORIES = CATEGORY_CATALOG.map((c) => c.name)
 const ICONS = CATEGORY_CATALOG.map((c) => c.icon)
@@ -53,6 +55,7 @@ export default function CreatePage() {
   const [user, setUser] = useState<QaboUserLocal | null>(null)
   const [imagesUploading, setImagesUploading] = useState(false)
   const [suggestedCategory, setSuggestedCategory] = useState<string | null>(null)
+  const [video360JobId, setVideo360JobId] = useState<string | null>(null)
 
   useEffect(() => {
     const u = readQaboUserFromStorage()
@@ -254,6 +257,21 @@ export default function CreatePage() {
             onImagesChange={setImageUrls}
             onBusyChange={setImagesUploading}
           />
+          <div className="mt-6 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <h3 className="mb-1 font-bold text-[#1F2937] dark:text-slate-100">عرض 360° تفاعلي (اختياري)</h3>
+            <p className="mb-3 text-sm text-gray-500 dark:text-slate-400">
+              صوّر فيديو قصير وأنت تدور حول المنتج لإنشاء عرض تفاعلي يزيد ثقة المشترين
+            </p>
+            <Video360Upload
+              auctionId={pendingAuctionId}
+              onComplete={(r: Video360Result) => setVideo360JobId(r.job_id)}
+            />
+            {video360JobId ? (
+              <p className="mt-3 text-xs font-medium text-[#1B7F7A] dark:text-emerald-400">
+                تم حفظ مهمة الفيديو 360° وربطها بهذا المزاد (المعرّف: {video360JobId.slice(0, 8)}…)
+              </p>
+            ) : null}
+          </div>
           <div>
             <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">عنوان الإعلان</label>
             <input
