@@ -1,6 +1,6 @@
 FROM node:20-alpine AS base
 
-RUN apk add --no-cache ffmpeg
+RUN apk add --no-cache ffmpeg libc6-compat
 
 FROM base AS deps
 WORKDIR /app

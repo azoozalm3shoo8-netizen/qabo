@@ -2,7 +2,6 @@
  * إزالة الخلفية محلياً — خادم فقط (@imgly/background-removal-node)
  */
 
-import { removeBackground } from '@imgly/background-removal-node'
 import sharp from 'sharp'
 
 export interface RemoveBgResult {
@@ -84,9 +83,10 @@ export async function removeImageBackground(
   const origH = meta.height ?? 0
 
   try {
+    const { removeBackground: imglyRemoveBg } = await import('@imgly/background-removal-node')
     const prepared = await maybeDownscaleForModel(originalBuf)
     const blob = new Blob([new Uint8Array(prepared.buffer)])
-    const result = await removeBackground(blob, {
+    const result = await imglyRemoveBg(blob, {
       model: 'small',
       output: { format: 'image/png', quality: 0.9 },
     })

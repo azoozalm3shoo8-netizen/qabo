@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
-import { removeImageBackground } from '@/lib/background-remover'
 import { isValidUserId } from '@/lib/server/require-user'
 
 export const runtime = 'nodejs'
@@ -47,6 +46,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const { removeImageBackground } = await import('@/lib/background-remover')
     const buf = Buffer.from(await f.arrayBuffer())
     const t0 = Date.now()
     const result = await removeImageBackground(buf, {

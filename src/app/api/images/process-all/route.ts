@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { enhanceImage, generateResponsiveVariants } from '@/lib/image-enhancer'
-import { removeImageBackground } from '@/lib/background-remover'
 import { addTrustBadge } from '@/lib/image-trust-badge'
 import { isValidUserId } from '@/lib/server/require-user'
 
@@ -45,6 +44,13 @@ export async function POST(req: NextRequest) {
   const ts = Date.now()
   const results: unknown[] = []
 
+  type BackgroundRemover = typeof import('@/lib/background-remover')
+  let removeImageBackgroundFn: BackgroundRemover['removeImageBackground'] | undefined
+  if (removeBg) {
+    const mod = await import('@/lib/background-remover')
+    removeImageBackgroundFn = mod.removeImageBackground
+  }
+
   try {
     for (let i = 0; i < files.length; i++) {
       const f = files[i]
@@ -80,9 +86,9 @@ export async function POST(req: NextRequest) {
         }
       }
 
-      if (removeBg) {
+      if (removeBg && removeImageBackgroundFn) {
         try {
-          const rb = await removeImageBackground(buf, { addWhiteBg: true, outputFormat: 'webp' })
+          const rb = await removeImageBackgroundFn(buf, { addWhiteBg: true, outputFormat: 'webp' })
           if (rb.success) {
             buf = Buffer.from(rb.buffer)
             appliedSteps.push('remove_bg')

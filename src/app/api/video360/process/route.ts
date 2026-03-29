@@ -9,7 +9,6 @@ import { uploadFramesToStorage, uploadVideo } from '@/lib/frame-uploader'
 import { generateHotspots } from '@/lib/hotspot-generator'
 import { cleanupJob, extractFramesFromBuffer } from '@/lib/video-frame-extractor'
 import { enhanceImage } from '@/lib/image-enhancer'
-import { removeImageBackground } from '@/lib/background-remover'
 import { createClient } from '@/lib/supabase-server'
 import { isValidUserId } from '@/lib/server/require-user'
 import type { Defect } from '@/lib/video360-types'
@@ -130,6 +129,8 @@ async function runVideo360Pipeline(
       } catch {
         /* ignore */
       }
+
+      const { removeImageBackground } = await import('@/lib/background-remover')
 
       for (let i = 0; i < validFramePaths.length; i++) {
         const fp = validFramePaths[i]
