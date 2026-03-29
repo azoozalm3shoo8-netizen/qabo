@@ -16,6 +16,8 @@ const CI360Viewer = dynamic(
 export interface Video360ViewerProps {
   frameUrls: string[]
   annotatedUrls: string[]
+  /** إطارات بخلفية بيضاء بعد إزالة الخلفية */
+  nobgUrls?: string[]
   hotspots: CI360Hotspot[]
   defects: Defect[]
   overallCondition: string
@@ -28,16 +30,19 @@ function displayCondition(c: string) {
   return c
 }
 
+type ViewMode = 'original' | 'annotated' | 'nobg'
+
 export function Video360Viewer({
   frameUrls,
   annotatedUrls,
+  nobgUrls,
   hotspots,
   defects,
   overallCondition,
   conditionScore,
   summaryAr,
 }: Video360ViewerProps) {
-  const [annotatedMode, setAnnotatedMode] = useState(false)
+  const [viewMode, setViewMode] = useState<ViewMode>('original')
   const [dark, setDark] = useState(false)
   const viewerRef = useRef<CI360ViewerRef>(null)
 
@@ -52,7 +57,17 @@ export function Video360Viewer({
 
   const canAnnot =
     annotatedUrls.length >= 2 && annotatedUrls.length === frameUrls.length
-  const activeUrls = annotatedMode && canAnnot ? annotatedUrls : frameUrls
+  const canNobg =
+    !!nobgUrls &&
+    nobgUrls.length >= 2 &&
+    nobgUrls.length === frameUrls.length
+
+  const activeUrls =
+    viewMode === 'annotated' && canAnnot
+      ? annotatedUrls
+      : viewMode === 'nobg' && canNobg
+        ? nobgUrls!
+        : frameUrls
   const amountX = activeUrls.length
 
   const libHotspots: ViewerHotspot[] = useMemo(
@@ -106,13 +121,13 @@ export function Video360Viewer({
         {summaryAr ? <p className="mt-2 text-sm leading-relaxed text-[#1F2937] dark:text-slate-200">{summaryAr}</p> : null}
       </motion.div>
 
-      <div className="flex justify-center gap-2">
+      <div className="flex flex-wrap justify-center gap-2">
         <button
           type="button"
-          onClick={() => setAnnotatedMode(false)}
+          onClick={() => setViewMode('original')}
           className={
             'rounded-full px-4 py-2 text-xs font-bold transition ' +
-            (!annotatedMode
+            (viewMode === 'original'
               ? 'bg-[#1B7F7A] text-white'
               : 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-slate-200')
           }
@@ -122,16 +137,30 @@ export function Video360Viewer({
         <button
           type="button"
           disabled={!canAnnot}
-          onClick={() => setAnnotatedMode(true)}
+          onClick={() => setViewMode('annotated')}
           className={
             'rounded-full px-4 py-2 text-xs font-bold transition disabled:opacity-40 ' +
-            (annotatedMode
+            (viewMode === 'annotated'
               ? 'bg-[#FF8C42] text-white'
               : 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-slate-200')
           }
         >
           عرض العيوب
         </button>
+        {canNobg ? (
+          <button
+            type="button"
+            onClick={() => setViewMode('nobg')}
+            className={
+              'rounded-full px-4 py-2 text-xs font-bold transition ' +
+              (viewMode === 'nobg'
+                ? 'bg-slate-700 text-white dark:bg-slate-500'
+                : 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-slate-200')
+            }
+          >
+            خلفية بيضاء
+          </button>
+        ) : null}
       </div>
 
       <div className="mx-auto w-full max-w-[800px] overflow-hidden rounded-2xl border border-gray-100 bg-[#F3F4F6] dark:border-slate-700 dark:bg-slate-900">
@@ -141,11 +170,11 @@ export function Video360Viewer({
           className="w-full"
           imageListX={activeUrls}
           amountX={amountX}
-          indexZeroBase={true}
+          indexZeroBase={0}
           autoplay={true}
           speed={100}
           fullscreen={true}
-          hotspots={annotatedMode ? libHotspots : []}
+          hotspots={viewMode === 'annotated' ? libHotspots : []}
           aspectRatio="16/9"
           theme={dark ? 'dark' : 'light'}
           bottomCircle={true}

@@ -3,6 +3,7 @@
 import { CheckCircle, VideoCamera, XCircle } from '@phosphor-icons/react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { DefectConfirmation } from '@/components/DefectConfirmation'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import type { Video360Result } from '@/lib/video360-types'
 import { Video360Viewer } from '@/components/Video360Viewer'
@@ -17,6 +18,8 @@ const STATUS_AR: Record<string, string> = {
   uploading: 'جاري رفع الفيديو...',
   extracting: 'جاري استخراج الإطارات...',
   filtering: 'جاري فحص جودة الصور...',
+  enhancing: 'جاري تحسين جودة الصور...',
+  'removing-bg': 'جاري إزالة خلفية الإطارات...',
   analyzing: 'الذكاء الاصطناعي يحلل المنتج...',
   annotating: 'جاري تعليم العيوب...',
   done: 'اكتملت المعالجة!',
@@ -28,7 +31,9 @@ function statusToPercent(s: string): number {
     pending: 8,
     uploading: 18,
     extracting: 38,
-    filtering: 52,
+    filtering: 48,
+    enhancing: 56,
+    'removing-bg': 62,
     analyzing: 72,
     annotating: 88,
     done: 100,
@@ -40,6 +45,7 @@ function statusToPercent(s: string): number {
 function rowToResult(row: Record<string, unknown>, jobId: string): Video360Result {
   const frame_urls = (row.frame_urls as string[]) || []
   const annotated_urls = (row.annotated_urls as string[]) || []
+  const nobg_urls = (row.nobg_urls as string[]) || []
   const defects = (row.defects as Video360Result['defects']) || []
   const hotspots = (row.hotspots as Video360Result['hotspots']) || []
   return {
@@ -56,6 +62,7 @@ function rowToResult(row: Record<string, unknown>, jobId: string): Video360Resul
     summary: String(row.condition_summary_ar || ''),
     frame_urls,
     annotated_urls,
+    nobg_urls: nobg_urls.length ? nobg_urls : undefined,
     hotspots,
     defects,
   }
@@ -70,6 +77,9 @@ export function Video360Upload({ auctionId, onComplete }: Video360UploadProps) {
   const [doneResult, setDoneResult] = useState<Video360Result | null>(null)
   const [showViewer, setShowViewer] = useState(false)
   const [uploading, setUploading] = useState(false)
+  const [autoEnhance, setAutoEnhance] = useState(true)
+  const [removeBg, setRemoveBg] = useState(false)
+  const [defectFlowDone, setDefectFlowDone] = useState(false)
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   const stopPoll = useCallback(() => {
@@ -98,6 +108,7 @@ export function Video360Upload({ auctionId, onComplete }: Video360UploadProps) {
             stopPoll()
             const result = rowToResult(row, id)
             setDoneResult(result)
+            setDefectFlowDone(result.defects.length === 0)
             setUploading(false)
             onComplete?.(result)
           }
@@ -142,6 +153,8 @@ export function Video360Upload({ auctionId, onComplete }: Video360UploadProps) {
     const fd = new FormData()
     fd.append('file', file)
     if (auctionId) fd.append('auction_id', auctionId)
+    fd.append('enhance', autoEnhance ? 'true' : 'false')
+    fd.append('removeBg', removeBg ? 'true' : 'false')
 
     try {
       const res = await fetch('/api/video360/process?user_id=' + encodeURIComponent(u.user_id), {
@@ -180,6 +193,7 @@ export function Video360Upload({ auctionId, onComplete }: Video360UploadProps) {
     setJobId(null)
     setStatus('')
     setPercent(0)
+    setDefectFlowDone(false)
   }
 
   const r = 52
@@ -219,6 +233,26 @@ export function Video360Upload({ auctionId, onComplete }: Video360UploadProps) {
             >
               اختر فيديو
             </label>
+            <div className="mt-4 w-full max-w-sm space-y-3 text-right text-sm">
+              <label className="flex cursor-pointer items-center justify-between gap-2 rounded-xl border border-[#1B7F7A]/30 bg-[#F3F4F6]/80 px-3 py-2 dark:border-slate-600 dark:bg-slate-900/50">
+                <span className="text-[#1F2937] dark:text-slate-200">✨ تحسين جودة الصور تلقائياً</span>
+                <input
+                  type="checkbox"
+                  checked={autoEnhance}
+                  onChange={(e) => setAutoEnhance(e.target.checked)}
+                  className="h-4 w-4 accent-[#1B7F7A]"
+                />
+              </label>
+              <label className="flex cursor-pointer items-center justify-between gap-2 rounded-xl border border-[#FF8C42]/40 bg-[#F3F4F6]/80 px-3 py-2 dark:border-slate-600 dark:bg-slate-900/50">
+                <span className="text-[#1F2937] dark:text-slate-200">🖼️ إزالة خلفية الصور</span>
+                <input
+                  type="checkbox"
+                  checked={removeBg}
+                  onChange={(e) => setRemoveBg(e.target.checked)}
+                  className="h-4 w-4 accent-[#FF8C42]"
+                />
+              </label>
+            </div>
           </motion.div>
         )}
 
@@ -274,7 +308,23 @@ export function Video360Upload({ auctionId, onComplete }: Video360UploadProps) {
           </motion.div>
         )}
 
-        {doneResult && !uploading && (
+        {doneResult && !uploading && doneResult.defects.length > 0 && !defectFlowDone && jobId && (
+          <motion.div key="defects" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-2">
+            <DefectConfirmation
+              jobId={jobId}
+              auctionId={auctionId}
+              defects={doneResult.defects}
+              frameUrls={doneResult.frame_urls}
+              annotatedUrls={doneResult.annotated_urls}
+              onComplete={() => {
+                setDefectFlowDone(true)
+                setShowViewer(true)
+              }}
+            />
+          </motion.div>
+        )}
+
+        {doneResult && !uploading && (doneResult.defects.length === 0 || defectFlowDone) && (
           <motion.div
             key="ok"
             initial={{ opacity: 0, y: 6 }}
@@ -319,11 +369,12 @@ export function Video360Upload({ auctionId, onComplete }: Video360UploadProps) {
         )}
       </AnimatePresence>
 
-      {showViewer && doneResult && doneResult.frame_urls.length > 0 && (
+      {showViewer && doneResult && doneResult.frame_urls.length > 0 && (doneResult.defects.length === 0 || defectFlowDone) && (
         <div className="mt-4 border-t border-gray-100 pt-4 dark:border-slate-700">
           <Video360Viewer
             frameUrls={doneResult.frame_urls}
             annotatedUrls={doneResult.annotated_urls}
+            nobgUrls={doneResult.nobg_urls}
             hotspots={doneResult.hotspots}
             defects={doneResult.defects}
             overallCondition={doneResult.overall_condition}

@@ -12,6 +12,7 @@
     "@cloudimage/360-view": "^4.9.5",
     "@google/genai": "^1.47.0",
     "@imgly/background-removal": "^1.7.0",
+    "@imgly/background-removal-node": "^1.4.5",
     "@phosphor-icons/react": "^2.1.10",
     "@supabase/ssr": "^0.9.0",
     "@supabase/supabase-js": "^2.99.3",
@@ -22,6 +23,8 @@
     "qrcode.react": "^4.2.0",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "sharp": "^0.34.5",
+    "thumbhash": "^0.1.1",
     "uuid": "^13.0.0"
   },
   "devDependencies": {

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { after } from 'next/server'
+import fs from 'fs'
 import path from 'path'
 import { analyzeDefects, conditionForDatabase } from '@/lib/ai-defect-analyzer'
 import { annotateAllFrames } from '@/lib/frame-annotator'
@@ -7,30 +8,43 @@ import { filterFrames } from '@/lib/frame-quality-filter'
 import { uploadFramesToStorage, uploadVideo } from '@/lib/frame-uploader'
 import { generateHotspots } from '@/lib/hotspot-generator'
 import { cleanupJob, extractFramesFromBuffer } from '@/lib/video-frame-extractor'
+import { enhanceImage } from '@/lib/image-enhancer'
+import { removeImageBackground } from '@/lib/background-remover'
 import { createClient } from '@/lib/supabase-server'
 import { isValidUserId } from '@/lib/server/require-user'
 import type { Defect } from '@/lib/video360-types'
 
 export const runtime = 'nodejs'
-export const maxDuration = 120
+export const maxDuration = 180
 
 const ALLOWED_TYPES = new Set(['video/mp4', 'video/quicktime', 'video/webm'])
 const MAX_BYTES = 100 * 1024 * 1024
+
+type PipelineOpts = { enhance: boolean; removeBg: boolean }
 
 async function runVideo360Pipeline(
   jobId: string,
   auctionId: string | null,
   videoBuffer: Buffer,
-  startedAt: number
+  startedAt: number,
+  opts: PipelineOpts
 ) {
   const supabase = createClient()
 
   const fail = async (msg: string) => {
-    await supabase
-      .from('video_360_jobs')
-      .update({ status: 'failed', error_message: msg, updated_at: new Date().toISOString() })
-      .eq('id', jobId)
-    await cleanupJob(jobId)
+    try {
+      await supabase
+        .from('video_360_jobs')
+        .update({ status: 'failed', error_message: msg, updated_at: new Date().toISOString() })
+        .eq('id', jobId)
+    } catch {
+      /* ignore */
+    }
+    try {
+      await cleanupJob(jobId)
+    } catch {
+      /* ignore */
+    }
   }
 
   try {
@@ -72,6 +86,74 @@ async function runVideo360Pipeline(
       })
       .eq('id', jobId)
 
+    if (opts.enhance) {
+      try {
+        await supabase
+          .from('video_360_jobs')
+          .update({ status: 'enhancing', updated_at: new Date().toISOString() })
+          .eq('id', jobId)
+      } catch {
+        /* ignore */
+      }
+
+      for (const fp of validFramePaths) {
+        try {
+          const r = await enhanceImage(fp, {
+            sharpen: true,
+            denoise: true,
+            normalize: true,
+            adjustBrightness: true,
+            outputFormat: 'jpeg',
+            quality: 92,
+          })
+          fs.writeFileSync(fp, r.buffer)
+        } catch {
+          /* keep original frame */
+        }
+      }
+    }
+
+    let nobgPaths: string[] = []
+    if (opts.removeBg) {
+      try {
+        await supabase
+          .from('video_360_jobs')
+          .update({ status: 'removing-bg', updated_at: new Date().toISOString() })
+          .eq('id', jobId)
+      } catch {
+        /* ignore */
+      }
+
+      const nobgDir = path.join('/tmp/qabo-v360', jobId, 'nobg')
+      try {
+        fs.mkdirSync(nobgDir, { recursive: true })
+      } catch {
+        /* ignore */
+      }
+
+      for (let i = 0; i < validFramePaths.length; i++) {
+        const fp = validFramePaths[i]
+        const outPath = path.join(nobgDir, `frame_${i.toString().padStart(3, '0')}.jpg`)
+        try {
+          const buf = fs.readFileSync(fp)
+          const rb = await removeImageBackground(buf, { addWhiteBg: true })
+          if (rb.success && rb.buffer.length > 0) {
+            fs.writeFileSync(outPath, rb.buffer)
+          } else {
+            fs.copyFileSync(fp, outPath)
+          }
+          nobgPaths.push(outPath)
+        } catch {
+          try {
+            fs.copyFileSync(fp, outPath)
+            nobgPaths.push(outPath)
+          } catch {
+            /* skip frame */
+          }
+        }
+      }
+    }
+
     await supabase
       .from('video_360_jobs')
       .update({ status: 'analyzing', updated_at: new Date().toISOString() })
@@ -105,21 +187,32 @@ async function runVideo360Pipeline(
     const annotated_urls = await uploadFramesToStorage(jobId, annotatedPaths, 'annotated')
     const videoUrl = await uploadVideo(jobId, videoBuffer)
 
+    let nobg_urls: string[] = []
+    if (nobgPaths.length > 0) {
+      try {
+        nobg_urls = await uploadFramesToStorage(jobId, nobgPaths, 'nobg')
+      } catch {
+        nobg_urls = []
+      }
+    }
+
     const hotspots = generateHotspots(defects, validFramePaths.length, 800, 600)
     const processing_time_ms = Date.now() - startedAt
 
-    await supabase
-      .from('video_360_jobs')
-      .update({
-        frame_urls,
-        annotated_urls,
-        video_storage_path: videoUrl,
-        hotspots,
-        status: 'done',
-        processing_time_ms,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', jobId)
+    const updatePayload: Record<string, unknown> = {
+      frame_urls,
+      annotated_urls,
+      video_storage_path: videoUrl,
+      hotspots,
+      status: 'done',
+      processing_time_ms,
+      updated_at: new Date().toISOString(),
+    }
+    if (nobg_urls.length > 0) {
+      updatePayload.nobg_urls = nobg_urls
+    }
+
+    await supabase.from('video_360_jobs').update(updatePayload).eq('id', jobId)
 
     await cleanupJob(jobId)
   } catch (e: unknown) {
@@ -143,6 +236,11 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ success: false, error: 'تعذر قراءة البيانات' }, { status: 400 })
   }
+
+  const enhanceRaw = form.get('enhance')
+  const removeBgRaw = form.get('removeBg')
+  const enhance = enhanceRaw !== 'false' && enhanceRaw !== '0'
+  const removeBg = removeBgRaw === 'true' || removeBgRaw === '1'
 
   const file = form.get('file')
   const auctionRaw = form.get('auction_id')
@@ -197,9 +295,10 @@ export async function POST(req: NextRequest) {
   }
 
   const jobId = jobRow.id as string
+  const pipelineOpts: PipelineOpts = { enhance, removeBg }
 
   after(async () => {
-    await runVideo360Pipeline(jobId, auctionId, videoBuffer, started)
+    await runVideo360Pipeline(jobId, auctionId, videoBuffer, started, pipelineOpts)
   })
 
   return NextResponse.json({

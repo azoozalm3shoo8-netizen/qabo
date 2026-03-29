@@ -39,6 +39,8 @@ export interface Video360Result {
   summary: string
   frame_urls: string[]
   annotated_urls: string[]
+  /** روابط إطارات بخلفية بيضاء بعد إزالة الخلفية (إن وُجدت) */
+  nobg_urls?: string[]
   hotspots: CI360Hotspot[]
   defects: Defect[]
 }

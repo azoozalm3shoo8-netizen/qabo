@@ -44,16 +44,21 @@ export async function GET(req: NextRequest) {
 function jsonFromRow(data: Record<string, unknown>) {
   const frame_urls = (data.frame_urls as string[]) || []
   const annotated_urls = (data.annotated_urls as string[]) || []
+  const nobg_urls = (data.nobg_urls as string[]) || []
   return NextResponse.json({
     available: true,
     job_id: data.id,
     frame_urls,
     annotated_urls,
+    nobg_urls,
     hotspots: data.hotspots ?? [],
     defects: data.defects ?? [],
     overall_condition: data.overall_condition,
     condition_score: data.condition_score,
     summary_ar: data.condition_summary_ar,
     total_frames: frame_urls.length,
+    seller_response_status: data.seller_response_status ?? 'pending',
+    seller_confirmed_defects: data.seller_confirmed_defects ?? 0,
+    seller_denied_defects: data.seller_denied_defects ?? 0,
   })
 }
