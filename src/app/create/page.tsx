@@ -1,21 +1,63 @@
 'use client'
 
-import { Sparkle } from '@phosphor-icons/react'
+import { Armchair, Car, DeviceMobile, House, Star, TShirt, Watch } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ComponentType } from 'react'
 import { AIDescriptionGenerator } from '@/components/AIDescriptionGenerator'
+import { CategoryChecklist } from '@/components/CategoryChecklist'
 import { DeliveryMethodPicker } from '@/components/DeliveryMethodPicker'
 import { ImageUploader } from '@/components/ImageUploader'
+import { PriceEstimator } from '@/components/PriceEstimator'
 import { Video360Upload } from '@/components/Video360Upload'
 import { suggestCategoryFromTitle } from '@/lib/ai-classifier'
-import { estimatePrice } from '@/lib/ai-pricing'
+import { CATEGORY_CHECKLISTS } from '@/lib/category-checklists'
 import { CATEGORY_CATALOG } from '@/lib/constants'
 import { type DeliveryMethod } from '@/lib/delivery-options'
 import { ACTIVE_CITY, isRegionActive, REGION_CITIES } from '@/lib/region-lock'
-import { computeSmartStartingBid } from '@/lib/smart-pricing'
 import { useLocale } from '@/lib/locale-context'
 import { readQaboUserFromStorage, type QaboUserLocal } from '@/lib/qabo-user'
 import type { Video360Result } from '@/lib/video360-types'
+
+const CHECKLIST_PILL_ICONS: Record<string, ComponentType<{ className?: string; weight?: 'duotone' }>> = {
+  electronics: DeviceMobile,
+  cars: Car,
+  real_estate: House,
+  fashion: TShirt,
+  watches: Watch,
+  furniture: Armchair,
+  general: Star,
+}
+
+function catalogNameToChecklistCategoryId(name: string): string {
+  const d = CATEGORY_CATALOG.find((c) => c.name === name)
+  if (!d) return 'general'
+  const slugMap: Record<string, string> = {
+    electronics: 'electronics',
+    cars: 'cars',
+    realestate: 'real_estate',
+    fashion: 'fashion',
+    watches: 'watches',
+    furniture: 'furniture',
+    sports: 'general',
+    books: 'general',
+    other: 'general',
+  }
+  return slugMap[d.slug] ?? 'general'
+}
+
+function resolveListingCondition(
+  checklistResponses: Record<string, unknown>,
+  generalCondition: string
+): string {
+  const g = checklistResponses.gen_condition
+  if (typeof g === 'string' && g.length > 0) return g
+  const m: Record<string, string> = {
+    new: 'new_open',
+    used: 'good',
+    refurbished: 'like_new',
+  }
+  return m[generalCondition] || generalCondition
+}
 
 const CATEGORIES = CATEGORY_CATALOG.map((c) => c.name)
 const ICONS = CATEGORY_CATALOG.map((c) => c.icon)
@@ -56,6 +98,10 @@ export default function CreatePage() {
   const [imagesUploading, setImagesUploading] = useState(false)
   const [suggestedCategory, setSuggestedCategory] = useState<string | null>(null)
   const [video360JobId, setVideo360JobId] = useState<string | null>(null)
+  const [productChecklistCategoryId, setProductChecklistCategoryId] = useState('general')
+  const [checklistResponses, setChecklistResponses] = useState<Record<string, unknown>>({})
+  const [checklistFiles, setChecklistFiles] = useState<Record<string, File>>({})
+  const [originalPurchasePrice, setOriginalPurchasePrice] = useState('')
 
   useEffect(() => {
     const u = readQaboUserFromStorage()
@@ -77,21 +123,9 @@ export default function CreatePage() {
     return () => window.clearTimeout(id)
   }, [title])
 
-  const priceHint = useMemo(() => {
-    if (!category || title.trim().length < 3) return null
-    return estimatePrice(category, title)
-  }, [category, title])
-
-  const smartPricing = useMemo(() => {
-    if (!category || title.trim().length < 3 || !condition) return null
-    return computeSmartStartingBid({ category, title, condition })
-  }, [category, title, condition])
-
   useEffect(() => {
-    if (step !== 3 || !smartPricing || priceTouched) return
-    setStartPrice(String(smartPricing.suggestedStart))
-    setIncrement(String(smartPricing.suggestedIncrement))
-  }, [step, smartPricing, priceTouched])
+    setProductChecklistCategoryId(catalogNameToChecklistCategoryId(category))
+  }, [category])
 
   const goStep3 = () => {
     if (imagesUploading) {
@@ -128,6 +162,10 @@ export default function CreatePage() {
       setError('يجب أن تُرفع جميع الصور إلى التخزين قبل النشر')
       return
     }
+    if (productChecklistCategoryId === 'cars' && checklistResponses.car_inspection !== true) {
+      setError('يجب فحص السيارة في مركز معتمد قبل عرضها')
+      return
+    }
     setLoading(true)
     setError('')
     try {
@@ -159,6 +197,23 @@ export default function CreatePage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'failed')
+      if (Object.keys(checklistResponses).length > 0) {
+        const fd = new FormData()
+        fd.append('auction_id', pendingAuctionId)
+        fd.append('category_id', productChecklistCategoryId)
+        fd.append('responses', JSON.stringify(checklistResponses))
+        for (const [id, f] of Object.entries(checklistFiles)) {
+          fd.append('file_' + id, f)
+        }
+        const cr = await fetch('/api/checklist?user_id=' + encodeURIComponent(user.user_id), {
+          method: 'POST',
+          body: fd,
+        })
+        if (!cr.ok) {
+          const cd = await cr.json().catch(() => ({}))
+          console.warn('Checklist save after publish:', cd)
+        }
+      }
       setPublished(true)
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'خطأ')
@@ -308,19 +363,40 @@ export default function CreatePage() {
               </motion.div>
             ) : null}
           </div>
-          {priceHint ? (
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-start gap-2 rounded-xl border border-[#1B7F7A]/20 bg-[#E6F4F3]/50 p-3 dark:border-slate-600 dark:bg-[#134e4a]/30"
-            >
-              <Sparkle className="h-5 w-5 shrink-0 text-[#1B7F7A] dark:text-slate-200" weight="fill" />
-              <p className="text-sm font-medium text-[#1F2937] dark:text-slate-100">
-                {t('create_priceSmart')}: {priceHint.min.toLocaleString()} —{' '}
-                {priceHint.max.toLocaleString()} {t('common_currency')}
-              </p>
-            </motion.div>
-          ) : null}
+          <div>
+            <label className="mb-2 block text-sm font-medium text-gray-700 dark:text-slate-300">
+              تصنيف المنتج (تفاصيل الفحص)
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {CATEGORY_CHECKLISTS.map((c) => {
+                const Icon = CHECKLIST_PILL_ICONS[c.categoryId] || Star
+                const sel = productChecklistCategoryId === c.categoryId
+                return (
+                  <button
+                    key={c.categoryId}
+                    type="button"
+                    onClick={() => setProductChecklistCategoryId(c.categoryId)}
+                    className={
+                      'flex items-center gap-2 rounded-full border-2 px-3 py-2 text-xs font-bold transition ' +
+                      (sel
+                        ? 'text-white shadow-sm'
+                        : 'border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-800')
+                    }
+                    style={
+                      sel
+                        ? { backgroundColor: c.color, borderColor: c.color }
+                        : { borderColor: `${c.color}55` }
+                    }
+                  >
+                    <Icon className="h-4 w-4" style={{ color: sel ? '#fff' : c.color }} weight="duotone" />
+                    <span className={sel ? 'text-white' : 'text-[#1F2937] dark:text-slate-200'}>
+                      {c.categoryName_ar}
+                    </span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
           <div>
             <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">الحالة</label>
             <div className="flex gap-3">
@@ -344,6 +420,22 @@ export default function CreatePage() {
                 </button>
               ))}
             </div>
+          </div>
+          <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <h3 className="mb-2 font-bold text-[#1F2937] dark:text-slate-100">📋 تفاصيل حالة المنتج</h3>
+            <p className="mb-3 text-xs text-gray-500 dark:text-slate-400">
+              أكمل الأسئلة حسب فئة المنتج — تُحفظ مع الإعلان عند النشر.
+            </p>
+            <CategoryChecklist
+              key={productChecklistCategoryId}
+              categoryId={productChecklistCategoryId}
+              auctionId={pendingAuctionId}
+              skipApiSave
+              onComplete={(responses, files) => {
+                setChecklistResponses(responses)
+                setChecklistFiles(files)
+              }}
+            />
           </div>
           <AIDescriptionGenerator
             title={title}
@@ -395,21 +487,28 @@ export default function CreatePage() {
       {step === 3 && (
         <div className="space-y-4 px-4">
           <h2 className="font-bold text-gray-900 dark:text-slate-100">التسعير والمدة</h2>
-          {smartPricing ? (
-            <motion.div
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="flex items-start gap-2 rounded-xl border border-[#1B7F7A]/20 bg-[#E6F4F3]/50 p-3 dark:border-slate-600 dark:bg-[#134e4a]/30"
-            >
-              <span className="text-xl" aria-hidden>
-                🤖
-              </span>
-              <p className="text-sm font-medium text-[#1F2937] dark:text-slate-100">
-                سعر البدء المقترح: {smartPricing.suggestedStart.toLocaleString()} {t('common_currency')} — أقل
-                زيادة مزايدة مقترحة: {smartPricing.suggestedIncrement.toLocaleString()}
-              </p>
-            </motion.div>
-          ) : null}
+          <div>
+            <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">
+              سعر الشراء الأصلي (ر.س) — لتقدير سعر البيع
+            </label>
+            <input
+              type="number"
+              value={originalPurchasePrice}
+              onChange={(e) => setOriginalPurchasePrice(e.target.value)}
+              placeholder="0"
+              min={0}
+              className={fieldClass}
+            />
+          </div>
+          <PriceEstimator
+            originalPrice={Number(originalPurchasePrice) || 0}
+            condition={resolveListingCondition(checklistResponses, condition)}
+            listingStartPrice={Number(startPrice) || undefined}
+            onPriceSelect={(p) => {
+              setPriceTouched(true)
+              setStartPrice(String(p))
+            }}
+          />
           <div>
             <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">سعر البداية (ر.س)</label>
             <input

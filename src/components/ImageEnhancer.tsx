@@ -139,6 +139,7 @@ export function ImageEnhancer({
       setDone(out)
       setPerFileStatus(files.map(() => true))
     } catch (e) {
+      console.error('Image processing error:', e)
       setErr(e instanceof Error ? e.message : 'خطأ')
     } finally {
       if (timerRef.current) {

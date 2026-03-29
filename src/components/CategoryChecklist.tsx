@@ -111,6 +111,8 @@ export interface CategoryChecklistProps {
   categoryId: string
   /** مطلوب لحفظ القائمة عبر API */
   auctionId?: string
+  /** عند true: التحقق فقط واستدعاء onComplete دون POST (لدمج الإرسال مع نشر المزاد) */
+  skipApiSave?: boolean
   onComplete?: (responses: Record<string, unknown>, files: Record<string, File>) => void
   initialValues?: Record<string, unknown>
   readOnly?: boolean
@@ -119,6 +121,7 @@ export interface CategoryChecklistProps {
 export function CategoryChecklist({
   categoryId,
   auctionId,
+  skipApiSave,
   onComplete,
   initialValues,
   readOnly,
@@ -154,6 +157,10 @@ export function CategoryChecklist({
     const v = validateChecklistResponses(checklist, responses, files)
     if (!v.valid) {
       setErr(v.errors)
+      return
+    }
+    if (skipApiSave) {
+      onComplete?.(responses, files)
       return
     }
     const u = readQaboUserFromStorage()
@@ -244,7 +251,7 @@ export function CategoryChecklist({
           onClick={() => void save()}
           className="w-full rounded-xl bg-[#1B7F7A] py-3 text-sm font-bold text-white disabled:opacity-40"
         >
-          {saving ? 'جاري الحفظ…' : 'حفظ القائمة'}
+          {saving ? 'جاري الحفظ…' : skipApiSave ? 'تأكيد تفاصيل الحالة' : 'حفظ القائمة'}
         </button>
       ) : null}
     </div>

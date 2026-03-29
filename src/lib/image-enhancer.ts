@@ -181,6 +181,20 @@ export async function enhanceImage(input: Buffer | string, options?: EnhanceOpti
   }
 }
 
+/** تحسين خفيف لفريمات فيديو 360° — بدون normalize/clahe/gamma التي تفسد ألوان JPEG من FFmpeg */
+export async function enhanceVideoFrame(input: Buffer | string): Promise<EnhanceResult> {
+  return enhanceImage(input, {
+    sharpen: true,
+    denoise: true,
+    normalize: false,
+    adjustBrightness: false,
+    autoWhiteBalance: false,
+    upscale: false,
+    quality: 92,
+    outputFormat: 'jpeg',
+  })
+}
+
 export async function enhanceMultipleImages(
   inputs: (Buffer | string)[],
   options?: EnhanceOptions,

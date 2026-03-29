@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
-import { enhanceImage, generateResponsiveVariants } from '@/lib/image-enhancer'
 import { addTrustBadge } from '@/lib/image-trust-badge'
 import { isValidUserId } from '@/lib/server/require-user'
 
@@ -51,6 +50,9 @@ export async function POST(req: NextRequest) {
     removeImageBackgroundFn = mod.removeImageBackground
   }
 
+  type ImageEnhancerMod = typeof import('@/lib/image-enhancer')
+  const imageEnhancerMod: ImageEnhancerMod = await import('@/lib/image-enhancer')
+
   try {
     for (let i = 0; i < files.length; i++) {
       const f = files[i]
@@ -71,7 +73,7 @@ export async function POST(req: NextRequest) {
 
       if (enhance) {
         try {
-          const er = await enhanceImage(buf, {
+          const er = await imageEnhancerMod.enhanceImage(buf, {
             outputFormat: outputFormat as 'jpeg' | 'webp' | 'avif',
             quality: 88,
             upscale,
@@ -146,7 +148,7 @@ export async function POST(req: NextRequest) {
 
       let variants: { width: number; url: string }[] = []
       try {
-        const vars = await generateResponsiveVariants(buf)
+        const vars = await imageEnhancerMod.generateResponsiveVariants(buf)
         for (let vi = 0; vi < vars.length; vi++) {
           const v = vars[vi]
           const vp = `processed/${userId}/${ts}_${i}_w${v.width}.webp`

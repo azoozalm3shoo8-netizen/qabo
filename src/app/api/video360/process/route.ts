@@ -8,7 +8,6 @@ import { filterFrames } from '@/lib/frame-quality-filter'
 import { uploadFramesToStorage, uploadVideo } from '@/lib/frame-uploader'
 import { generateHotspots } from '@/lib/hotspot-generator'
 import { cleanupJob, extractFramesFromBuffer } from '@/lib/video-frame-extractor'
-import { enhanceImage } from '@/lib/image-enhancer'
 import { createClient } from '@/lib/supabase-server'
 import { isValidUserId } from '@/lib/server/require-user'
 import type { Defect } from '@/lib/video360-types'
@@ -95,16 +94,10 @@ async function runVideo360Pipeline(
         /* ignore */
       }
 
+      const { enhanceVideoFrame } = await import('@/lib/image-enhancer')
       for (const fp of validFramePaths) {
         try {
-          const r = await enhanceImage(fp, {
-            sharpen: true,
-            denoise: true,
-            normalize: true,
-            adjustBrightness: true,
-            outputFormat: 'jpeg',
-            quality: 92,
-          })
+          const r = await enhanceVideoFrame(fp)
           fs.writeFileSync(fp, r.buffer)
         } catch {
           /* keep original frame */
@@ -240,8 +233,8 @@ export async function POST(req: NextRequest) {
 
   const enhanceRaw = form.get('enhance')
   const removeBgRaw = form.get('removeBg')
-  const enhance = enhanceRaw !== 'false' && enhanceRaw !== '0'
-  const removeBg = removeBgRaw === 'true' || removeBgRaw === '1'
+  const enhance = enhanceRaw === 'true'
+  const removeBg = removeBgRaw === 'true'
 
   const file = form.get('file')
   const auctionRaw = form.get('auction_id')

@@ -83,10 +83,10 @@ export async function removeImageBackground(
   const origH = meta.height ?? 0
 
   try {
-    const { removeBackground: imglyRemoveBg } = await import('@imgly/background-removal-node')
+    const { removeBackground } = await import('@imgly/background-removal-node')
     const prepared = await maybeDownscaleForModel(originalBuf)
     const blob = new Blob([new Uint8Array(prepared.buffer)])
-    const result = await imglyRemoveBg(blob, {
+    const result = await removeBackground(blob, {
       model: 'small',
       output: { format: 'image/png', quality: 0.9 },
     })

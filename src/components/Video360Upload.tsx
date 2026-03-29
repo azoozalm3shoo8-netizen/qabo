@@ -153,8 +153,8 @@ export function Video360Upload({ auctionId, onComplete }: Video360UploadProps) {
     const fd = new FormData()
     fd.append('file', file)
     if (auctionId) fd.append('auction_id', auctionId)
-    fd.append('enhance', autoEnhance ? 'true' : 'false')
-    fd.append('removeBg', removeBg ? 'true' : 'false')
+    fd.append('enhance', String(autoEnhance))
+    fd.append('removeBg', String(removeBg))
 
     try {
       const res = await fetch('/api/video360/process?user_id=' + encodeURIComponent(u.user_id), {
