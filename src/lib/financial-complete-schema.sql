@@ -1,5 +1,7 @@
--- تشغيل يدوي في Supabase SQL Editor — إكمال الإعدادات المالية والفترة المجانية
--- لا يحذف جداولاً موجودة؛ يضيف مفاتيح platform_settings وحقولاً اختيارية للمزادات عند الحاجة.
+-- ⚠️ المخطط الكامل (جداول + RLS + بيانات) موجود في:
+--    src/lib/db/schema/financial-complete-schema.sql
+--
+-- هذا الملف يبقى لترقيات تدريجية فقط (أعمدة إضافية) على قواعد موجودة مسبقاً.
 
 -- أعمدة اختيارية للمزادات (رسوم الإدراج — تُستخدم عند تفعيل المنطق في API)
 ALTER TABLE IF EXISTS auctions ADD COLUMN IF NOT EXISTS reserve_fee_halalas BIGINT DEFAULT 0;
