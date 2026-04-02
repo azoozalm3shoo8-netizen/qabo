@@ -55,16 +55,27 @@ export function HowAuctionWorks() {
       <Section title="العمولة" id="commission">
         {free?.isActive ? (
           <div className="mb-4 rounded-xl bg-green-50 p-4 text-sm dark:bg-green-900/20">
-            <p className="font-bold">🎉 خبر سار! فترة الإطلاق المجانية</p>
+            <p className="font-bold">🎉 خبر سار! المنصة حالياً في فترة الإطلاق المجانية</p>
             <p className="mt-1">
-              لا عمولة على البائع ولا رسوم حماية على المشتري حتى{' '}
+              لا عمولة على البائع ولا رسوم على المشتري حتى{' '}
               {free.endsAt
                 ? new Date(free.endsAt).toLocaleDateString('ar-SA', { dateStyle: 'long' })
                 : 'تاريخ الإعلان'}
               .
             </p>
-            <p className="mt-2 text-xs">بعد انتهاء الفترة المجانية:</p>
+            <p className="mt-3 font-medium">
+              سجّل الآن واستفد من الفترة المجانية!{' '}
+              <Link href="/auth/register" className="text-[#1B7F7A] underline">
+                إنشاء حساب
+              </Link>
+            </p>
+            <p className="mt-2 text-xs font-semibold text-gray-700 dark:text-slate-300">
+              بعد انتهاء الفترة المجانية، ستُطبَّق العمولة التالية:
+            </p>
           </div>
+        ) : null}
+        {!free?.isActive ? (
+          <p className="mb-3 text-sm text-gray-700 dark:text-slate-300">شرائح العمولة الحالية:</p>
         ) : null}
         <CommissionTiersDisplay freeInfo={free} />
       </Section>

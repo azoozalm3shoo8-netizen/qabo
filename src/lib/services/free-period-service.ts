@@ -1,3 +1,4 @@
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { createClient } from '@/lib/supabase-server'
 import type { CommissionCalculation } from '@/lib/types/financial-types'
 import { calculateCommissionFromDatabase } from '@/lib/services/commission-core'
@@ -132,30 +133,53 @@ export async function getFreePeriodInfo(): Promise<{
   }
 }
 
+export function buildFreePeriodCommissionCalculation(
+  salePrice: number,
+  endsAt: string | null
+): CommissionCalculation {
+  return {
+    salePrice,
+    tierName: 'free_period',
+    sellerRate: 0,
+    sellerCommission: 0,
+    buyerProtection: 0,
+    totalBuyerCharge: salePrice,
+    sellerPayout: salePrice,
+    platformRevenue: 0,
+    breakdown: [
+      { label_ar: 'سعر المنتج', amount: salePrice, who_pays: 'buyer' },
+      { label_ar: 'عمولة البائع (مجانية حالياً! 🎉)', amount: 0, who_pays: 'seller' },
+      { label_ar: 'رسم حماية المشتري (مجاني حالياً! 🎉)', amount: 0, who_pays: 'buyer' },
+    ],
+    freePeriod: true,
+    freePeriodEndsAt: endsAt,
+  }
+}
+
+/** عمولة الفترة المجانية الحالية — يُفترض أنّ `isFreePeriodActive()` قد تحقق في `calculateCommission` */
 export async function getEffectiveCommissionRates(
   salePrice: number,
-  sellerId: string,
-  options?: { isProSubscriber?: boolean }
+  _sellerId: string,
+  _options?: { isProSubscriber?: boolean }
 ): Promise<CommissionCalculation> {
-  if (await isFreePeriodActive()) {
-    const info = await getFreePeriodInfo()
-    return {
-      salePrice,
-      tierName: 'free_period',
-      sellerRate: 0,
-      sellerCommission: 0,
-      buyerProtection: 0,
-      totalBuyerCharge: salePrice,
-      sellerPayout: salePrice,
-      platformRevenue: 0,
-      breakdown: [
-        { label_ar: 'سعر المنتج', amount: salePrice, who_pays: 'buyer' },
-        { label_ar: 'عمولة البائع (مجانية حالياً! 🎉)', amount: 0, who_pays: 'seller' },
-        { label_ar: 'رسم حماية المشتري (مجاني حالياً! 🎉)', amount: 0, who_pays: 'buyer' },
-      ],
-      freePeriod: true,
-      freePeriodEndsAt: info.endsAt,
-    }
+  const info = await getFreePeriodInfo()
+  return buildFreePeriodCommissionCalculation(salePrice, info.endsAt)
+}
+
+export async function incrementFreePeriodAnalytics(
+  supabase: SupabaseClient,
+  delta: { free_deals_count?: number; moyasar_fees_absorbed_halalas?: number }
+): Promise<void> {
+  const { data: row } = await supabase.from('platform_settings').select('value').eq('key', 'free_period_analytics').maybeSingle()
+  const raw = row?.value as { value?: { free_deals_count?: number; moyasar_fees_absorbed_halalas?: number } } | undefined
+  const cur = raw?.value ?? { free_deals_count: 0, moyasar_fees_absorbed_halalas: 0 }
+  const next = {
+    free_deals_count: (cur.free_deals_count ?? 0) + (delta.free_deals_count ?? 0),
+    moyasar_fees_absorbed_halalas:
+      (cur.moyasar_fees_absorbed_halalas ?? 0) + (delta.moyasar_fees_absorbed_halalas ?? 0),
   }
-  return calculateCommissionFromDatabase(salePrice, sellerId, options)
+  await supabase.from('platform_settings').upsert(
+    { key: 'free_period_analytics', value: { value: next } },
+    { onConflict: 'key' }
+  )
 }

@@ -28,7 +28,13 @@ export function SellerProfileCard({
       dir="rtl"
       className="space-y-4 rounded-2xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
     >
-      <SellerTrustBadge level={profile.trust_level} sales={profile.successful_sales} rate={rate} />
+      <SellerTrustBadge
+        trustScore={profile.trust_score}
+        trustLevel={profile.trust_level}
+        successfulSales={profile.successful_sales}
+        totalSales={profile.successful_sales + profile.cancelled_sales}
+        successRate={rate}
+      />
       <div>
         <p className="text-sm text-gray-600">نقاط الثقة</p>
         <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-slate-700">

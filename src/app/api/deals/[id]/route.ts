@@ -20,7 +20,12 @@ export async function GET(
 
   let breakdown
   try {
-    breakdown = await calculateCommission(deal.sale_price, deal.seller_id)
+    breakdown = await calculateCommission(deal.sale_price, deal.seller_id, {
+      deal: {
+        free_period: deal.free_period as boolean | null | undefined,
+        platform_metadata: deal.platform_metadata as Record<string, unknown> | null | undefined,
+      },
+    })
   } catch {
     breakdown = null
   }

@@ -3,6 +3,7 @@
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Bell, GlobeSimple, ShieldStar, UserCircle } from '@phosphor-icons/react'
+import { FreePeriodBanner } from '@/components/info/FreePeriodBanner'
 import { QabbooLogo } from '@/components/QabbooLogo'
 import { ThemeToggle } from '@/components/ThemeToggle'
 import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications'
@@ -73,6 +74,7 @@ export function AppHeader({
       : 'bg-gray-100 text-[#1B7F7A] dark:bg-slate-700 dark:text-slate-100')
 
   return (
+    <>
     <header
       className={
         'sticky top-0 z-50 -mx-4 -mt-2 mb-3 px-4 pb-3 pt-2 backdrop-blur-md ' +
@@ -167,5 +169,7 @@ export function AppHeader({
         </div>
       </div>
     </header>
+    <FreePeriodBanner />
+    </>
   )
 }

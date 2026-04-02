@@ -4,7 +4,7 @@ import { insertFinancialNotification } from '@/lib/server/financial-notification
 import { handleAuctionEnd } from '@/lib/services/bidding-service'
 import { autoAcceptExpiredInspections } from '@/lib/services/deal-service'
 import { autoEscalateExpiredLevel1 } from '@/lib/services/dispute-service'
-import { getFreePeriodInfo, isFreePeriodActive } from '@/lib/services/free-period-service'
+import { getFreePeriodInfo } from '@/lib/services/free-period-service'
 
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET
@@ -32,28 +32,27 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  const fp = await isFreePeriodActive()
-  if (fp) {
-    const info = await getFreePeriodInfo()
+  const info = await getFreePeriodInfo()
+  const { data: setRow } = await supabase
+    .from('platform_settings')
+    .select('value')
+    .eq('key', 'free_period_cron_notifications')
+    .maybeSingle()
+  const sent = (setRow?.value as { sent?: Record<string, boolean> } | undefined)?.sent ?? {}
+
+  const { data: minTier } = await supabase
+    .from('commission_tiers')
+    .select('seller_rate')
+    .eq('is_active', true)
+    .order('seller_rate', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+  const minPct = minTier?.seller_rate != null ? (Number(minTier.seller_rate) * 100).toFixed(0) : '2'
+
+  if (info.isActive && info.daysRemaining != null) {
     const days = info.daysRemaining
-    const { data: setRow } = await supabase
-      .from('platform_settings')
-      .select('value')
-      .eq('key', 'free_period_cron_notifications')
-      .maybeSingle()
-    const sent =
-      (setRow?.value as { sent?: Record<string, boolean> } | undefined)?.sent ?? {}
-    const stages = ['14', '7', '1', '0'] as const
     const target =
-      days != null && days <= 14 && days >= 8
-        ? '14'
-        : days != null && days <= 7 && days >= 2
-          ? '7'
-          : days === 1
-            ? '1'
-            : days === 0
-              ? '0'
-              : null
+      days <= 14 && days >= 8 ? '14' : days <= 7 && days >= 2 ? '7' : days === 1 ? '1' : null
 
     if (target && !sent[target]) {
       const { data: users } = await supabase.from('profiles').select('id').limit(5000)
@@ -62,13 +61,8 @@ export async function GET(req: NextRequest) {
           ? 'الفترة المجانية تنتهي خلال أسبوعين'
           : target === '7'
             ? 'الفترة المجانية تنتهي خلال أسبوع'
-            : target === '1'
-              ? 'آخر يوم في الفترة المجانية!'
-              : 'انتهت الفترة المجانية'
-      const body =
-        target === '0'
-          ? 'شكراً لثقتكم! تُفعَّل العمولة وفق الشروط.'
-          : info.messageAr || 'تنبيه الفترة المجانية'
+            : 'آخر يوم في الفترة المجانية!'
+      const body = info.messageAr || 'تنبيه الفترة المجانية'
 
       for (const u of users ?? []) {
         await insertFinancialNotification(supabase, {
@@ -81,6 +75,28 @@ export async function GET(req: NextRequest) {
       }
 
       sent[target] = true
+      await supabase
+        .from('platform_settings')
+        .upsert({ key: 'free_period_cron_notifications', value: { sent } }, { onConflict: 'key' })
+    }
+  }
+
+  if (!info.isActive && info.endsAt) {
+    const ended = new Date(info.endsAt).getTime() <= Date.now()
+    if (ended && !sent['ended']) {
+      const { data: users } = await supabase.from('profiles').select('id').limit(5000)
+      const title = 'الفترة المجانية انتهت — شكراً لثقتكم!'
+      const body = `تُفعَّل العمولة وفق الشروط. أقل عمولة للبائع تبدأ من حوالي ${minPct}٪.`
+      for (const u of users ?? []) {
+        await insertFinancialNotification(supabase, {
+          user_id: u.id as string,
+          type: 'free_period',
+          title,
+          body,
+          data: { stage: 'ended' },
+        })
+      }
+      sent['ended'] = true
       await supabase
         .from('platform_settings')
         .upsert({ key: 'free_period_cron_notifications', value: { sent } }, { onConflict: 'key' })

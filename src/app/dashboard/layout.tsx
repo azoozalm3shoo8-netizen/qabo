@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import type { ReactNode } from 'react'
+import { FreePeriodBanner } from '@/components/info/FreePeriodBanner'
 
 const links = [
   { href: '/dashboard', label: 'الرئيسية' },
@@ -13,6 +14,7 @@ const links = [
 export default function DashboardLayout({ children }: { children: ReactNode }) {
   return (
     <div dir="rtl" className="min-h-screen bg-[#F3F4F6] dark:bg-slate-950">
+      <FreePeriodBanner />
       <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 md:flex-row-reverse">
         <aside className="w-full shrink-0 space-y-2 md:w-52">
           {links.map((l) => (

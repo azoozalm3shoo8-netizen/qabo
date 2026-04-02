@@ -1,4 +1,5 @@
 import { CommissionTiersDisplay } from '@/components/auction/CommissionTiersDisplay'
+import { SellerGuide } from '@/components/seller/SellerGuide'
 import { SellerProfileCard } from '@/components/seller/SellerProfileCard'
 
 export default function DashboardSellerPage() {
@@ -12,6 +13,7 @@ export default function DashboardSellerPage() {
   }
   return (
     <div className="space-y-6">
+      <SellerGuide />
       <h1 className="text-xl font-bold text-[#1B7F7A]">ملف البائع</h1>
       <SellerProfileCard profile={demo} />
       <CommissionTiersDisplay />

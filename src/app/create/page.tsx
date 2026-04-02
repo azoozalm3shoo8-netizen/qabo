@@ -102,6 +102,16 @@ export default function CreatePage() {
   const [checklistResponses, setChecklistResponses] = useState<Record<string, unknown>>({})
   const [checklistFiles, setChecklistFiles] = useState<Record<string, File>>({})
   const [originalPurchasePrice, setOriginalPurchasePrice] = useState('')
+  const [freePeriod, setFreePeriod] = useState<{ isActive: boolean; endsAt: string | null } | null>(null)
+
+  useEffect(() => {
+    void fetch('/api/platform/free-period')
+      .then((r) => r.json())
+      .then((j: { isActive?: boolean; endsAt?: string | null }) =>
+        setFreePeriod({ isActive: Boolean(j.isActive), endsAt: j.endsAt ?? null })
+      )
+      .catch(() => setFreePeriod(null))
+  }, [])
 
   useEffect(() => {
     const u = readQaboUserFromStorage()
@@ -570,6 +580,35 @@ export default function CreatePage() {
               ))}
             </div>
           </div>
+
+          <div className="rounded-2xl border border-gray-200 bg-white p-4 text-sm dark:border-slate-700 dark:bg-slate-800">
+            <h3 className="mb-2 font-bold text-[#1B7F7A]">ملخص الرسوم (تقدير)</h3>
+            <p className="text-gray-700 dark:text-slate-300">
+              تأمين جدية البائع: 100 ر.س (محجوز ويُسترد بعد البيع الناجح — هذا ليس رسماً)
+            </p>
+            {freePeriod?.isActive ? (
+              <>
+                <p className="mt-2 text-gray-700 dark:text-slate-300">
+                  عمولة البائع: مجانية! 🎉 (عادةً حسب الشريحة من سعر الفوز)
+                </p>
+                <p className="mt-1 text-gray-700 dark:text-slate-300">
+                  رسم الحد الأدنى للإدراج: مجاني! 🎉 (عادةً 25 ر.س)
+                </p>
+                <div className="mt-3 rounded-xl bg-emerald-50 p-3 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-100">
+                  أنت في الفترة المجانية — لا رسوم حتى{' '}
+                  {freePeriod.endsAt
+                    ? new Date(freePeriod.endsAt).toLocaleDateString('ar-SA', { dateStyle: 'long' })
+                    : 'تاريخ الإعلان'}
+                </div>
+              </>
+            ) : (
+              <p className="mt-2 text-gray-600 dark:text-slate-400">
+                تُطبَّق عمولة البائع ورسم الإدراج وفق الشروط المعروضة في «كيف يعمل المزاد» والشريحة المناسبة لسعر
+                الفوز.
+              </p>
+            )}
+          </div>
+
           <div className="flex gap-3">
             <button
               type="button"

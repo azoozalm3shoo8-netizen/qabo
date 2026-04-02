@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { closeExpiredAuctions } from '@/lib/server/close-expired-auctions'
 import { isValidUserId, unauthorized } from '@/lib/server/require-user'
+import { isFreePeriodActive } from '@/lib/services/free-period-service'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -149,6 +150,22 @@ export async function POST(req: NextRequest) {
   if (isValidUserId(clientId)) {
     row.id = clientId.trim()
   }
+
+  const freePeriod = await isFreePeriodActive()
+  const { count: prevListings } = await supabase
+    .from('auctions')
+    .select('id', { count: 'exact', head: true })
+    .eq('seller_id', seller_id)
+
+  if (freePeriod) {
+    row.reserve_fee_halalas = 0
+    row.relisting_fee_halalas = 0
+    row.platform_metadata = {
+      listing_fees_waived: true,
+      free_period: true,
+    }
+  }
+  row.listing_count = (prevListings ?? 0) + 1
 
   const { data, error } = await supabase.from('auctions').insert(row).select().single()
 

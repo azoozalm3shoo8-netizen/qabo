@@ -27,7 +27,8 @@ export function PaymentSummaryCard({
 
   const f = (h: number) => (h / 100).toLocaleString('ar-SA', { minimumFractionDigits: 2 })
   const sr = (sellerRate * 100).toFixed(2)
-  const oldComm = Math.round(saleHalalas * 0.05)
+  const usualComm = Math.round(saleHalalas * 0.05)
+  const oldComm = Math.round(saleHalalas * sellerRate)
   const oldProt = buyerProtection || Math.round(saleHalalas * 0.02)
 
   return (
@@ -39,12 +40,12 @@ export function PaymentSummaryCard({
       {free ? (
         <>
           <p>
-            عمولة البائع: 0 ر.س{' '}
-            <span className="text-gray-400 line-through">(عادةً {f(oldComm)} ر.س — {sr}%)</span>
+            عمولة البائع: 0 ر.س (مجانية حالياً! عادةً {f(usualComm)} ر.س —{' '}
+            <span className="text-gray-400 line-through">{f(oldComm)} ر.س</span> — {sr}%)
           </p>
           <p>
-            رسم حماية المشتري: 0 ر.س{' '}
-            <span className="text-gray-400 line-through">(عادةً {f(oldProt)} ر.س)</span>
+            رسم حماية المشتري: 0 ر.س (مجاني حالياً! عادةً{' '}
+            <span className="text-gray-400 line-through">{f(oldProt)} ر.س</span>)
           </p>
         </>
       ) : (
@@ -57,7 +58,7 @@ export function PaymentSummaryCard({
       )}
       <hr className="my-2 border-gray-200 dark:border-slate-600" />
       <p className="font-bold">المشتري يدفع: {f(free ? saleHalalas : totalBuyer)} ر.س</p>
-      <p className="font-bold">البائع يحصل: {f(free ? saleHalalas : sellerPayout)} ر.س</p>
+      <p className="font-bold">البائع يحصل: {f(free ? saleHalalas : sellerPayout)} ر.س {free ? '(كامل المبلغ!)' : ''}</p>
       <p>عمولة المنصة: {f(free ? 0 : platformRev)} ر.س {free ? '🎉' : ''}</p>
     </div>
   )
