@@ -387,9 +387,9 @@ export default function HomePage() {
                   <span className="mb-1 block text-2xl">{s.emoji}</span>
                   <span className="text-xs font-medium text-[#1F2937] dark:text-slate-200">{s.label}</span>
                 </div>
-              ))}
-            </div>
-          </div>
+          ))}
+        </div>
+      </div>
         )}
 
         {hotAuctions.length > 0 && (
@@ -534,7 +534,7 @@ export default function HomePage() {
               )}
             </>
           )}
-        </div>
+                </div>
 
         <div className="mt-8 px-4">
           <h2 className="mb-3 text-lg font-bold text-[#1F2937] dark:text-slate-100">{t('home_popularCategories')}</h2>
@@ -550,7 +550,7 @@ export default function HomePage() {
               </Link>
             ))}
           </div>
-        </div>
+      </div>
 
         <footer className="mt-10 border-t border-gray-200 bg-white px-4 py-8 dark:border-slate-800 dark:bg-slate-900">
           <div className="mx-auto flex max-w-lg flex-col items-center gap-4 text-center text-sm text-gray-600 dark:text-slate-400">
