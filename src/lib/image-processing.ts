@@ -1,4 +1,7 @@
-/** Client-only image helpers (Canvas API). */
+/**
+ * Client-only image helpers (Canvas API).
+ * إزالة الخلفية تتم عبر POST /api/images/remove-bg فقط — لا تُستورد مكتبات @imgly هنا.
+ */
 
 function loadImageFromBlob(blob: Blob): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -103,17 +106,54 @@ export async function enhanceBrightness(
   })
 }
 
+/** إزالة الخلفية على الخادم فقط — يستدعي `/api/images/remove-bg` ثم يحمّل الناتج كـ Blob */
 export async function removeBackground(
   file: File | Blob,
   onProgress?: (fraction: number) => void
 ): Promise<Blob> {
-  const { removeBackground: removeBg } = await import('@imgly/background-removal')
-  const result = await removeBg(file, {
-    progress: (_key: string, current: number, total: number) => {
-      if (total > 0) onProgress?.(Math.min(1, current / total))
-    },
-  })
-  return result
+  const { readQaboUserFromStorage } = await import('@/lib/qabo-user')
+  const user = readQaboUserFromStorage()
+  if (!user?.user_id) {
+    throw new Error('يجب تسجيل الدخول لإزالة الخلفية')
+  }
+
+  onProgress?.(0.08)
+  const formData = new FormData()
+  const filePart =
+    file instanceof File
+      ? file
+      : new File([file], 'upload.jpg', { type: file.type || 'image/jpeg' })
+  formData.append('file', filePart)
+  formData.append(
+    'options',
+    JSON.stringify({
+      addWhiteBg: false,
+      outputFormat: 'webp',
+    })
+  )
+
+  const res = await fetch(
+    `/api/images/remove-bg?user_id=${encodeURIComponent(user.user_id)}`,
+    {
+      method: 'POST',
+      body: formData,
+    }
+  )
+
+  onProgress?.(0.55)
+  const data = (await res.json()) as { success?: boolean; url?: string; error?: string }
+  if (!res.ok || !data.success || !data.url) {
+    throw new Error(data.error || 'فشلت إزالة الخلفية')
+  }
+
+  onProgress?.(0.75)
+  const imgRes = await fetch(data.url)
+  if (!imgRes.ok) {
+    throw new Error('تعذر تحميل الصورة بعد المعالجة')
+  }
+  const blob = await imgRes.blob()
+  onProgress?.(1)
+  return blob
 }
 
 export async function generateImageHash(file: File | Blob): Promise<string> {

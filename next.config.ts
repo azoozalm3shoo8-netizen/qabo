@@ -12,7 +12,12 @@ function supabaseImageHost(): string {
 
 const nextConfig: NextConfig = {
   typescript: { ignoreBuildErrors: true },
-  serverExternalPackages: ['sharp', '@imgly/background-removal-node', 'onnxruntime-node'],
+  serverExternalPackages: [
+    'sharp',
+    '@imgly/background-removal-node',
+    'onnxruntime-node',
+    '@imgly/background-removal',
+  ],
   experimental: {
     serverActions: {
       bodySizeLimit: '110mb',
