@@ -54,7 +54,24 @@ export async function extractFrames(
   const pattern = path.join(outputDir, 'frame_%03d.jpg')
   const { stderr } = await execFileAsync(
     'ffmpeg',
-    ['-y', '-i', videoPath, '-vf', `fps=${fps}`, '-q:v', '2', '-f', 'image2', pattern],
+    [
+      '-y',
+      '-i',
+      videoPath,
+      '-vf',
+      `fps=${fps},format=yuvj420p`,
+      '-colorspace',
+      'bt709',
+      '-color_primaries',
+      'bt709',
+      '-color_trc',
+      'bt709',
+      '-q:v',
+      '2',
+      '-f',
+      'image2',
+      pattern,
+    ],
     { maxBuffer: 20 * 1024 * 1024 }
   ).catch((err: Error & { stderr?: string }) => {
     const msg = err.stderr || err.message
