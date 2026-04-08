@@ -16,6 +16,7 @@ import {
   fetchPayment,
   voidPayment,
 } from '@/lib/moyasar-client'
+import { awardXP } from '@/lib/services/buyer-gamification-service'
 import type { DealRow } from '@/lib/types/financial-types'
 
 const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
@@ -214,6 +215,12 @@ export async function acceptDeal(dealId: string): Promise<void> {
     .eq('id', dealId)
 
   await initiatePayout(dealId)
+
+  try {
+    await awardXP(deal.buyer_id as string, 'deal_complete')
+  } catch (e) {
+    console.error('[acceptDeal gamification]', e)
+  }
 }
 
 export async function rejectDeal(

@@ -6,6 +6,7 @@ import {
 } from '@/lib/services/anti-snipe-service'
 import { checkRateLimit } from '@/lib/server/rate-limit'
 import { isValidUserId, unauthorized } from '@/lib/server/require-user'
+import { awardXP } from '@/lib/services/buyer-gamification-service'
 import { notifySellerAuctionActivityOnNewBid } from '@/lib/services/smart-notification-service'
 
 const supabase = createClient(
@@ -126,6 +127,12 @@ export async function POST(req: NextRequest) {
 
   const { error: nErr } = await supabase.from('notifications').insert(notifs)
   if (nErr) console.error('notifications insert:', nErr.message)
+
+  try {
+    await awardXP(bidder_id, 'bid')
+  } catch (e) {
+    console.error('[bids POST gamification]', e)
+  }
 
   return NextResponse.json({
     success: true,

@@ -23,6 +23,7 @@ import Link from 'next/link'
 import { memo, useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
 import { AuctionListingHotBadge } from '@/components/auction/AuctionListingHotBadge'
+import { RecommendationCarousel } from '@/components/auction/RecommendationCarousel'
 import { AppHeader } from '@/components/AppHeader'
 import { BottomNav } from '@/components/BottomNav'
 import { EmptyState } from '@/components/EmptyState'
@@ -536,7 +537,12 @@ export default function HomePage() {
               )}
             </>
           )}
-                </div>
+        </div>
+
+        {user?.user_id ? (
+          <RecommendationCarousel title="مقترح لك" type="personal" userId={user.user_id} />
+        ) : null}
+        <RecommendationCarousel title="رائج الآن 🔥" type="trending" />
 
         <div className="mt-8 px-4">
           <h2 className="mb-3 text-lg font-bold text-[#1F2937] dark:text-slate-100">{t('home_popularCategories')}</h2>

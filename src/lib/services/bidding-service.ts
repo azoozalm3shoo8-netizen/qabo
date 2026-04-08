@@ -6,6 +6,8 @@ import {
   notifyBiddersAuctionExtended,
 } from '@/lib/services/anti-snipe-service'
 import { createDeal } from '@/lib/services/deal-service'
+import { awardXP } from '@/lib/services/buyer-gamification-service'
+import { persistPostAuctionReport } from '@/lib/services/post-auction-analytics-service'
 import { notifySellerAuctionActivityOnNewBid } from '@/lib/services/smart-notification-service'
 import type { BidRow } from '@/lib/types/financial-types'
 
@@ -190,6 +192,12 @@ export async function placeBid(
     })
   }
 
+  try {
+    await awardXP(bidderId, 'bid')
+  } catch (e) {
+    console.error('[placeBid gamification]', e)
+  }
+
   return {
     bid: bid as BidRow,
     guaranteePaymentId: payment.id,
@@ -251,12 +259,22 @@ export async function handleAuctionEnd(auctionId: string): Promise<void> {
 
   if (!top) {
     await supabase.from('auctions').update({ status: 'expired' }).eq('id', auctionId)
+    try {
+      await persistPostAuctionReport(auctionId)
+    } catch (e) {
+      console.error('[handleAuctionEnd persist no bids]', e)
+    }
     return
   }
 
   if (auctionType === 'reserve' && reserve != null && winningHalalas < reserve) {
     await releaseLosingBidGuarantees(auctionId, '')
     await supabase.from('auctions').update({ status: 'cancelled', winner_id: null, winning_bid_id: null }).eq('id', auctionId)
+    try {
+      await persistPostAuctionReport(auctionId)
+    } catch (e) {
+      console.error('[handleAuctionEnd persist reserve]', e)
+    }
     return
   }
 
@@ -291,4 +309,19 @@ export async function handleAuctionEnd(auctionId: string): Promise<void> {
     auction_id: auctionId,
     deal_id: deal.id,
   })
+
+  try {
+    await awardXP(winnerId, 'win', {
+      salePriceHalalas: winningHalalas,
+      category: String(auction.category ?? ''),
+    })
+  } catch (e) {
+    console.error('[handleAuctionEnd awardXP win]', e)
+  }
+
+  try {
+    await persistPostAuctionReport(auctionId)
+  } catch (e) {
+    console.error('[handleAuctionEnd persist sold]', e)
+  }
 }

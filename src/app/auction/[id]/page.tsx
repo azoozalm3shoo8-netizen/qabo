@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { AuctionCountdown } from '@/components/AuctionCountdown'
+import { RecommendationCarousel } from '@/components/auction/RecommendationCarousel'
 import { SocialProofBadge } from '@/components/auction/SocialProofBadge'
 import { AuctionQA } from '@/components/AuctionQA'
 import { LiveBidPanel } from '@/components/LiveBidPanel'
@@ -101,9 +102,6 @@ export default function AuctionDetailPage() {
   const [autobidMax, setAutobidMax] = useState('')
   const [autobidLoading, setAutobidLoading] = useState(false)
   const [autobidError, setAutobidError] = useState('')
-  const [similarAuctions, setSimilarAuctions] = useState<
-    { id: string; title: string; current_bid: number; images?: string[] | null }[]
-  >([])
   const [views, setViews] = useState(0)
   const viewsBumpedForIdRef = useRef(false)
   const [v360, setV360] = useState<{
@@ -252,31 +250,6 @@ export default function AuctionDetailPage() {
       cancelled = true
     }
   }, [auction?.id, auction?.seller_id, user?.user_id])
-
-  useEffect(() => {
-    if (!auction?.category || !auction.id) {
-      setSimilarAuctions([])
-      return
-    }
-    let cancelled = false
-    fetch('/api/auctions?category=' + encodeURIComponent(auction.category))
-      .then((r) => r.json())
-      .then((data: unknown) => {
-        if (cancelled) return
-        if (!Array.isArray(data)) {
-          setSimilarAuctions([])
-          return
-        }
-        const rows = data as { id: string; title: string; current_bid: number; images?: string[] | null }[]
-        setSimilarAuctions(rows.filter((x) => x.id !== auction.id).slice(0, 8))
-      })
-      .catch(() => {
-        if (!cancelled) setSimilarAuctions([])
-      })
-    return () => {
-      cancelled = true
-    }
-  }, [auction?.id, auction?.category])
 
   useEffect(() => {
     if (!auction) return
@@ -891,36 +864,8 @@ export default function AuctionDetailPage() {
 
             <AuctionQA auctionId={auction.id} isOwner={isSeller} />
 
-            {similarAuctions.length > 0 && (
-              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                <h3 className="mb-3 font-bold text-[#1F2937] dark:text-slate-100">{t('auction_similar')}</h3>
-                <div className="grid grid-cols-2 gap-3">
-                  {similarAuctions.map((s) => {
-                    const img = normalizeAuctionImages(s.images)[0] ?? null
-                    return (
-                      <Link
-                        key={s.id}
-                        href={'/auction/' + s.id}
-                        className="group overflow-hidden rounded-xl border border-gray-100 bg-[#F3F4F6] transition-transform hover:scale-[1.02] dark:border-slate-600 dark:bg-slate-900"
-                      >
-                        <div className="relative aspect-[4/3] bg-gray-100 dark:bg-slate-700">
-                          {img ? (
-                            <img src={img} alt="" className="h-full w-full object-cover" />
-                          ) : null}
-                        </div>
-                        <div className="p-2">
-                          <p className="line-clamp-2 text-xs font-bold text-[#1F2937] dark:text-slate-100">
-                            {s.title}
-                          </p>
-                          <p className="mt-1 text-sm font-extrabold text-[#1B7F7A]">
-                            {Number(s.current_bid).toLocaleString()} {t('common_currency')}
-                          </p>
-                        </div>
-                      </Link>
-                    )
-                  })}
-                </div>
-              </div>
+            {auction.status === 'active' && (
+              <RecommendationCarousel title="مزادات مشابهة" type="similar" auctionId={auction.id} />
             )}
           </div>
         </>

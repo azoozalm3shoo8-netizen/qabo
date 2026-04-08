@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { awardXP } from '@/lib/services/buyer-gamification-service'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -55,6 +56,12 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, already: true })
     }
     return NextResponse.json({ error: error.message }, { status: 500 })
+  }
+
+  try {
+    await awardXP(user_id, 'watch')
+  } catch (e) {
+    console.error('[favorites POST gamification]', e)
   }
 
   return NextResponse.json(data)
