@@ -35,7 +35,13 @@ export async function POST(
       parsed.data.card_token,
       parsed.data.max_auto_bid
     )
-    return NextResponse.json({ bid: r.bid, guaranteeStatus: r.guaranteePaymentId })
+    return NextResponse.json({
+      bid: r.bid,
+      guaranteeStatus: r.guaranteePaymentId,
+      auctionExtended: r.auctionExtended,
+      newEndsAt: r.newEndsAt,
+      extensionCount: r.extensionCount,
+    })
   } catch (e) {
     const msg = e instanceof Error ? e.message : 'فشل المزايدة'
     return NextResponse.json({ error: msg }, { status: 400 })

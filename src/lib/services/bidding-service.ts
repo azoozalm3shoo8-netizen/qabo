@@ -1,7 +1,12 @@
+import { insertFinancialNotification } from '@/lib/server/financial-notifications'
 import { createClient } from '@/lib/supabase-server'
 import { createAuthorization, voidPayment } from '@/lib/moyasar-client'
+import {
+  checkAndExtendAuction,
+  notifyBiddersAuctionExtended,
+} from '@/lib/services/anti-snipe-service'
 import { createDeal } from '@/lib/services/deal-service'
-import { insertFinancialNotification } from '@/lib/server/financial-notifications'
+import { notifySellerAuctionActivityOnNewBid } from '@/lib/services/smart-notification-service'
 import type { BidRow } from '@/lib/types/financial-types'
 
 const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
@@ -29,7 +34,13 @@ export async function placeBid(
   amount: number,
   cardToken: string,
   maxAutoBid?: number
-): Promise<{ bid: BidRow; guaranteePaymentId: string }> {
+): Promise<{
+  bid: BidRow
+  guaranteePaymentId: string
+  auctionExtended?: boolean
+  newEndsAt?: string
+  extensionCount?: number
+}> {
   const supabase = createClient()
 
   const { data: verified } = await supabase
@@ -127,6 +138,26 @@ export async function placeBid(
 
   await supabase.from('auctions').update(patch).eq('id', auctionId)
 
+  const bidTime = new Date()
+  const snipe = await checkAndExtendAuction(auctionId, bidTime)
+  if (snipe.extended) {
+    await notifyBiddersAuctionExtended(supabase, auctionId)
+  }
+
+  const newTotalBids =
+    typeof patch.bid_count === 'number'
+      ? (patch.bid_count as number)
+      : typeof auction.bid_count === 'number'
+        ? auction.bid_count + 1
+        : 1
+
+  await notifySellerAuctionActivityOnNewBid({
+    auctionId,
+    sellerId: auction.seller_id as string,
+    title: String(auction.title ?? 'مزاد'),
+    newTotalBids,
+  })
+
   await supabase.from('financial_transactions').insert({
     user_id: bidderId,
     auction_id: auctionId,
@@ -159,7 +190,13 @@ export async function placeBid(
     })
   }
 
-  return { bid: bid as BidRow, guaranteePaymentId: payment.id }
+  return {
+    bid: bid as BidRow,
+    guaranteePaymentId: payment.id,
+    auctionExtended: snipe.extended,
+    newEndsAt: snipe.newEndTime?.toISOString(),
+    extensionCount: snipe.extensionCount,
+  }
 }
 
 export async function releaseLosingBidGuarantees(auctionId: string, winnerId: string): Promise<void> {

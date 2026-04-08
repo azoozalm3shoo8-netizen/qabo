@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { AuctionCountdown } from '@/components/AuctionCountdown'
+import { SocialProofBadge } from '@/components/auction/SocialProofBadge'
 import { AuctionQA } from '@/components/AuctionQA'
 import { LiveBidPanel } from '@/components/LiveBidPanel'
 import { AuctionImageGallery } from '@/components/AuctionImageGallery'
@@ -631,6 +632,12 @@ export default function AuctionDetailPage() {
               status={auction.status}
               onEndedChange={handleEndedChange}
             />
+
+            {auction.status === 'active' && !ended ? (
+              <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                <SocialProofBadge auctionId={auction.id} />
+              </div>
+            ) : null}
 
             <LiveBidPanel
               auctionId={auction.id}

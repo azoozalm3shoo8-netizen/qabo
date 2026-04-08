@@ -22,6 +22,7 @@ import Image from 'next/image'
 import Link from 'next/link'
 import { memo, useCallback, useEffect, useState, type ReactNode } from 'react'
 import { useRouter } from 'next/navigation'
+import { AuctionListingHotBadge } from '@/components/auction/AuctionListingHotBadge'
 import { AppHeader } from '@/components/AppHeader'
 import { BottomNav } from '@/components/BottomNav'
 import { EmptyState } from '@/components/EmptyState'
@@ -127,6 +128,7 @@ const HomeAuctionCard = memo(function HomeAuctionCard({
         <div className="absolute left-2 top-2 z-10 rounded-full bg-white/95 p-1 shadow-md ring-1 ring-white/80 dark:bg-slate-900/90">
           <FavoriteHeart auctionId={a.id} userId={user?.user_id ?? null} />
         </div>
+        <AuctionListingHotBadge auctionId={a.id} />
         <div className="relative aspect-[4/3] w-full shrink-0 overflow-hidden bg-gray-100 dark:bg-slate-700">
           <AuctionListingThumb src={firstImg} />
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-black/55 to-transparent" />

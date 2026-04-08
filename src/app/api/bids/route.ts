@@ -1,8 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { MAX_AUCTION_EXTENSIONS, shouldExtendAuction } from '@/lib/anti-snipe'
+import {
+  checkAndExtendAuction,
+  notifyBiddersAuctionExtended,
+} from '@/lib/services/anti-snipe-service'
 import { checkRateLimit } from '@/lib/server/rate-limit'
 import { isValidUserId, unauthorized } from '@/lib/server/require-user'
+import { notifySellerAuctionActivityOnNewBid } from '@/lib/services/smart-notification-service'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -63,28 +67,37 @@ export async function POST(req: NextRequest) {
   }
 
   const prevHighest = auction.highest_bidder_id as string | null
+  const title = (auction.title as string) || 'مزاد'
 
   const { error: bidError } = await supabase.from('bids').insert({ auction_id, listing_id: auction_id, bidder_id, amount: amt })
   if (bidError) return NextResponse.json({ error: bidError.message }, { status: 500 })
 
-  const extCount = Number((auction as { extension_count?: number }).extension_count ?? 0)
-  const { shouldExtend, newEndTime } = shouldExtendAuction(auction.ends_at as string)
+  const newBidCount = Number(auction.bid_count ?? 0) + 1
 
-  const baseUpdate: Record<string, unknown> = {
-    current_bid: amt,
-    highest_bidder_id: bidder_id,
-    bid_count: auction.bid_count + 1,
-  }
-  if (shouldExtend && extCount < MAX_AUCTION_EXTENSIONS) {
-    baseUpdate.ends_at = newEndTime
-    baseUpdate.extension_count = extCount + 1
-  }
-
-  const { error: updateError } = await supabase.from('auctions').update(baseUpdate).eq('id', auction_id)
+  const { error: updateError } = await supabase
+    .from('auctions')
+    .update({
+      current_bid: amt,
+      highest_bidder_id: bidder_id,
+      bid_count: newBidCount,
+    })
+    .eq('id', auction_id)
 
   if (updateError) return NextResponse.json({ error: updateError.message }, { status: 500 })
 
-  const title = (auction.title as string) || 'مزاد'
+  const bidTime = new Date()
+  const snipe = await checkAndExtendAuction(auction_id, bidTime)
+  if (snipe.extended) {
+    await notifyBiddersAuctionExtended(supabase, auction_id)
+  }
+
+  await notifySellerAuctionActivityOnNewBid({
+    auctionId: auction_id,
+    sellerId: auction.seller_id as string,
+    title,
+    newTotalBids: newBidCount,
+  })
+
   const notifs: {
     user_id: string
     type: string
@@ -114,5 +127,12 @@ export async function POST(req: NextRequest) {
   const { error: nErr } = await supabase.from('notifications').insert(notifs)
   if (nErr) console.error('notifications insert:', nErr.message)
 
-  return NextResponse.json({ success: true, new_bid: amt, bid_count: auction.bid_count + 1 })
+  return NextResponse.json({
+    success: true,
+    new_bid: amt,
+    bid_count: newBidCount,
+    auctionExtended: snipe.extended,
+    newEndsAt: snipe.newEndTime?.toISOString(),
+    extensionCount: snipe.extensionCount,
+  })
 }

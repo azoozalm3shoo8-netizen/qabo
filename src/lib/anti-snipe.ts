@@ -1,20 +1,8 @@
-export const SNIPE_WINDOW_MS = 5 * 60 * 1000
-export const EXTENSION_MS = 5 * 60 * 1000
-export const MAX_AUCTION_EXTENSIONS = 6
+/**
+ * أدوات عرض العد التنازلي — ثوابت التمديد مشتركة مع `anti-snipe-service` عبر `anti-snipe-constants`.
+ */
+export { EXTENSION_MS, MAX_AUCTION_EXTENSIONS, SNIPE_WINDOW_MS } from '@/lib/anti-snipe-constants'
 
-export function shouldExtendAuction(
-  endTime: string,
-  bidTime: Date = new Date()
-): { shouldExtend: boolean; newEndTime: string } {
-  const end = new Date(endTime)
-  const diff = end.getTime() - bidTime.getTime()
-  if (diff > 0 && diff <= SNIPE_WINDOW_MS) {
-    return { shouldExtend: true, newEndTime: new Date(end.getTime() + EXTENSION_MS).toISOString() }
-  }
-  return { shouldExtend: false, newEndTime: endTime }
-}
-
-/** Human-readable countdown (Arabic-oriented). */
 export function formatTimeLeft(endTime: string): string {
   const diff = new Date(endTime).getTime() - Date.now()
   if (diff <= 0) return 'انتهى'

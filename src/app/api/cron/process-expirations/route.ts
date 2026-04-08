@@ -5,6 +5,7 @@ import { handleAuctionEnd } from '@/lib/services/bidding-service'
 import { autoAcceptExpiredInspections } from '@/lib/services/deal-service'
 import { autoEscalateExpiredLevel1 } from '@/lib/services/dispute-service'
 import { getFreePeriodInfo } from '@/lib/services/free-period-service'
+import { processSmartNotifications } from '@/lib/services/smart-notification-service'
 
 export async function GET(req: NextRequest) {
   const secret = process.env.CRON_SECRET
@@ -16,6 +17,12 @@ export async function GET(req: NextRequest) {
   const supabase = createClient()
   await autoAcceptExpiredInspections()
   await autoEscalateExpiredLevel1()
+
+  try {
+    await processSmartNotifications()
+  } catch (e) {
+    console.error('[cron processSmartNotifications]', e)
+  }
 
   const now = new Date().toISOString()
   const { data: ending } = await supabase
