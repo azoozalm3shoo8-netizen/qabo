@@ -1,9 +1,12 @@
 'use client'
 
+import { SellerResponsivenessBadge } from '@/components/seller/SellerResponsivenessBadge'
 import { SellerTrustBadge } from '@/components/seller/SellerTrustBadge'
+import type { ResponsivenessData } from '@/lib/types/seller-responsiveness'
 
 export function SellerProfileCard({
   profile,
+  sellerResponsiveness,
 }: {
   profile: {
     trust_score: number
@@ -13,6 +16,7 @@ export function SellerProfileCard({
     total_revenue: number
     iban?: string | null
   }
+  sellerResponsiveness?: ResponsivenessData | null
 }) {
   const rate =
     profile.successful_sales + profile.cancelled_sales === 0
@@ -28,13 +32,16 @@ export function SellerProfileCard({
       dir="rtl"
       className="space-y-4 rounded-2xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900"
     >
-      <SellerTrustBadge
-        trustScore={profile.trust_score}
-        trustLevel={profile.trust_level}
-        successfulSales={profile.successful_sales}
-        totalSales={profile.successful_sales + profile.cancelled_sales}
-        successRate={rate}
-      />
+      <div className="flex flex-wrap items-center gap-2">
+        <SellerTrustBadge
+          trustScore={profile.trust_score}
+          trustLevel={profile.trust_level}
+          successfulSales={profile.successful_sales}
+          totalSales={profile.successful_sales + profile.cancelled_sales}
+          successRate={rate}
+        />
+        <SellerResponsivenessBadge data={sellerResponsiveness} />
+      </div>
       <div>
         <p className="text-sm text-gray-600">نقاط الثقة</p>
         <div className="h-2 w-full rounded-full bg-gray-200 dark:bg-slate-700">

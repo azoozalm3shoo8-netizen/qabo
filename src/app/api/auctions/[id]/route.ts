@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { closeAuctionIfExpiredForId } from '@/lib/server/close-expired-auctions'
+import { calculateSellerResponsiveness } from '@/lib/services/seller-responsiveness-service'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -28,7 +29,7 @@ export async function GET(
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!auction) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-  const [sellerRes, bidderRes] = await Promise.all([
+  const [sellerRes, bidderRes, sellerResponsiveness] = await Promise.all([
     supabase
       .from('profiles')
       .select('full_name, city, rating')
@@ -41,6 +42,7 @@ export async function GET(
           .eq('id', auction.highest_bidder_id)
           .maybeSingle()
       : Promise.resolve({ data: null as { full_name: string } | null }),
+    calculateSellerResponsiveness(String(auction.seller_id)),
   ])
 
   const sellerName =
@@ -60,5 +62,6 @@ export async function GET(
             'مزايد',
         }
       : null,
+    seller_responsiveness: sellerResponsiveness,
   })
 }

@@ -16,6 +16,7 @@ import { type DeliveryMethod } from '@/lib/delivery-options'
 import { ACTIVE_CITY, isRegionActive, REGION_CITIES } from '@/lib/region-lock'
 import { useLocale } from '@/lib/locale-context'
 import { readQaboUserFromStorage, type QaboUserLocal } from '@/lib/qabo-user'
+import type { EnhancedSuggestion } from '@/lib/types/pricing-feedback'
 import type { Video360Result } from '@/lib/video360-types'
 
 const CHECKLIST_PILL_ICONS: Record<string, ComponentType<{ className?: string; weight?: 'duotone' }>> = {
@@ -103,6 +104,8 @@ export default function CreatePage() {
   const [checklistFiles, setChecklistFiles] = useState<Record<string, File>>({})
   const [originalPurchasePrice, setOriginalPurchasePrice] = useState('')
   const [freePeriod, setFreePeriod] = useState<{ isActive: boolean; endsAt: string | null } | null>(null)
+  const [enhancedPricing, setEnhancedPricing] = useState<EnhancedSuggestion | null>(null)
+  const [enhancedPricingLoading, setEnhancedPricingLoading] = useState(false)
 
   useEffect(() => {
     void fetch('/api/platform/free-period')
@@ -136,6 +139,36 @@ export default function CreatePage() {
   useEffect(() => {
     setProductChecklistCategoryId(catalogNameToChecklistCategoryId(category))
   }, [category])
+
+  useEffect(() => {
+    if (step !== 3 || !category) {
+      setEnhancedPricing(null)
+      return
+    }
+    const resolvedCondition = resolveListingCondition(checklistResponses, condition)
+    const handle = window.setTimeout(() => {
+      setEnhancedPricingLoading(true)
+      const params = new URLSearchParams({
+        category,
+        condition: resolvedCondition,
+        title: title.trim().slice(0, 200),
+      })
+      const op = Number(originalPurchasePrice)
+      if (Number.isFinite(op) && op > 0) params.set('original_price', String(op))
+      void fetch('/api/pricing/enhance-suggestion?' + params.toString())
+        .then((r) => r.json())
+        .then((j: EnhancedSuggestion & { error?: string }) => {
+          if (j && typeof j === 'object' && 'error' in j && j.error) {
+            setEnhancedPricing(null)
+            return
+          }
+          setEnhancedPricing(j as EnhancedSuggestion)
+        })
+        .catch(() => setEnhancedPricing(null))
+        .finally(() => setEnhancedPricingLoading(false))
+    }, 450)
+    return () => window.clearTimeout(handle)
+  }, [step, category, condition, title, checklistResponses, originalPurchasePrice])
 
   const goStep3 = () => {
     if (imagesUploading) {
@@ -519,6 +552,51 @@ export default function CreatePage() {
               setStartPrice(String(p))
             }}
           />
+          <div className="rounded-2xl border border-[#1B7F7A]/20 bg-[#E6F4F3]/40 p-4 dark:border-slate-600 dark:bg-[#134e4a]/25">
+            <h3 className="mb-2 text-sm font-bold text-[#1B7F7A] dark:text-teal-300">تسعير ذكي (من بيانات المنصة)</h3>
+            {enhancedPricingLoading ? (
+              <p className="text-sm text-gray-600 dark:text-slate-400">جاري حساب الاقتراح…</p>
+            ) : enhancedPricing ? (
+              <div className="space-y-2 text-sm text-[#1F2937] dark:text-slate-200">
+                <p>
+                  سعر افتتاح مقترح:{' '}
+                  <strong>{enhancedPricing.suggestedStartingBid.toLocaleString('ar-SA')} ر.س</strong>
+                  {enhancedPricing.adjusted ? (
+                    <span className="mr-2 rounded-full bg-amber-100 px-2 py-0.5 text-xs text-amber-900 dark:bg-amber-950/50 dark:text-amber-100">
+                      مُعدَّل حسب الفئة
+                    </span>
+                  ) : null}
+                </p>
+                <p className="text-xs text-gray-600 dark:text-slate-400">
+                  حد أدنى للمزايدة المقترح: {enhancedPricing.minimumBidIncrement.toLocaleString('ar-SA')} ر.س
+                </p>
+                {enhancedPricing.adjustmentReason_ar ? (
+                  <p className="text-xs text-[#1B7F7A] dark:text-teal-200">{enhancedPricing.adjustmentReason_ar}</p>
+                ) : null}
+                {enhancedPricing.categoryInsight &&
+                enhancedPricing.categoryInsight.sampleSize >= 10 &&
+                enhancedPricing.categoryInsight.bestStartingBidRange ? (
+                  <p className="rounded-lg bg-white/80 p-2 text-xs text-gray-700 dark:bg-slate-900/50 dark:text-slate-300">
+                    في فئة «{category}»، المزادات بسعر افتتاحي {enhancedPricing.categoryInsight.bestStartingBidRange}{' '}
+                    حققت أفضل نتائج (حسب عيّنة أخيرة).
+                  </p>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPriceTouched(true)
+                    setStartPrice(String(enhancedPricing.suggestedStartingBid))
+                    setIncrement(String(Math.max(1, enhancedPricing.minimumBidIncrement)))
+                  }}
+                  className="mt-2 w-full rounded-xl bg-[#1B7F7A] py-2 text-xs font-bold text-white transition active:scale-[0.98]"
+                >
+                  تطبيق الاقتراح الذكي
+                </button>
+              </div>
+            ) : (
+              <p className="text-sm text-gray-600 dark:text-slate-400">اختر التصنيف والتفاصيل لعرض الاقتراح.</p>
+            )}
+          </div>
           <div>
             <label className="mb-1 block text-sm text-gray-600 dark:text-slate-400">سعر البداية (ر.س)</label>
             <input

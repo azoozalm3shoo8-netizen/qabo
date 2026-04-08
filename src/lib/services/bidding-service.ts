@@ -1,13 +1,8 @@
 import { insertFinancialNotification } from '@/lib/server/financial-notifications'
 import { createClient } from '@/lib/supabase-server'
 import { createAuthorization, voidPayment } from '@/lib/moyasar-client'
-import {
-  checkAndExtendAuction,
-  notifyBiddersAuctionExtended,
-} from '@/lib/services/anti-snipe-service'
 import { createDeal } from '@/lib/services/deal-service'
-import { awardXP } from '@/lib/services/buyer-gamification-service'
-import { persistPostAuctionReport } from '@/lib/services/post-auction-analytics-service'
+import { onAuctionClosed, onBidPlaced } from '@/lib/services/platform-orchestrator'
 import { notifySellerAuctionActivityOnNewBid } from '@/lib/services/smart-notification-service'
 import type { BidRow } from '@/lib/types/financial-types'
 
@@ -141,10 +136,7 @@ export async function placeBid(
   await supabase.from('auctions').update(patch).eq('id', auctionId)
 
   const bidTime = new Date()
-  const snipe = await checkAndExtendAuction(auctionId, bidTime)
-  if (snipe.extended) {
-    await notifyBiddersAuctionExtended(supabase, auctionId)
-  }
+  const orch = await onBidPlaced(auctionId, bidderId, bidTime)
 
   const newTotalBids =
     typeof patch.bid_count === 'number'
@@ -192,18 +184,12 @@ export async function placeBid(
     })
   }
 
-  try {
-    await awardXP(bidderId, 'bid')
-  } catch (e) {
-    console.error('[placeBid gamification]', e)
-  }
-
   return {
     bid: bid as BidRow,
     guaranteePaymentId: payment.id,
-    auctionExtended: snipe.extended,
-    newEndsAt: snipe.newEndTime?.toISOString(),
-    extensionCount: snipe.extensionCount,
+    auctionExtended: orch.extended,
+    newEndsAt: orch.newEndTime,
+    extensionCount: orch.extensionCount,
   }
 }
 
@@ -259,22 +245,14 @@ export async function handleAuctionEnd(auctionId: string): Promise<void> {
 
   if (!top) {
     await supabase.from('auctions').update({ status: 'expired' }).eq('id', auctionId)
-    try {
-      await persistPostAuctionReport(auctionId)
-    } catch (e) {
-      console.error('[handleAuctionEnd persist no bids]', e)
-    }
+    await onAuctionClosed(auctionId)
     return
   }
 
   if (auctionType === 'reserve' && reserve != null && winningHalalas < reserve) {
     await releaseLosingBidGuarantees(auctionId, '')
     await supabase.from('auctions').update({ status: 'cancelled', winner_id: null, winning_bid_id: null }).eq('id', auctionId)
-    try {
-      await persistPostAuctionReport(auctionId)
-    } catch (e) {
-      console.error('[handleAuctionEnd persist reserve]', e)
-    }
+    await onAuctionClosed(auctionId)
     return
   }
 
@@ -310,18 +288,9 @@ export async function handleAuctionEnd(auctionId: string): Promise<void> {
     deal_id: deal.id,
   })
 
-  try {
-    await awardXP(winnerId, 'win', {
-      salePriceHalalas: winningHalalas,
-      category: String(auction.category ?? ''),
-    })
-  } catch (e) {
-    console.error('[handleAuctionEnd awardXP win]', e)
-  }
-
-  try {
-    await persistPostAuctionReport(auctionId)
-  } catch (e) {
-    console.error('[handleAuctionEnd persist sold]', e)
-  }
+  await onAuctionClosed(auctionId, {
+    winnerId,
+    salePriceHalalas: winningHalalas,
+    category: String(auction.category ?? ''),
+  })
 }

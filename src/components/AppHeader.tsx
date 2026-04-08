@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
-import { Bell, GlobeSimple, ShieldStar, UserCircle } from '@phosphor-icons/react'
+import { Bell, GlobeSimple, ShieldStar, Trophy, UserCircle } from '@phosphor-icons/react'
 import { FreePeriodBanner } from '@/components/info/FreePeriodBanner'
 import { QabbooLogo } from '@/components/QabbooLogo'
 import { ThemeToggle } from '@/components/ThemeToggle'
@@ -102,9 +102,9 @@ export function AppHeader({
           <span />
         )}
         <div className="flex flex-shrink-0 items-center gap-1.5 sm:gap-2">
-          {rightSlot ??
-            (hasUser ? (
-              <>
+          {rightSlot ?? (
+            <>
+              {hasUser ? (
                 <Link
                   href="/profile"
                   className={
@@ -117,33 +117,41 @@ export function AppHeader({
                 >
                   <UserCircle className="h-6 w-6" weight="fill" />
                 </Link>
-                {isAdmin ? (
-                  <Link
-                    href="/admin"
-                    className={
-                      hero
-                        ? 'flex h-9 w-9 items-center justify-center rounded-full bg-[#FF8C42]/80 text-white hover:bg-[#FF8C42] transition-transform hover:scale-105 active:scale-95'
-                        : 'flex h-9 w-9 items-center justify-center rounded-full bg-[#FF8C42]/15 text-[#FF8C42] hover:bg-[#FF8C42]/25 dark:bg-[#FF8C42]/20 transition-transform hover:scale-105 active:scale-95'
-                    }
-                    aria-label="لوحة التحكم"
-                  >
-                    <ShieldStar className="h-5 w-5" weight="fill" />
-                  </Link>
-                ) : null}
-              </>
-            ) : (
+              ) : (
+                <Link
+                  href="/auth/login"
+                  className={
+                    'rounded-full px-5 py-2 text-sm font-bold transition-transform hover:scale-105 active:scale-95 ' +
+                    (hero
+                      ? 'bg-[#FF8C42] text-white hover:bg-[#e87a35]'
+                      : 'bg-[#1B7F7A] text-white dark:bg-[#FF8C42] dark:text-white')
+                  }
+                >
+                  {t('header_login')}
+                </Link>
+              )}
               <Link
-                href="/auth/login"
-                className={
-                  'rounded-full px-5 py-2 text-sm font-bold transition-transform hover:scale-105 active:scale-95 ' +
-                  (hero
-                    ? 'bg-[#FF8C42] text-white hover:bg-[#e87a35]'
-                    : 'bg-[#1B7F7A] text-white dark:bg-[#FF8C42] dark:text-white')
-                }
+                href="/leaderboard"
+                className={iconBtn + (hero ? ' text-white' : '')}
+                aria-label="لوحة المتصدرين"
               >
-                {t('header_login')}
+                <Trophy className="h-5 w-5" weight="duotone" />
               </Link>
-            ))}
+              {hasUser && isAdmin ? (
+                <Link
+                  href="/admin"
+                  className={
+                    hero
+                      ? 'flex h-9 w-9 items-center justify-center rounded-full bg-[#FF8C42]/80 text-white hover:bg-[#FF8C42] transition-transform hover:scale-105 active:scale-95'
+                      : 'flex h-9 w-9 items-center justify-center rounded-full bg-[#FF8C42]/15 text-[#FF8C42] hover:bg-[#FF8C42]/25 dark:bg-[#FF8C42]/20 transition-transform hover:scale-105 active:scale-95'
+                  }
+                  aria-label="لوحة التحكم"
+                >
+                  <ShieldStar className="h-5 w-5" weight="fill" />
+                </Link>
+              ) : null}
+            </>
+          )}
           <button type="button" onClick={toggleLocale} className={iconBtn} aria-label={t('header_switchLang')}>
             <GlobeSimple className="h-5 w-5" weight="bold" />
           </button>

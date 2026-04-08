@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
-import { awardXP } from '@/lib/services/buyer-gamification-service'
+import { onFavoriteAdded } from '@/lib/services/platform-orchestrator'
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -58,11 +58,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  try {
-    await awardXP(user_id, 'watch')
-  } catch (e) {
-    console.error('[favorites POST gamification]', e)
-  }
+  await onFavoriteAdded(user_id, auction_id)
 
   return NextResponse.json(data)
 }

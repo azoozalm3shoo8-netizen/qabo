@@ -28,11 +28,13 @@ import { BottomNav } from '@/components/BottomNav'
 import { FavoriteHeart } from '@/components/FavoriteHeart'
 import { OrderStatusTracker } from '@/components/OrderStatusTracker'
 import { ReviewModal } from '@/components/ReviewModal'
+import { SellerResponsivenessBadge } from '@/components/seller/SellerResponsivenessBadge'
 import { useToast } from '@/components/Toast'
 import { normalizeAuctionImages } from '@/lib/auction-images'
 import { sameUserId } from '@/lib/ids'
 import { useLocale } from '@/lib/locale-context'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
+import type { ResponsivenessData } from '@/lib/types/seller-responsiveness'
 import type { CI360Hotspot, Defect } from '@/lib/video360-types'
 import { supabase } from '@/lib/supabase/client'
 
@@ -71,6 +73,7 @@ type AuctionDetail = {
   created_at: string
   seller: Seller
   highest_bidder: HighestBidder
+  seller_responsiveness?: ResponsivenessData
 }
 
 export default function AuctionDetailPage() {
@@ -661,17 +664,19 @@ export default function AuctionDetailPage() {
               </p>
             </div>
 
-            {(isSeller || (auctionClosed && isWinner)) && (
-              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
                 <h3 className="mb-3 font-bold text-[#1F2937] dark:text-slate-100">{t('auction_seller')}</h3>
                 <div className="flex items-center gap-3">
                   <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#E6F4F3] text-[#1B7F7A] dark:bg-teal-900/40">
                     <UserCircle className="h-9 w-9" weight="fill" />
                   </div>
                   <div className="min-w-0 flex-1 text-right">
-                    <p className="break-words text-base font-semibold leading-snug text-gray-900 dark:text-slate-100">
-                      {sellerDisplayName}
-                    </p>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
+                      <p className="break-words text-base font-semibold leading-snug text-gray-900 dark:text-slate-100">
+                        {sellerDisplayName}
+                      </p>
+                      <SellerResponsivenessBadge data={auction.seller_responsiveness} />
+                    </div>
                     <p className="mt-0.5 flex flex-wrap items-center justify-end gap-1 text-sm text-gray-500">
                       {auction.seller.city ? (
                         <span className="inline-flex items-center gap-0.5">
@@ -711,7 +716,6 @@ export default function AuctionDetailPage() {
                   </p>
                 )}
               </div>
-            )}
 
             {auctionClosed && isWinner && (
               <div className="rounded-2xl bg-gradient-to-br from-[#1B7F7A] to-[#134e4a] p-4 text-center text-white shadow-md">

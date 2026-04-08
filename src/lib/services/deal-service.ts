@@ -16,7 +16,7 @@ import {
   fetchPayment,
   voidPayment,
 } from '@/lib/moyasar-client'
-import { awardXP } from '@/lib/services/buyer-gamification-service'
+import { onDealCompleted } from '@/lib/services/platform-orchestrator'
 import type { DealRow } from '@/lib/types/financial-types'
 
 const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
@@ -216,11 +216,7 @@ export async function acceptDeal(dealId: string): Promise<void> {
 
   await initiatePayout(dealId)
 
-  try {
-    await awardXP(deal.buyer_id as string, 'deal_complete')
-  } catch (e) {
-    console.error('[acceptDeal gamification]', e)
-  }
+  await onDealCompleted(dealId)
 }
 
 export async function rejectDeal(
@@ -284,6 +280,7 @@ export async function autoAcceptExpiredInspections(): Promise<void> {
         })
         .eq('id', d.id)
       if (!d.seller_payout_id) await initiatePayout(d.id as string)
+      await onDealCompleted(d.id as string)
     } catch (e) {
       console.error('[autoAcceptExpiredInspections]', d.id, e)
     }
