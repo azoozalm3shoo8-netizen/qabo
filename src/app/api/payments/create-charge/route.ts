@@ -102,7 +102,6 @@ export async function POST(req: NextRequest) {
   })
 
   const tapJson = (await tapRes.json()) as Record<string, unknown>
-  console.log('Tap create charge response:', tapRes.status, tapJson)
 
   if (!tapRes.ok) {
     const msg =

@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'المفضلة',
+  title: { absolute: 'المفضلة | قبو' },
   description: 'مزاداتك المفضلة على قبو.',
 }
 

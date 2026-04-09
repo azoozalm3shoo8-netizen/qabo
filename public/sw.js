@@ -1,8 +1,9 @@
 /* eslint-disable no-restricted-globals */
-const CACHE = 'qabboo-v1'
-const OFFLINE = '/offline.html'
+/** App shell: الصفحة الرئيسية، صفحة offline التطبيقية، الواجهة الثابتة تُحدَّث عند التصفح (CSS/JS من نفس الأصل). */
+const CACHE = 'qabboo-v2'
+const OFFLINE = '/offline'
 
-const PRECACHE = ['/', '/offline.html', '/manifest.json']
+const PRECACHE = ['/', '/offline', '/manifest.json']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(

@@ -1,3 +1,7 @@
+/**
+ * إشعارات المزايدة والصفقات (تجاوز، فوز، إغلاق، دفع، شحن…) — طبقة موحّدة فوق `insertFinancialNotification`.
+ * إشعارات مالية خام أخرى (ضمان، استرداد) يمكن الإبقاء عليها من `financial-notifications` مباشرة حيث يلزم.
+ */
 import 'server-only'
 
 import { insertFinancialNotification } from '@/lib/server/financial-notifications'

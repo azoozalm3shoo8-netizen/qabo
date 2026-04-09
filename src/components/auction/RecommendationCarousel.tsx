@@ -87,11 +87,16 @@ export function RecommendationCarousel({ title, type, auctionId, userId }: Props
             <Link
               key={a.auctionId}
               href={'/auction/' + a.auctionId}
-              className="min-w-[168px] max-w-[168px] shrink-0 overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-md transition-transform hover:scale-[1.02] active:scale-[0.99] dark:border-slate-700 dark:bg-slate-800"
+              className="min-w-[168px] max-w-[168px] shrink-0 overflow-hidden rounded-2xl border border-border bg-card shadow-md transition-transform hover:scale-[1.02] active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
             >
-              <div className="relative aspect-[4/3] w-full bg-gray-100 dark:bg-slate-700">
+              <div className="relative aspect-[4/3] w-full bg-muted">
                 {a.imageUrl ? (
-                  <img src={a.imageUrl} alt="" className="h-full w-full object-cover" loading="lazy" />
+                  <img
+                    src={a.imageUrl}
+                    alt={a.title ? `صورة ${a.title}` : 'صورة المنتج'}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
                 ) : (
                   <div className="flex h-full items-center justify-center text-2xl text-gray-400">📷</div>
                 )}
@@ -103,13 +108,13 @@ export function RecommendationCarousel({ title, type, auctionId, userId }: Props
                 </span>
               </div>
               <div className="space-y-1.5 p-2.5">
-                <p className="line-clamp-2 text-xs font-bold leading-snug text-gray-900 dark:text-slate-100">
+                <p className="line-clamp-2 text-xs font-bold leading-snug text-foreground">
                   {a.title}
                 </p>
-                <p className="text-sm font-extrabold tabular-nums text-[#1B7F7A] dark:text-slate-100">
+                <p className="text-sm font-extrabold tabular-nums text-[#1B7F7A]">
                   {formatSARFromRiyalInteger(Math.round(a.currentPrice))}
                 </p>
-                <div className="flex items-center justify-between gap-1 text-[10px] text-gray-500 dark:text-slate-400">
+                <div className="flex items-center justify-between gap-1 text-[10px] text-muted-foreground">
                   <span className="inline-flex items-center gap-0.5 font-semibold text-[#1B7F7A]">
                     <Gavel className="h-3 w-3" weight="bold" />
                     {a.bidCount}

@@ -85,7 +85,7 @@ export function ProxyBidDrawer({
   return (
     <Sheet open={open} onClose={onClose} title="المزايدة التلقائية">
       <div className="space-y-4" dir="rtl">
-        <p className="text-sm text-gray-600 dark:text-slate-400">
+        <p className="text-sm text-muted-foreground">
           حدد أقصى مبلغ وسنزايد تلقائياً نيابة عنك بأقل زيادة ممكنة حتى هذا الحد.
         </p>
         {hasAutobid && autobidMaxRiyal != null ? (
@@ -97,23 +97,23 @@ export function ProxyBidDrawer({
               type="button"
               disabled={cancelLoading}
               onClick={() => void cancel()}
-              className="mt-2 text-sm font-bold text-red-600 underline dark:text-red-400"
+              className="mt-2 text-sm font-bold text-red-600 underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:text-red-400"
             >
               {cancelLoading ? 'جاري الإلغاء…' : 'إلغاء المزايدة التلقائية'}
             </button>
           </div>
         ) : null}
         <div>
-          <label className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">أقصى مبلغ (ر.س)</label>
+          <label className="mb-1 block text-sm font-medium text-foreground">أقصى مبلغ (ر.س)</label>
           <input
             type="number"
             min={minNext}
             step={bidIncrementRiyal}
             value={maxVal}
             onChange={(e) => setMaxVal(e.target.value)}
-            className="w-full rounded-xl border border-gray-200 px-4 py-3 text-lg font-bold dark:border-slate-600 dark:bg-slate-800 dark:text-white"
+            className="w-full rounded-xl border border-border bg-background px-4 py-3 text-lg font-bold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           />
-          <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+          <p className="mt-1 text-xs text-muted-foreground">
             الحد الأدنى المطلوب: {formatSAR(minNext, false)}
           </p>
         </div>
@@ -121,7 +121,7 @@ export function ProxyBidDrawer({
           type="button"
           disabled={loading}
           onClick={() => void submit()}
-          className="w-full min-h-[48px] rounded-xl bg-[#1B7F7A] py-3 font-bold text-white disabled:opacity-50 dark:bg-teal-600"
+          className="min-h-[48px] w-full rounded-xl bg-[#1B7F7A] py-3 font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 disabled:opacity-50 dark:bg-teal-600"
         >
           {loading ? 'جاري الحفظ…' : hasAutobid ? 'تحديث الحد الأقصى' : 'فعّل المزايدة التلقائية'}
         </button>

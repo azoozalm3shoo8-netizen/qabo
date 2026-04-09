@@ -44,12 +44,10 @@ export async function uploadAuctionImage(file: File, auctionId: string): Promise
     contentType: file.type || `image/${ext === 'jpg' ? 'jpeg' : ext}`,
   })
 
-  console.log('Upload result:', data, error)
   if (error) throw error
 
   const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(path)
   const url = pub.publicUrl
-  console.log('Public URL:', url)
   return url
 }
 

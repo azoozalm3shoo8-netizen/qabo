@@ -92,8 +92,8 @@ export default function LeaderboardPage() {
           </div>
         ) : (
           <>
-            <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-              <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-[#1F2937] dark:text-slate-100">
+            <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-foreground">
                 أفضل المزايدين 🏆
               </h2>
               <div className="mb-3 flex flex-wrap gap-2">
@@ -109,10 +109,10 @@ export default function LeaderboardPage() {
                     type="button"
                     onClick={() => setXpPeriod(t.id)}
                     className={
-                      'min-h-[40px] rounded-full px-4 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1B7F7A] ' +
+                      'min-h-[40px] rounded-full px-4 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ' +
                       (xpPeriod === t.id
                         ? 'bg-[#1B7F7A] text-white'
-                        : 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-slate-200')
+                        : 'bg-muted text-foreground')
                     }
                   >
                     {t.label}
@@ -120,7 +120,7 @@ export default function LeaderboardPage() {
                 ))}
               </div>
               {xpPeriod !== 'all' ? (
-                <p className="mb-3 text-xs text-gray-500 dark:text-slate-400">
+                <p className="mb-3 text-xs text-muted-foreground">
                   التصنيف الزمني قيد التطوير — يُعرض حالياً ترتيب كل الأوقات.
                 </p>
               ) : null}
@@ -131,60 +131,60 @@ export default function LeaderboardPage() {
                 </p>
               ) : null}
               {bidders.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-slate-400">لا بيانات كافية بعد.</p>
+                <p className="text-sm text-muted-foreground">لا بيانات كافية بعد.</p>
               ) : (
                 <LeaderboardBiddersTable rows={bidders} />
               )}
             </section>
 
-            <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-              <h2 className="mb-4 text-lg font-bold text-[#1F2937] dark:text-slate-100">
+            <section className="rounded-2xl border border-border bg-card p-4 shadow-sm">
+              <h2 className="mb-4 text-lg font-bold text-foreground">
                 أفضل البائعين ⭐
               </h2>
               {sellers.length === 0 ? (
-                <p className="text-sm text-gray-500 dark:text-slate-400">لا بيانات كافية بعد.</p>
+                <p className="text-sm text-muted-foreground">لا بيانات كافية بعد.</p>
               ) : (
                 <LeaderboardSellersTable rows={sellers} />
               )}
             </section>
 
             {stats ? (
-              <section className="rounded-2xl border border-amber-200/60 bg-gradient-to-br from-white to-amber-50/40 p-4 shadow-sm dark:border-slate-600 dark:from-slate-800 dark:to-slate-900">
-                <h2 className="mb-4 text-lg font-bold text-[#1F2937] dark:text-slate-100">
+              <section className="rounded-2xl border border-amber-200/60 bg-gradient-to-br from-card to-amber-50/40 p-4 shadow-sm dark:border-slate-600 dark:from-slate-800 dark:to-slate-900">
+                <h2 className="mb-4 text-lg font-bold text-foreground">
                   إحصائيات المنصة
                 </h2>
-                <ul className="grid gap-3 text-sm text-gray-700 dark:text-slate-300 sm:grid-cols-2">
-                  <li className="rounded-xl bg-white/80 p-3 dark:bg-slate-900/50">
-                    <span className="text-gray-500 dark:text-slate-400">إجمالي المزادات المنشأة</span>
-                    <p className="text-2xl font-bold text-[#1B7F7A] dark:text-teal-300">
+                <ul className="grid gap-3 text-sm text-foreground sm:grid-cols-2">
+                  <li className="rounded-xl bg-background/80 p-3">
+                    <span className="text-muted-foreground">إجمالي المزادات المنشأة</span>
+                    <p className="text-2xl font-bold text-[#1B7F7A]">
                       {(stats.total_auctions ?? 0).toLocaleString('ar-SA')}
                     </p>
                   </li>
-                  <li className="rounded-xl bg-white/80 p-3 dark:bg-slate-900/50">
-                    <span className="text-gray-500 dark:text-slate-400">إجمالي المزايدات</span>
-                    <p className="text-2xl font-bold text-[#1B7F7A] dark:text-teal-300">
+                  <li className="rounded-xl bg-background/80 p-3">
+                    <span className="text-muted-foreground">إجمالي المزايدات</span>
+                    <p className="text-2xl font-bold text-[#1B7F7A]">
                       {(stats.total_bids ?? 0).toLocaleString('ar-SA')}
                     </p>
                   </li>
-                  <li className="rounded-xl bg-white/80 p-3 dark:bg-slate-900/50">
-                    <span className="text-gray-500 dark:text-slate-400">صفقات مكتملة</span>
+                  <li className="rounded-xl bg-background/80 p-3">
+                    <span className="text-muted-foreground">صفقات مكتملة</span>
                     <p className="text-2xl font-bold text-[#FF8C42]">
                       {(stats.deals_completed ?? 0).toLocaleString('ar-SA')}
                     </p>
                   </li>
-                  <li className="rounded-xl bg-white/80 p-3 dark:bg-slate-900/50">
-                    <span className="text-gray-500 dark:text-slate-400">
+                  <li className="rounded-xl bg-background/80 p-3">
+                    <span className="text-muted-foreground">
                       متوسط ارتفاع السعر عن الافتتاح (عينة)
                     </span>
-                    <p className="text-2xl font-bold text-gray-900 dark:text-slate-100">
+                    <p className="text-2xl font-bold text-foreground">
                       %{(stats.avg_price_increase_pct ?? 0).toLocaleString('ar-SA')}
                     </p>
                   </li>
-                  <li className="rounded-xl bg-white/80 p-3 sm:col-span-2 dark:bg-slate-900/50">
-                    <span className="text-gray-500 dark:text-slate-400">أكثر فئة نشاطاً (عيّنة حديثة)</span>
-                    <p className="text-lg font-bold text-[#1F2937] dark:text-slate-100">
+                  <li className="rounded-xl bg-background/80 p-3 sm:col-span-2">
+                    <span className="text-muted-foreground">أكثر فئة نشاطاً (عيّنة حديثة)</span>
+                    <p className="text-lg font-bold text-foreground">
                       {stats.most_active_category}{' '}
-                      <span className="text-sm font-normal text-gray-500">
+                      <span className="text-sm font-normal text-muted-foreground">
                         ({(stats.most_active_category_count ?? 0).toLocaleString('ar-SA')} إعلاناً)
                       </span>
                     </p>

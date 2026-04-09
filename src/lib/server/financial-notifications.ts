@@ -1,3 +1,7 @@
+/**
+ * إشعارات مالية (دفع، استرداد، إتمام صفقة، مزايدة تلقائية، تنبيه بائع بمزايدة جديدة…)
+ * إشعارات المزايدة (تجاوز / فوز / إغلاق) → `notification-service.ts` وليس هنا مباشرة من الخدمات.
+ */
 import type { SupabaseClient } from '@supabase/supabase-js'
 
 export async function insertFinancialNotification(

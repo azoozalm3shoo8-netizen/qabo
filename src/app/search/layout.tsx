@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'البحث',
+  title: { absolute: 'البحث | قبو' },
   description: 'ابحث في مزادات قبو حسب الاسم والتصنيف والمدينة.',
 }
 

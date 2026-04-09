@@ -6,8 +6,18 @@ import { useCallback, useEffect, useState } from 'react'
 import { BottomNav } from '@/components/BottomNav'
 import { FavoriteHeart } from '@/components/FavoriteHeart'
 import { categoryBySlug, categoryNameFromParam } from '@/lib/constants'
-import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { auctionCountdownParts } from '@/lib/time'
+import { readQaboUserFromStorage, type QaboUserLocal } from '@/lib/qabo-user'
+import { formatSAR } from '@/lib/utils/currency'
+
+type CategoryAuctionRow = {
+  id: string
+  title: string
+  current_bid: number
+  ends_at: string
+  status: string
+  city?: string | null
+}
 
 export default function CategoryAuctionsPage() {
   const params = useParams()
@@ -15,9 +25,9 @@ export default function CategoryAuctionsPage() {
   const categoryName = categoryNameFromParam(raw)
   const meta = categoryBySlug(raw)
 
-  const [auctions, setAuctions] = useState<any[]>([])
+  const [auctions, setAuctions] = useState<CategoryAuctionRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [user, setUser] = useState<any>(null)
+  const [user, setUser] = useState<QaboUserLocal | null>(null)
   const [tick, setTick] = useState(0)
 
   const load = useCallback(async () => {
@@ -71,29 +81,33 @@ export default function CategoryAuctionsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20" dir="rtl">
-      <div className="sticky top-0 z-30 bg-white border-b border-gray-100 px-4 py-3 flex items-center gap-3 shadow-sm">
+      <div className="sticky top-0 z-30 flex items-center gap-3 border-b border-border bg-background px-4 py-3 shadow-sm">
         <Link
           href="/categories"
-          className="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          aria-label="العودة للتصنيفات"
         >
           →
         </Link>
         <h1 className="font-bold text-lg flex-1 truncate">{title}</h1>
-        <span className="text-xs text-gray-400 shrink-0">{auctions.length} مزاد</span>
+        <span className="shrink-0 text-xs text-muted-foreground">{auctions.length} مزاد</span>
       </div>
 
       <div className="p-4">
         {loading ? (
           <div className="grid grid-cols-2 gap-3">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-48 bg-white rounded-xl animate-pulse shadow-sm" />
+              <div key={i} className="h-48 animate-pulse rounded-xl bg-card shadow-sm" />
             ))}
           </div>
         ) : auctions.length === 0 ? (
-          <div className="bg-white rounded-2xl p-10 text-center shadow-sm border border-gray-100">
-            <p className="text-5xl mb-3">📭</p>
-            <p className="text-gray-600">لا توجد مزادات في هذا التصنيف حالياً</p>
-            <Link href="/" className="inline-block mt-4 text-[#1B7F7A] font-medium">
+          <div className="rounded-2xl border border-border bg-card p-10 text-center shadow-sm">
+            <p className="mb-3 text-5xl">📭</p>
+            <p className="text-muted-foreground">لا توجد مزادات في هذا التصنيف حالياً</p>
+            <Link
+              href="/"
+              className="mt-4 inline-block font-medium text-[#1B7F7A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+            >
               الرئيسية
             </Link>
           </div>
@@ -108,7 +122,7 @@ export default function CategoryAuctionsPage() {
                 <Link
                   key={a.id}
                   href={'/auction/' + a.id}
-                  className="bg-white rounded-xl overflow-hidden shadow-md border border-gray-100 relative"
+                  className="relative overflow-hidden rounded-xl border border-border bg-card shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
                 >
                   <div className="absolute top-2 left-2 z-10">
                     <FavoriteHeart auctionId={a.id} userId={user?.user_id ?? null} />
@@ -116,10 +130,8 @@ export default function CategoryAuctionsPage() {
                   <div className="h-32 bg-gray-100 flex items-center justify-center text-3xl">📦</div>
                   <div className="p-3">
                     <h3 className="font-medium text-sm truncate">{a.title}</h3>
-                    <p className="text-[#1B7F7A] font-bold mt-1">
-                      {Number(a.current_bid).toLocaleString()} ر.س
-                    </p>
-                    <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                    <p className="mt-1 font-bold text-[#1B7F7A]">{formatSAR(Number(a.current_bid), false)}</p>
+                    <div className="mt-2 flex items-center justify-between text-xs text-muted-foreground">
                       <span>{a.city || 'غير محدد'}</span>
                       <span
                         className={

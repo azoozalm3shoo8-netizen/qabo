@@ -16,7 +16,7 @@ const CONDITIONS: { value: string; label: string }[] = [
 ]
 
 const fieldClass =
-  'w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-[#1B7F7A] focus-visible:ring-offset-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100'
+  'w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2'
 
 export function StepDetails({
   formData,
@@ -55,10 +55,10 @@ export function StepDetails({
 
   return (
     <div className="space-y-5" dir="rtl">
-      <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">تفاصيل المزاد</h2>
+      <h2 className="text-lg font-bold text-foreground">تفاصيل المزاد</h2>
 
       <div>
-        <label htmlFor="auction-title" className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">
+        <label htmlFor="auction-title" className="mb-1 block text-sm font-medium text-foreground">
           عنوان المزاد <span className="text-red-500">*</span>
         </label>
         <input
@@ -71,13 +71,13 @@ export function StepDetails({
           maxLength={100}
         />
         {errors.title ? <p className="mt-1 text-sm text-red-600">{errors.title}</p> : null}
-        <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+        <p className="mt-1 text-xs text-muted-foreground">
           💡 أضف الماركة والموديل في العنوان لجذب المزايدين
         </p>
       </div>
 
       <div>
-        <label htmlFor="auction-category" className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">
+        <label htmlFor="auction-category" className="mb-1 block text-sm font-medium text-foreground">
           الفئة <span className="text-red-500">*</span>
         </label>
         <select
@@ -97,14 +97,14 @@ export function StepDetails({
       </div>
 
       <fieldset className="space-y-2">
-        <legend className="mb-2 text-sm font-medium text-gray-700 dark:text-slate-300">
+        <legend className="mb-2 text-sm font-medium text-foreground">
           الحالة <span className="text-red-500">*</span>
         </legend>
         <div className="flex flex-col gap-2">
           {CONDITIONS.map((c) => (
             <label
               key={c.value}
-              className="flex cursor-pointer items-center gap-2 rounded-xl border border-gray-200 px-3 py-2 dark:border-slate-600"
+              className="flex cursor-pointer items-center gap-2 rounded-xl border border-border px-3 py-2"
             >
               <input
                 type="radio"
@@ -114,7 +114,7 @@ export function StepDetails({
                 onChange={() => setFormData((p) => ({ ...p, condition: c.value }))}
                 className="h-4 w-4 accent-[#1B7F7A]"
               />
-              <span className="text-sm text-gray-800 dark:text-slate-200">{c.label}</span>
+              <span className="text-sm text-foreground">{c.label}</span>
             </label>
           ))}
         </div>
@@ -122,7 +122,7 @@ export function StepDetails({
       </fieldset>
 
       <div>
-        <label htmlFor="auction-desc" className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">
+        <label htmlFor="auction-desc" className="mb-1 block text-sm font-medium text-foreground">
           وصف تفصيلي <span className="text-red-500">*</span>
         </label>
         <textarea
@@ -135,7 +135,7 @@ export function StepDetails({
           maxLength={2000}
         />
         {errors.description ? <p className="mt-1 text-sm text-red-600">{errors.description}</p> : null}
-        <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">
+        <p className="mt-1 text-xs text-muted-foreground">
           💡 وصف صادق يقلل النزاعات ويزيد ثقة المزايدين
         </p>
       </div>
@@ -143,7 +143,7 @@ export function StepDetails({
       {tips.length > 0 ? (
         <div className="rounded-xl border border-[#1B7F7A]/20 bg-[#E6F4F3]/50 p-3 text-sm dark:border-teal-800 dark:bg-[#134e4a]/30">
           <p className="font-bold text-[#1B7F7A] dark:text-teal-300">تلميحات المساعد</p>
-          <ul className="mt-2 list-disc pr-4 text-gray-700 dark:text-slate-300">
+          <ul className="mt-2 list-disc pr-4 text-foreground">
             {tips.map((t, i) => (
               <li key={i}>{t}</li>
             ))}

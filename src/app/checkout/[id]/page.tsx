@@ -6,6 +6,7 @@ import { useParams, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { normalizeAuctionImages } from '@/lib/auction-images'
+import { formatSAR } from '@/lib/utils/currency'
 
 type Auction = {
   id: string
@@ -179,7 +180,7 @@ export default function CheckoutPage() {
         <button
           type="button"
           onClick={() => router.back()}
-          className="w-10 h-10 rounded-full bg-white/15 flex items-center justify-center text-lg"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/15 text-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-[#1B7F7A]"
           aria-label="رجوع"
         >
           →
@@ -201,10 +202,16 @@ export default function CheckoutPage() {
 
         {!loading && auction && (
           <>
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-              <div className="relative aspect-video bg-gray-100">
+            <div className="overflow-hidden rounded-2xl border border-border bg-background shadow-sm">
+              <div className="relative aspect-video bg-muted">
                 {thumb ? (
-                  <Image src={thumb} alt="" fill className="object-cover" sizes="100vw" />
+                  <Image
+                    src={thumb}
+                    alt={auction.title ? `صورة ${auction.title}` : 'صورة المنتج'}
+                    fill
+                    className="object-cover"
+                    sizes="100vw"
+                  />
                 ) : (
                   <div className="absolute inset-0 flex items-center justify-center text-5xl text-gray-300">
                     📷
@@ -212,27 +219,25 @@ export default function CheckoutPage() {
                 )}
               </div>
               <div className="p-4">
-                <h2 className="font-bold text-lg text-gray-900 leading-snug">{auction.title}</h2>
-                <p className="text-sm text-gray-500 mt-1">سعر الفوز</p>
-                <p className="text-2xl font-extrabold text-[#1B7F7A]">
-                  {productAmount.toLocaleString()} <span className="text-base">ر.س</span>
-                </p>
+                <h2 className="text-lg font-bold leading-snug text-foreground">{auction.title}</h2>
+                <p className="mt-1 text-sm text-muted-foreground">سعر الفوز</p>
+                <p className="text-2xl font-extrabold text-[#1B7F7A]">{formatSAR(productAmount, false)}</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4 space-y-3 text-sm">
-              <h3 className="font-bold text-gray-900 mb-1">ملخص الطلب</h3>
-              <div className="flex justify-between text-gray-700">
+            <div className="space-y-3 rounded-2xl border border-border bg-background p-4 text-sm shadow-sm">
+              <h3 className="mb-1 font-bold text-foreground">ملخص الطلب</h3>
+              <div className="flex justify-between text-foreground">
                 <span>سعر المنتج</span>
-                <span className="font-semibold tabular-nums">{productAmount.toLocaleString()} ر.س</span>
+                <span className="font-semibold tabular-nums">{formatSAR(productAmount, false)}</span>
               </div>
-              <div className="flex justify-between text-gray-700">
+              <div className="flex justify-between text-foreground">
                 <span>الشحن</span>
-                <span className="font-semibold tabular-nums">{SHIPPING_SAR.toLocaleString()} ر.س</span>
+                <span className="font-semibold tabular-nums">{formatSAR(SHIPPING_SAR, false)}</span>
               </div>
-              <div className="border-t border-gray-100 pt-3 flex justify-between text-base font-bold text-gray-900">
+              <div className="flex justify-between border-t border-border pt-3 text-base font-bold text-foreground">
                 <span>الإجمالي</span>
-                <span className="text-[#1B7F7A] tabular-nums">{totalSar.toLocaleString()} ر.س</span>
+                <span className="text-[#1B7F7A] tabular-nums">{formatSAR(totalSar, false)}</span>
               </div>
             </div>
 
@@ -271,7 +276,7 @@ export default function CheckoutPage() {
 
             <Link
               href={'/auction/' + id}
-              className="block text-center text-sm text-[#1B7F7A] font-medium py-2"
+              className="block py-2 text-center text-sm font-medium text-[#1B7F7A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 rounded-lg"
             >
               العودة لتفاصيل المزاد
             </Link>

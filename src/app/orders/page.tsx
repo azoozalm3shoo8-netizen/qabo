@@ -12,6 +12,7 @@ import { OrderStatusTracker } from '@/components/OrderStatusTracker'
 import { PullToRefresh } from '@/components/PullToRefresh'
 import { useToast } from '@/components/Toast'
 import { normalizeAuctionImages } from '@/lib/auction-images'
+import { formatSAR } from '@/lib/utils/currency'
 import { format } from 'date-fns'
 import { arSA } from 'date-fns/locale'
 
@@ -297,8 +298,8 @@ export default function OrdersPage() {
                         {badge.label}
                       </span>
                     </div>
-                    <p className="text-[#1B7F7A] font-bold text-sm mt-1">
-                      {Number(o.product_amount).toLocaleString()} ر.س
+                    <p className="mt-1 text-sm font-bold text-[#1B7F7A]">
+                      {formatSAR(Number(o.product_amount), false)}
                     </p>
                     <OrderStatusTracker currentStatus={o.status} />
                     <p className="text-xs text-gray-400 mt-1">

@@ -224,9 +224,7 @@ export default function WalletPage() {
                 مبالغ مجمدة لصفقات قيد التنفيذ (درع الصفقة)
               </p>
             </div>
-            <p className="text-xl font-extrabold text-[#FF8C42] tabular-nums">
-              {frozen.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
+            <p className="text-xl font-extrabold text-[#FF8C42] tabular-nums">{formatSAR(frozen, false)}</p>
           </div>
         </div>
 
@@ -242,7 +240,7 @@ export default function WalletPage() {
               setShowWithdraw(false)
               setMsg('')
             }}
-            className="py-3 rounded-xl bg-[#FF8C42] text-white text-sm font-bold shadow-sm hover:bg-[#E87A35]"
+            className="rounded-xl bg-[#FF8C42] py-3 text-sm font-bold text-white shadow-sm hover:bg-[#E87A35] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             إيداع
           </button>
@@ -253,7 +251,7 @@ export default function WalletPage() {
               setShowDeposit(false)
               setMsg('')
             }}
-            className="py-3 rounded-xl border-2 border-[#1B7F7A] text-[#1B7F7A] text-sm font-bold bg-white"
+            className="rounded-xl border-2 border-[#1B7F7A] bg-background py-3 text-sm font-bold text-[#1B7F7A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             سحب
           </button>

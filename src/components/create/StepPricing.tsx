@@ -12,7 +12,7 @@ const DURATION_CHIPS: { label: string; hours: number }[] = [
 const CITIES = ['الرياض', 'جدة', 'الدمام', 'مكة', 'المدينة', 'أبها', 'تبوك', 'أخرى']
 
 const fieldClass =
-  'w-full rounded-xl border border-gray-200 bg-white px-4 py-3 text-gray-900 outline-none focus-visible:ring-2 focus-visible:ring-[#1B7F7A] focus-visible:ring-offset-2 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100'
+  'w-full rounded-xl border border-border bg-background px-4 py-3 text-foreground outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2'
 
 export function StepPricing({
   formData,
@@ -25,10 +25,10 @@ export function StepPricing({
 }) {
   return (
     <div className="space-y-5" dir="rtl">
-      <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">التسعير والتسليم</h2>
+      <h2 className="text-lg font-bold text-foreground">التسعير والتسليم</h2>
 
       <div>
-        <label htmlFor="start-price" className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">
+        <label htmlFor="start-price" className="mb-1 block text-sm font-medium text-foreground">
           سعر البداية (ر.س) <span className="text-red-500">*</span>
         </label>
         <input
@@ -44,7 +44,7 @@ export function StepPricing({
       </div>
 
       <div>
-        <label htmlFor="buy-now" className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">
+        <label htmlFor="buy-now" className="mb-1 block text-sm font-medium text-foreground">
           سعر اشتري الآن (اختياري)
         </label>
         <input
@@ -60,7 +60,7 @@ export function StepPricing({
       </div>
 
       <div>
-        <p className="mb-2 text-sm font-medium text-gray-700 dark:text-slate-300">
+        <p className="mb-2 text-sm font-medium text-foreground">
           مدة المزاد <span className="text-red-500">*</span>
         </p>
         <div className="flex flex-wrap gap-2">
@@ -73,7 +73,7 @@ export function StepPricing({
                 'min-h-[44px] rounded-full px-4 py-2 text-sm font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1B7F7A] focus-visible:ring-offset-2 ' +
                 (formData.durationHours === d.hours
                   ? 'bg-[#1B7F7A] text-white'
-                  : 'bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-200')
+                  : 'bg-muted text-foreground')
               }
             >
               {d.label}
@@ -84,7 +84,7 @@ export function StepPricing({
       </div>
 
       <fieldset>
-        <legend className="mb-2 text-sm font-medium text-gray-700 dark:text-slate-300">
+        <legend className="mb-2 text-sm font-medium text-foreground">
           طريقة التسليم <span className="text-red-500">*</span>
         </legend>
         <div className="flex flex-col gap-3">
@@ -95,7 +95,7 @@ export function StepPricing({
               onChange={(e) => setFormData((p) => ({ ...p, deliveryShipping: e.target.checked }))}
               className="h-5 w-5 accent-[#1B7F7A]"
             />
-            <span className="text-sm text-gray-800 dark:text-slate-200">شحن</span>
+            <span className="text-sm text-foreground">شحن</span>
           </label>
           <label className="flex min-h-[44px] cursor-pointer items-center gap-2">
             <input
@@ -104,14 +104,14 @@ export function StepPricing({
               onChange={(e) => setFormData((p) => ({ ...p, deliveryHandoff: e.target.checked }))}
               className="h-5 w-5 accent-[#1B7F7A]"
             />
-            <span className="text-sm text-gray-800 dark:text-slate-200">تسليم يد</span>
+            <span className="text-sm text-foreground">تسليم يد</span>
           </label>
         </div>
         {errors.delivery ? <p className="mt-1 text-sm text-red-600">{errors.delivery}</p> : null}
       </fieldset>
 
       <div>
-        <label htmlFor="auction-city" className="mb-1 block text-sm font-medium text-gray-700 dark:text-slate-300">
+        <label htmlFor="auction-city" className="mb-1 block text-sm font-medium text-foreground">
           المدينة
         </label>
         <select

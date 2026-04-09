@@ -111,7 +111,7 @@ export function NotificationCenter({
       {loading ? (
         <div className="space-y-2">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 animate-pulse rounded-xl bg-gray-100 dark:bg-slate-800" />
+            <div key={i} className="h-16 animate-pulse rounded-xl bg-muted" />
           ))}
         </div>
       ) : items.length === 0 ? (

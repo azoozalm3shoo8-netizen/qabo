@@ -20,10 +20,7 @@ export function SellerInfoCard({ seller }: { seller: SellerInfoCardSeller }) {
   const rating = seller.rating != null ? Number(seller.rating) : null
 
   return (
-    <div
-      className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800"
-      dir="rtl"
-    >
+    <div className="rounded-2xl border border-border bg-card p-4 shadow-sm" dir="rtl">
       <div className="flex items-start gap-3">
         <div className="relative h-14 w-14 shrink-0 overflow-hidden rounded-full bg-[#E6F4F3] dark:bg-teal-900/40">
           {seller.avatar_url ? (
@@ -42,7 +39,7 @@ export function SellerInfoCard({ seller }: { seller: SellerInfoCardSeller }) {
         </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-bold text-gray-900 dark:text-slate-100">{seller.name}</h3>
+            <h3 className="font-bold text-foreground">{seller.name}</h3>
             {seller.is_verified ? (
               <span className="inline-flex items-center gap-0.5 rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-bold text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300">
                 <CheckCircle className="h-3.5 w-3.5" weight="fill" />
@@ -50,13 +47,13 @@ export function SellerInfoCard({ seller }: { seller: SellerInfoCardSeller }) {
               </span>
             ) : null}
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-gray-600 dark:text-slate-400">
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
             {rating != null && !Number.isNaN(rating) ? (
               <span className="inline-flex items-center gap-0.5 text-amber-600 dark:text-amber-400">
                 <Star className="h-4 w-4" weight="fill" />
                 {rating.toFixed(1)}
                 {seller.total_reviews != null ? (
-                  <span className="text-gray-500 dark:text-slate-500">({seller.total_reviews})</span>
+                  <span className="text-muted-foreground">({seller.total_reviews})</span>
                 ) : null}
               </span>
             ) : null}
@@ -69,7 +66,7 @@ export function SellerInfoCard({ seller }: { seller: SellerInfoCardSeller }) {
       {href ? (
         <Link
           href={href}
-          className="mt-3 inline-flex rounded-xl border-2 border-[#1B7F7A] px-4 py-2 text-sm font-bold text-[#1B7F7A] dark:border-teal-500 dark:text-teal-300"
+          className="mt-3 inline-flex rounded-xl border-2 border-[#1B7F7A] px-4 py-2 text-sm font-bold text-[#1B7F7A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:border-teal-500 dark:text-teal-300"
         >
           عرض الملف
         </Link>

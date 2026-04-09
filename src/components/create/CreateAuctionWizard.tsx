@@ -117,8 +117,8 @@ export function CreateAuctionWizard({ user }: { user: QaboUserLocal }) {
 
   return (
     <div className="min-h-screen bg-[var(--background)] pb-36" dir="rtl">
-      <header className="sticky top-0 z-20 border-b border-gray-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
-        <h1 className="text-center text-lg font-bold text-gray-900 dark:text-slate-100">إنشاء مزاد</h1>
+      <header className="sticky top-0 z-20 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
+        <h1 className="text-center text-lg font-bold text-foreground">إنشاء مزاد</h1>
         <div className="mt-4 flex items-center justify-between gap-1">
           {STEPS.map((s) => {
             const done = currentStep > s.i
@@ -132,13 +132,13 @@ export function CreateAuctionWizard({ user }: { user: QaboUserLocal }) {
                       ? 'bg-[#1B7F7A] text-white'
                       : done
                         ? 'bg-[var(--success)] text-white'
-                        : 'bg-gray-200 text-gray-500 dark:bg-slate-700 dark:text-slate-400')
+                        : 'bg-muted text-muted-foreground')
                   }
                   aria-current={active ? 'step' : undefined}
                 >
                   {done ? <Check className="h-5 w-5" weight="bold" aria-hidden /> : s.icon}
                 </div>
-                <span className="hidden text-center text-[10px] font-medium text-gray-600 sm:block dark:text-slate-400">
+                <span className="hidden text-center text-[10px] font-medium text-muted-foreground sm:block">
                   {s.label}
                 </span>
               </div>
@@ -163,19 +163,19 @@ export function CreateAuctionWizard({ user }: { user: QaboUserLocal }) {
       </main>
 
       {currentStep < 3 ? (
-        <div className="fixed bottom-[72px] left-0 right-0 z-30 flex gap-3 border-t border-gray-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-slate-700 dark:bg-slate-900/95 safe-pb">
+        <div className="fixed bottom-[72px] left-0 right-0 z-30 flex gap-3 border-t border-border bg-background/95 px-4 py-3 backdrop-blur safe-pb">
           <button
             type="button"
             onClick={goPrev}
             disabled={currentStep === 0}
-            className="min-h-[48px] flex-1 rounded-xl border-2 border-gray-300 py-3 text-sm font-bold text-gray-700 disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1B7F7A] dark:border-slate-600 dark:text-slate-200"
+            className="min-h-[48px] flex-1 rounded-xl border-2 border-border py-3 text-sm font-bold text-foreground disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             السابق
           </button>
           <button
             type="button"
             onClick={goNext}
-            className="min-h-[48px] flex-[2] rounded-xl bg-[#1B7F7A] py-3 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1B7F7A] focus-visible:ring-offset-2"
+            className="min-h-[48px] flex-[2] rounded-xl bg-[#1B7F7A] py-3 text-sm font-bold text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
           >
             التالي
           </button>

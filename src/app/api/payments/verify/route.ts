@@ -31,7 +31,6 @@ export async function GET(req: NextRequest) {
   })
 
   const charge = (await tapRes.json()) as Record<string, unknown>
-  console.log('Tap verify charge:', tapRes.status, charge)
 
   if (!tapRes.ok) {
     return NextResponse.json({

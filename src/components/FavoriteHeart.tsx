@@ -85,7 +85,7 @@ export function FavoriteHeart({
         'rounded-full bg-white/90 p-1.5 shadow-sm transition-transform hover:scale-105 disabled:opacity-50 ' +
         className
       }
-      aria-label={on ? t('favorite_remove') : t('favorite_add')}
+      aria-label={on ? 'إزالة من المفضلة' : 'إضافة للمفضلة'}
     >
       <span className="text-lg">{on ? '❤️' : '🤍'}</span>
     </button>

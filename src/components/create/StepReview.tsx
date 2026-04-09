@@ -94,14 +94,14 @@ export function StepReview({
 
   return (
     <div className="space-y-5" dir="rtl">
-      <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">مراجعة قبل النشر</h2>
+      <h2 className="text-lg font-bold text-foreground">مراجعة قبل النشر</h2>
 
-      <div className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-800">
-        <div className="relative aspect-[4/3] w-full bg-gray-100 dark:bg-slate-700">
+      <div className="overflow-hidden rounded-2xl border border-border bg-card shadow-md">
+        <div className="relative aspect-[4/3] w-full bg-muted">
           {primary ? (
             <Image src={primary} alt={formData.title || 'معاينة المزاد'} fill className="object-cover" sizes="100vw" />
           ) : (
-            <div className="flex h-full items-center justify-center text-gray-400">📷</div>
+            <div className="flex h-full items-center justify-center text-muted-foreground">📷</div>
           )}
         </div>
         {formData.imageUrls.length > 1 ? (
@@ -114,12 +114,12 @@ export function StepReview({
           </div>
         ) : null}
         <div className="space-y-2 p-4 text-right">
-          <h3 className="text-base font-bold text-gray-900 dark:text-slate-100">{formData.title || 'بدون عنوان'}</h3>
-          <p className="text-sm text-gray-600 dark:text-slate-400">
+          <h3 className="text-base font-bold text-foreground">{formData.title || 'بدون عنوان'}</h3>
+          <p className="text-sm text-muted-foreground">
             {formData.category} · {CONDITIONS[formData.condition] ?? formData.condition}
           </p>
-          <p className="text-sm leading-relaxed text-gray-700 dark:text-slate-300">{formData.description}</p>
-          <div className="border-t border-gray-100 pt-3 text-sm dark:border-slate-600">
+          <p className="text-sm leading-relaxed text-foreground">{formData.description}</p>
+          <div className="border-t border-border pt-3 text-sm">
             <p className="font-bold text-[#1B7F7A] dark:text-teal-300">
               {formatSAR(Number(formData.startPriceRiyal) || 0, false)}
             </p>
@@ -127,7 +127,7 @@ export function StepReview({
               المدة: {formData.durationHours / 24} يوم · التسليم: {deliveryLabel(formData)} · {formData.city}
             </p>
             {formData.buyNowRiyal.trim() ? (
-              <p className="mt-1 text-sm text-gray-600 dark:text-slate-400">
+              <p className="mt-1 text-sm text-muted-foreground">
                 اشتري الآن: {formatSAR(Number(formData.buyNowRiyal), false)}
               </p>
             ) : null}
@@ -152,7 +152,7 @@ export function StepReview({
       <button
         type="button"
         onClick={saveDraftOnly}
-        className="min-h-[44px] w-full rounded-xl border-2 border-gray-300 bg-transparent py-2 text-sm font-semibold text-gray-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1B7F7A] dark:border-slate-600 dark:text-slate-200"
+        className="min-h-[44px] w-full rounded-xl border-2 border-border bg-transparent py-2 text-sm font-semibold text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
       >
         حفظ كمسودة
       </button>

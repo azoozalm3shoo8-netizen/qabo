@@ -19,7 +19,7 @@ export function HowAuctionWorks() {
   }, [])
 
   return (
-    <div dir="rtl" className="mx-auto max-w-3xl space-y-10 px-4 py-8 text-[#1F2937] dark:text-slate-100">
+    <div dir="rtl" className="mx-auto max-w-3xl space-y-10 px-4 py-8 text-foreground">
       <h1 className="text-2xl font-bold text-[#1B7F7A]">كيف يعمل قبو؟</h1>
 
       <section className="grid gap-4 sm:grid-cols-2">
@@ -57,7 +57,7 @@ export function HowAuctionWorks() {
       <div className="rounded-2xl bg-[#FF8C42] p-4 text-center text-white shadow-lg">
         <Link
           href="/auth/register"
-          className="inline-flex min-h-[48px] items-center justify-center rounded-xl bg-white px-6 py-3 text-sm font-bold text-[#1B7F7A]"
+          className="inline-flex min-h-[48px] items-center justify-center rounded-xl bg-background px-6 py-3 text-sm font-bold text-[#1B7F7A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         >
           ابدأ الآن — سجّل مجاناً
         </Link>
@@ -110,13 +110,13 @@ export function HowAuctionWorks() {
                 إنشاء حساب
               </Link>
             </p>
-            <p className="mt-2 text-xs font-semibold text-gray-700 dark:text-slate-300">
+            <p className="mt-2 text-xs font-semibold text-foreground">
               بعد انتهاء الفترة المجانية، ستُطبَّق العمولة التالية:
             </p>
           </div>
         ) : null}
         {!free?.isActive ? (
-          <p className="mb-3 text-sm text-gray-700 dark:text-slate-300">شرائح العمولة الحالية:</p>
+          <p className="mb-3 text-sm text-foreground">شرائح العمولة الحالية:</p>
         ) : null}
         <CommissionTiersDisplay freeInfo={free} />
       </Section>

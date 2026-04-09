@@ -1,3 +1,7 @@
+/**
+ * إشعارات المزايدة (تجاوز / إغلاق مزاد / فوز) تُرسل من `platform-orchestrator` + `notification-service`.
+ * إشعارات مالية (ضمان، مزايدة تلقائية، إلخ) تبقى عبر `insertFinancialNotification` حيث يلزم.
+ */
 import { broadcastAuctionPayload } from '@/lib/server/auction-realtime-broadcast'
 import { insertFinancialNotification } from '@/lib/server/financial-notifications'
 import { createClient } from '@/lib/supabase-server'
@@ -6,6 +10,7 @@ import { createDeal } from '@/lib/services/deal-service'
 import { onAuctionClosed, onBidPlaced } from '@/lib/services/platform-orchestrator'
 import { notifySellerAuctionActivityOnNewBid } from '@/lib/services/smart-notification-service'
 import type { BidRow } from '@/lib/types/financial-types'
+import { formatSAR } from '@/lib/utils/currency'
 
 const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
 
@@ -163,7 +168,7 @@ async function processAutoBidChain(auctionId: string): Promise<void> {
         user_id: top.user_id,
         type: 'auto_bid_executed',
         title: 'تمت مزايدة تلقائية',
-        body: `تمت المزايدة نيابةً عنك بمبلغ ${(newAmt / 100).toLocaleString('ar-SA')} ر.س`,
+        body: `تمت المزايدة نيابةً عنك بمبلغ ${formatSAR(newAmt, true)}`,
         auction_id: auctionId,
       })
     } catch {
@@ -232,7 +237,12 @@ export async function recordSimpleBid(
   await supabase.from('auctions').update(patch).eq('id', auctionId)
 
   const bidTime = new Date()
-  const orch = await onBidPlaced(auctionId, bidderId, bidTime)
+  const titleRs = String(auction.title ?? 'مزاد')
+  const prevHighRs = auction.highest_bidder_id as string | undefined
+  const orch = await onBidPlaced(auctionId, bidderId, bidTime, {
+    previousHighBidderId: prevHighRs,
+    auctionTitle: titleRs,
+  })
 
   const newTotalBids =
     typeof patch.bid_count === 'number'
@@ -259,7 +269,6 @@ export async function recordSimpleBid(
     newTotalBids,
   })
 
-  const prev = auction.highest_bidder_id as string | undefined
   const sellerId = auction.seller_id as string
   await insertFinancialNotification(supabase, {
     user_id: sellerId,
@@ -268,16 +277,6 @@ export async function recordSimpleBid(
     body: `مزايدة جديدة على: ${String(auction.title ?? '')}`,
     auction_id: auctionId,
   })
-
-  if (prev && prev !== bidderId) {
-    await insertFinancialNotification(supabase, {
-      user_id: prev,
-      type: 'outbid',
-      title: 'تم تجاوز مزايدتك',
-      body: `تم تجاوز مزايدتك في المزاد: ${String(auction.title ?? '')}`,
-      auction_id: auctionId,
-    })
-  }
 
   try {
     await processAutoBidChain(auctionId)
@@ -405,7 +404,12 @@ export async function placeBid(
   await supabase.from('auctions').update(patch).eq('id', auctionId)
 
   const bidTime = new Date()
-  const orch = await onBidPlaced(auctionId, bidderId, bidTime)
+  const titlePb = String(auction.title ?? 'مزاد')
+  const prevHighPb = auction.highest_bidder_id as string | undefined
+  const orch = await onBidPlaced(auctionId, bidderId, bidTime, {
+    previousHighBidderId: prevHighPb,
+    auctionTitle: titlePb,
+  })
 
   const newTotalBids =
     typeof patch.bid_count === 'number'
@@ -444,8 +448,6 @@ export async function placeBid(
     metadata: { auction_id: auctionId },
   })
 
-  const prev = auction.highest_bidder_id as string | undefined
-
   const sellerId = auction.seller_id as string
   await insertFinancialNotification(supabase, {
     user_id: sellerId,
@@ -454,16 +456,6 @@ export async function placeBid(
     body: `مزايدة جديدة على: ${String(auction.title ?? '')}`,
     auction_id: auctionId,
   })
-
-  if (prev && prev !== bidderId) {
-    await insertFinancialNotification(supabase, {
-      user_id: prev,
-      type: 'outbid',
-      title: 'تم تجاوز مزايدتك',
-      body: `تم تجاوز مزايدتك في المزاد: ${String(auction.title ?? '')}`,
-      auction_id: auctionId,
-    })
-  }
 
   if (!options?.fromAutoBidEngine && !options?.skipAutoBidChain) {
     try {
@@ -560,25 +552,15 @@ export async function handleAuctionEnd(auctionId: string): Promise<void> {
     })
     .eq('id', auctionId)
 
-  await insertFinancialNotification(supabase, {
-    user_id: winnerId,
-    type: 'auction_won',
-    title: 'مبروك! لديك 48 ساعة لإتمام الدفع',
-    body: `فزت بالمزاد: ${String(auction.title ?? '')}. أكمل الدفع من صفحة الصفقات.`,
-    auction_id: auctionId,
-    deal_id: dealRow.id,
-  })
-  await insertFinancialNotification(supabase, {
-    user_id: auction.seller_id as string,
-    type: 'auction_sold',
-    title: 'تم بيع منتجك!',
-    body: `تم بيع مزادك: ${String(auction.title ?? '')}`,
-    auction_id: auctionId,
-    deal_id: dealRow.id,
-  })
+  const loserIds = [...new Set((bids ?? []).map((b) => String(b.bidder_id)).filter(Boolean))].filter(
+    (id) => id !== winnerId
+  )
 
   await onAuctionClosed(auctionId, {
     winnerId,
+    sellerId: sellerIdStr,
+    auctionTitle: auctionTitleStr,
+    loserIds,
     salePriceHalalas: winningHalalas,
     category: String(auction.category ?? ''),
   })

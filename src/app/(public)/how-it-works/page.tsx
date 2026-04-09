@@ -2,9 +2,9 @@ import type { Metadata } from 'next'
 import { HowAuctionWorks } from '@/components/info/HowAuctionWorks'
 
 export const metadata: Metadata = {
-  title: 'كيف يعمل قبو',
+  title: { absolute: 'كيف يعمل قبو | قبو' },
   description: 'دليل المزايدة والبيع وحماية المشتري على منصة قبو.',
-  openGraph: { title: 'كيف يعمل قبو', locale: 'ar_SA' },
+  openGraph: { title: 'كيف يعمل قبو | قبو', locale: 'ar_SA' },
 }
 
 export default function HowItWorksPage() {

@@ -1,19 +1,19 @@
 /**
  * منسّق أحداث المنصة (جانب الخادم).
  *
- * الهدف طويل المدى (مرجع للتوسعة):
- * - `onBidPlaced`: سلسلة auto-bid، anti-snipe، بث realtime، إشعارات (تجاوز/بائع)، awardXP، شارات social proof.
- * - `onAuctionClosed`: فائز، deal، إشعارات (فائز/خاسرين/بائع)، تحرير ودائع، awardXP، تسعير، تقرير ما بعد المزاد، بث `auction_closed`.
- * - دفع/شحن/فحص/نزاع: ربط Moyasar capture، مؤقتات الشحن والفحص، فتح نزاع تلقائي عند الرفض.
- *
- * التنفيذ الحالي يغطي جزءاً من ذلك؛ توسّعه تدريجياً دون كسر المسارات الحرجة.
+ * إشعارات المزايدة (تجاوز / فوز / خاسرين / بائع عند الإغلاق) → `notification-service.ts`
+ * إشعارات مالية (دفع، استرداد، إتمام صفقة…) → `insertFinancialNotification` في `financial-notifications.ts`
  */
 import 'server-only'
 
 import { broadcastAuctionPayload } from '@/lib/server/auction-realtime-broadcast'
 import { insertFinancialNotification } from '@/lib/server/financial-notifications'
 import { createClient } from '@/lib/supabase-server'
-import { createNotification } from '@/lib/services/notification-service'
+import {
+  createNotification,
+  notifyOutbid,
+  notifyWin,
+} from '@/lib/services/notification-service'
 import {
   checkAndExtendAuction,
   notifyBiddersAuctionExtended,
@@ -38,13 +38,21 @@ export type BidPlacedOrchestrationResult = {
   extensionCount?: number
 }
 
+/** سياق إشعار التجاوز — يُمرَّر من `bidding-service` بعد قراءة أعلى مزايد سابق */
+export type BidPlacedNotifyContext = {
+  previousHighBidderId?: string
+  auctionTitle: string
+}
+
 /**
  * تأثيرات جانبية بعد مزايدة ناجحة — لا تُعطل المسار الرئيسي عند الفشل.
+ * إشعار التجاوز يُرسل هنا مرة واحدة فقط (لا تكرار في bidding-service).
  */
 export async function onBidPlaced(
   auctionId: string,
   bidderId: string,
-  bidTime: Date = new Date()
+  bidTime: Date = new Date(),
+  notify?: BidPlacedNotifyContext
 ): Promise<BidPlacedOrchestrationResult> {
   let extended = false
   let newEndTime: string | undefined
@@ -70,17 +78,28 @@ export async function onBidPlaced(
     await awardXP(bidderId, 'bid')
   })
 
+  await runSafe('notify_outbid_once', async () => {
+    const prev = notify?.previousHighBidderId
+    const title = notify?.auctionTitle?.trim() || 'مزاد'
+    if (prev && prev !== bidderId) {
+      await notifyOutbid(prev, auctionId, title)
+    }
+  })
+
   return { extended, newEndTime, extensionCount }
 }
 
 export type AuctionClosedContext = {
-  winnerId?: string
+  winnerId?: string | null
+  sellerId?: string
+  auctionTitle?: string
+  loserIds?: string[]
   salePriceHalalas?: number
   category?: string
 }
 
 /**
- * بعد انتهاء المزاد (أي حالة نهائية): تسعير تعلُّمي، تقرير بائع، ونقاط فوز عند البيع.
+ * بعد انتهاء المزاد: تسعير، تقرير، XP، ثم إشعارات الإغلاق (فائز / بائع / خاسرين) عبر notification-service.
  */
 export async function onAuctionClosed(auctionId: string, ctx?: AuctionClosedContext): Promise<void> {
   await runSafe('pricing_feedback', async () => {
@@ -98,21 +117,34 @@ export async function onAuctionClosed(auctionId: string, ctx?: AuctionClosedCont
     })
   }
 
-  await runSafe('notify_auction_losers', async () => {
-    if (!ctx?.winnerId) return
-    const supabase = createClient()
-    const { data: auction } = await supabase.from('auctions').select('title').eq('id', auctionId).maybeSingle()
-    const title = String(auction?.title ?? 'مزاد')
-    const { data: bidRows } = await supabase.from('bids').select('bidder_id').eq('auction_id', auctionId)
-    const losers = [...new Set((bidRows ?? []).map((b) => String(b.bidder_id)).filter(Boolean))].filter(
-      (id) => id !== ctx.winnerId
-    )
+  await runSafe('auction_closed_notifications', async () => {
+    const title = (ctx?.auctionTitle && ctx.auctionTitle.trim()) || 'مزاد'
+    const sellerId = ctx?.sellerId
+    const winnerId = ctx?.winnerId ?? null
+    const losers = ctx?.loserIds ?? []
+
+    if (winnerId) {
+      await notifyWin(winnerId, auctionId, title)
+    }
+
+    if (sellerId) {
+      await createNotification({
+        userId: sellerId,
+        type: 'system',
+        title: winnerId ? `تم بيع «${title.slice(0, 60)}»` : `انتهى مزاد «${title.slice(0, 60)}» بدون فائز`,
+        body: winnerId ? 'تابع الصفقة من لوحة الطلبات.' : 'يمكنك إعادة إدراج المنتج لاحقاً.',
+        link: `/auction/${auctionId}`,
+        auctionId,
+      })
+    }
+
     for (const lid of losers) {
+      if (!lid || lid === winnerId) continue
       await createNotification({
         userId: lid,
         type: 'system',
-        title: `انتهى مزاد «${title.slice(0, 60)}»`,
-        body: 'لم تفز هذه المرة — تصفح مزادات أخرى',
+        title: `انتهى مزاد «${title.slice(0, 55)}»`,
+        body: 'لم يحالفك الحظ هذه المرة — تصفح مزادات أخرى',
         link: `/auction/${auctionId}`,
         auctionId,
       })
@@ -120,34 +152,87 @@ export async function onAuctionClosed(auctionId: string, ctx?: AuctionClosedCont
   })
 }
 
-/** TODO: ربط من مسار الدفع بعد التأكيد (Moyasar/Tap) */
-export async function onPaymentReceivedOrchestration(_data: {
-  sellerId: string
+/** ربط من مسار الدفع بعد التأكيد — إشعارات عبر notification-service */
+export async function onPaymentReceived(data: {
   dealId: string
-  auctionId?: string
-}): Promise<void> {
-  // await notifyPaymentReceived(_data.sellerId, _data.dealId, _data.auctionId)
-}
-
-/** TODO: ربط من PATCH الطلب عند mark_shipped */
-export async function onShipmentConfirmedOrchestration(_data: {
   buyerId: string
-  dealId: string
-  trackingNumber: string
-  auctionId?: string
+  sellerId: string
+  auctionTitle: string
 }): Promise<void> {
-  // await notifyShipped(...)
+  try {
+    const t = data.auctionTitle.slice(0, 80)
+    await createNotification({
+      userId: data.sellerId,
+      type: 'payment',
+      title: `تم استلام دفعة «${t}»`,
+      body: 'يرجى شحن القطعة خلال 3 أيام',
+      link: `/orders/${data.dealId}`,
+      dealId: data.dealId,
+    })
+    await createNotification({
+      userId: data.buyerId,
+      type: 'payment',
+      title: 'تم الدفع بنجاح',
+      body: 'في انتظار شحن البائع',
+      link: `/orders/${data.dealId}`,
+      dealId: data.dealId,
+    })
+  } catch (error) {
+    console.error('[Orchestrator] onPaymentReceived error:', error)
+  }
 }
 
-/** TODO: ربط من مسار إكمال الفحص */
-export async function onInspectionCompleteOrchestration(_dealId: string): Promise<void> {
-  void _dealId
+export async function onShipmentConfirmed(data: {
+  dealId: string
+  buyerId: string
+  trackingNumber: string
+  shippingProvider: string
+}): Promise<void> {
+  try {
+    await createNotification({
+      userId: data.buyerId,
+      type: 'shipping',
+      title: 'تم شحن قطعتك! 📦',
+      body: `شركة الشحن: ${data.shippingProvider} — رقم التتبع: ${data.trackingNumber}`,
+      link: `/orders/${data.dealId}`,
+      dealId: data.dealId,
+    })
+  } catch (error) {
+    console.error('[Orchestrator] onShipmentConfirmed error:', error)
+  }
 }
 
-/** TODO: ربط من مسار النزاع */
-export async function onDisputeOpenedOrchestration(_dealId: string, _targetUserId: string): Promise<void> {
-  void _dealId
-  void _targetUserId
+export async function onInspectionComplete(data: {
+  dealId: string
+  buyerId: string
+  sellerId: string
+  accepted: boolean
+  auctionTitle: string
+}): Promise<void> {
+  try {
+    const t = data.auctionTitle.slice(0, 60)
+    if (data.accepted) {
+      await createNotification({
+        userId: data.sellerId,
+        type: 'payment',
+        title: `تم قبول «${t}» ✅`,
+        body: 'سيتم تحويل المبلغ لحسابك',
+        link: `/orders/${data.dealId}`,
+        dealId: data.dealId,
+      })
+    } else {
+      await createNotification({
+        userId: data.sellerId,
+        type: 'dispute',
+        title: `المشتري رفض «${t}» ⚠️`,
+        body: 'تم فتح نزاع — يرجى الرد خلال 48 ساعة',
+        link: `/orders/${data.dealId}`,
+        dealId: data.dealId,
+      })
+    }
+  } catch (error) {
+    console.error('[Orchestrator] onInspectionComplete error:', error)
+  }
 }
 
 /**

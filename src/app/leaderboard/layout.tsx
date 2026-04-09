@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  title: 'لوحة المتصدرين',
+  title: { absolute: 'لوحة المتصدرين | قبو' },
   description: 'أفضل المزايدين والبائعين على قبو.',
 }
 

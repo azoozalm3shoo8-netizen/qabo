@@ -41,14 +41,14 @@ export function AuctionCard({
     >
       <Link
         href={'/auction/' + a.id}
-        className="group flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-800"
+        className="group flex h-full flex-col overflow-hidden rounded-2xl border border-border bg-card shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         prefetch
       >
-        <div className="relative aspect-[4/3] w-full bg-gray-100 dark:bg-slate-700">
+        <div className="relative aspect-[4/3] w-full bg-muted">
           {src ? (
             <Image
               src={src}
-              alt={a.title}
+              alt={a.title ? `صورة ${a.title}` : 'صورة المنتج'}
               fill
               className="object-cover"
               sizes="(max-width: 768px) 50vw, (max-width: 1200px) 33vw, 25vw"
@@ -62,11 +62,11 @@ export function AuctionCard({
           </div>
         </div>
         <div className="flex flex-1 flex-col p-3">
-          <h3 className="line-clamp-2 text-sm font-bold text-gray-900 dark:text-slate-100">{a.title}</h3>
+          <h3 className="line-clamp-2 text-sm font-bold text-foreground">{a.title}</h3>
           <p className="mt-1 text-lg font-extrabold text-[#1B7F7A] dark:text-teal-300">
             {formatSARFromRiyalInteger(Math.round(Number(a.current_bid)))}
           </p>
-          <div className="mt-auto flex flex-wrap items-center justify-between gap-1 pt-2 text-xs text-gray-500 dark:text-slate-400">
+          <div className="mt-auto flex flex-wrap items-center justify-between gap-1 pt-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1">
               <Gavel className="h-3.5 w-3.5 text-[#1B7F7A]" weight="bold" />
               {a.bid_count} مزايدة

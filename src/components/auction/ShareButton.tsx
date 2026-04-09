@@ -53,8 +53,8 @@ export function ShareButton({
         <button
           type="button"
           onClick={() => void handleNativeShare()}
-          className="rounded-lg bg-[#1B7F7A] p-2 text-white transition hover:bg-[#156661]"
-          aria-label="مشاركة"
+          className="rounded-lg bg-[#1B7F7A] p-2 text-white transition hover:bg-[#156661] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+          aria-label="مشاركة المزاد"
         >
           مشاركة
         </button>
@@ -63,8 +63,8 @@ export function ShareButton({
       <button
         type="button"
         onClick={shareWhatsApp}
-        className="rounded-lg bg-green-600 px-2 py-1.5 text-sm font-bold text-white hover:bg-green-700"
-        aria-label="واتساب"
+        className="rounded-lg bg-green-600 px-2 py-1.5 text-sm font-bold text-white hover:bg-green-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        aria-label="مشاركة المزاد على واتساب"
       >
         واتساب
       </button>
@@ -72,8 +72,8 @@ export function ShareButton({
       <button
         type="button"
         onClick={shareTwitter}
-        className="rounded-lg bg-sky-500 px-2 py-1.5 text-sm font-bold text-white hover:bg-sky-600"
-        aria-label="إكس"
+        className="rounded-lg bg-sky-500 px-2 py-1.5 text-sm font-bold text-white hover:bg-sky-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        aria-label="مشاركة المزاد على إكس"
       >
         إكس
       </button>
@@ -81,8 +81,8 @@ export function ShareButton({
       <button
         type="button"
         onClick={() => void copyLink()}
-        className="rounded-lg bg-gray-200 px-2 py-1.5 text-sm font-bold text-gray-800 hover:bg-gray-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
-        aria-label="نسخ الرابط"
+        className="rounded-lg bg-muted px-2 py-1.5 text-sm font-bold text-foreground hover:opacity-90 dark:hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        aria-label="نسخ رابط المزاد"
       >
         {copied ? 'تم النسخ' : 'نسخ الرابط'}
       </button>
