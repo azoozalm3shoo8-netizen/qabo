@@ -1,18 +1,21 @@
 'use client'
 
-import { MagnifyingGlass } from '@phosphor-icons/react'
+import { Funnel, List, MagnifyingGlass, SquaresFour } from '@phosphor-icons/react'
 import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { BottomNav } from '@/components/BottomNav'
-import { EmptyState } from '@/components/EmptyState'
 import { FavoriteHeart } from '@/components/FavoriteHeart'
+import { EmptyState } from '@/components/ui/EmptyState'
+import { Sheet } from '@/components/ui/sheet'
+import { useDebounce } from '@/hooks/useDebounce'
 import { CATEGORY_CATALOG } from '@/lib/constants'
 import { REGION_CITIES } from '@/lib/region-lock'
 import { normalizeAuctionImages } from '@/lib/auction-images'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { auctionCountdownParts } from '@/lib/time'
+import { formatSARFromRiyalInteger } from '@/lib/utils/currency'
 
 const HISTORY_KEY = 'qabo_search_history'
 const HISTORY_MAX = 5
@@ -58,18 +61,19 @@ export default function SearchPage() {
   const router = useRouter()
   const [userId, setUserId] = useState<string | null>(null)
   const [query, setQuery] = useState('')
-  const [debouncedQuery, setDebouncedQuery] = useState('')
+  const debouncedQuery = useDebounce(query.trim(), 300)
   const [category, setCategory] = useState('')
   const [city, setCity] = useState('')
   const [minPrice, setMinPrice] = useState('')
   const [maxPrice, setMaxPrice] = useState('')
   const [statusFilter, setStatusFilter] = useState('active')
-  const [sort, setSort] = useState<'newest' | 'cheapest' | 'expensive' | 'ending_soon'>('newest')
+  const [sort, setSort] = useState<'newest' | 'cheapest' | 'expensive' | 'ending_soon' | 'popular'>('newest')
   const [results, setResults] = useState<AuctionRow[]>([])
   const [total, setTotal] = useState(0)
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [showFilters, setShowFilters] = useState(false)
+  const [view, setView] = useState<'grid' | 'list'>('grid')
   const [searchHistory, setSearchHistory] = useState<string[]>([])
   const inputRef = useRef<HTMLInputElement>(null)
 
@@ -95,9 +99,12 @@ export default function SearchPage() {
   }, [])
 
   useEffect(() => {
-    const t = setTimeout(() => setDebouncedQuery(query.trim()), 300)
-    return () => clearTimeout(t)
-  }, [query])
+    try {
+      localStorage.setItem('lastSearch', debouncedQuery)
+    } catch {
+      /* ignore */
+    }
+  }, [debouncedQuery])
 
   const pushHistory = useCallback((term: string) => {
     const t = term.trim()
@@ -245,7 +252,6 @@ export default function SearchPage() {
               if (e.key === 'Enter') {
                 const t = query.trim()
                 if (t) pushHistory(t)
-                setDebouncedQuery(t)
                 void searchRef.current({ reset: true, qOverride: t })
               }
             }}
@@ -289,18 +295,30 @@ export default function SearchPage() {
           </div>
         )}
 
-        <button
-          type="button"
-          onClick={() => setShowFilters((v) => !v)}
-          className="w-full py-2.5 rounded-xl border border-gray-200 bg-white text-sm font-bold text-gray-800 shadow-sm"
-        >
-          {showFilters ? 'إخفاء الفلاتر' : 'فلاتر'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setShowFilters(true)}
+            className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-bold text-gray-800 shadow-sm"
+            aria-label="فلاتر"
+          >
+            <Funnel className="h-5 w-5" weight="bold" />
+            فلاتر
+          </button>
+          <button
+            type="button"
+            onClick={() => setView((v) => (v === 'grid' ? 'list' : 'grid'))}
+            className="flex h-11 w-11 items-center justify-center rounded-xl border border-gray-200 bg-white shadow-sm"
+            aria-label={view === 'grid' ? 'عرض قائمة' : 'عرض شبكة'}
+          >
+            {view === 'grid' ? <List className="h-5 w-5" weight="bold" /> : <SquaresFour className="h-5 w-5" weight="bold" />}
+          </button>
+        </div>
 
-        {showFilters && (
-          <div className="bg-white rounded-2xl p-4 shadow-sm border border-gray-100 space-y-4">
+        <Sheet open={showFilters} onClose={() => setShowFilters(false)} title="فلاتر البحث">
+          <div className="space-y-4" dir="rtl">
             <div>
-              <p className="text-sm font-bold text-gray-900 mb-2">التصنيف</p>
+              <p className="mb-2 text-sm font-bold text-gray-900 dark:text-slate-100">التصنيف</p>
               <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-thin">
                 {categoryChips.map((c) => {
                   const active = category === c.value
@@ -310,8 +328,8 @@ export default function SearchPage() {
                       type="button"
                       onClick={() => setCategory(c.value)}
                       className={
-                        'shrink-0 px-3 py-1.5 rounded-full text-xs font-bold shadow-sm ' +
-                        (active ? 'bg-[#1B7F7A] text-white' : 'bg-gray-100 text-gray-700')
+                        'shrink-0 rounded-full px-3 py-1.5 text-xs font-bold shadow-sm ' +
+                        (active ? 'bg-[#1B7F7A] text-white' : 'bg-gray-100 text-gray-700 dark:bg-slate-800 dark:text-slate-200')
                       }
                     >
                       {c.name}
@@ -322,16 +340,13 @@ export default function SearchPage() {
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1 dark:text-slate-100">المدينة</label>
-              <p className="mb-1 text-[11px] text-[#1B7F7A] dark:text-slate-400">
-                حالياً البحث في الرياض فقط — مدن أخرى قريباً
-              </p>
+              <label className="mb-1 block text-sm font-bold text-gray-900 dark:text-slate-100">المدينة</label>
               <select
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
                 className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               >
-                <option value="">كل النتائج (بدون فلتر مدينة)</option>
+                <option value="">كل النتائج</option>
                 {REGION_CITIES.map((c) => (
                   <option key={c.name} value={c.name} disabled={!c.active}>
                     {c.name}
@@ -342,7 +357,7 @@ export default function SearchPage() {
             </div>
 
             <div>
-              <p className="text-sm font-bold text-gray-900 mb-2">نطاق السعر (ر.س)</p>
+              <p className="mb-2 text-sm font-bold text-gray-900 dark:text-slate-100">نطاق السعر (ر.س)</p>
               <div className="flex gap-2">
                 <input
                   type="number"
@@ -350,7 +365,7 @@ export default function SearchPage() {
                   value={minPrice}
                   onChange={(e) => setMinPrice(e.target.value)}
                   placeholder="من"
-                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm"
+                  className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800"
                 />
                 <input
                   type="number"
@@ -358,45 +373,59 @@ export default function SearchPage() {
                   value={maxPrice}
                   onChange={(e) => setMaxPrice(e.target.value)}
                   placeholder="إلى"
-                  className="flex-1 px-3 py-2 rounded-xl border border-gray-200 text-sm"
+                  className="flex-1 rounded-xl border border-gray-200 px-3 py-2 text-sm dark:border-slate-600 dark:bg-slate-800"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-bold text-gray-900 mb-1">الترتيب</label>
+              <label className="mb-1 block text-sm font-bold text-gray-900 dark:text-slate-100">حالة المزاد</label>
               <select
-                value={sort}
-                onChange={(e) => setSort(e.target.value as typeof sort)}
-                className="w-full px-3 py-2.5 rounded-xl border border-gray-200 text-sm bg-white"
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               >
-                <option value="newest">الأحدث</option>
-                <option value="cheapest">الأقل سعراً</option>
-                <option value="expensive">الأعلى سعراً</option>
-                <option value="ending_soon">ينتهي قريباً</option>
+                <option value="active">نشط</option>
+                <option value="scheduled">قادم</option>
+                <option value="ended">منتهي</option>
               </select>
             </div>
 
-            <div className="flex gap-2">
+            <div>
+              <label className="mb-1 block text-sm font-bold text-gray-900 dark:text-slate-100">الترتيب</label>
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as typeof sort)}
+                className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2.5 text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              >
+                <option value="ending_soon">ينتهي قريباً</option>
+                <option value="cheapest">الأقل سعراً</option>
+                <option value="expensive">الأعلى سعراً</option>
+                <option value="popular">الأكثر مزايدات</option>
+                <option value="newest">الأحدث</option>
+              </select>
+            </div>
+
+            <div className="flex gap-2 pt-2">
               <button
                 type="button"
                 onClick={() => void applyFiltersClick()}
-                className="flex-1 py-2.5 rounded-xl bg-[#1B7F7A] text-white text-sm font-bold transition-transform active:scale-95 hover:bg-[#156661]"
+                className="flex-1 rounded-xl bg-[#1B7F7A] py-3 text-sm font-bold text-white transition-transform active:scale-95 hover:bg-[#156661]"
               >
-                تطبيق الفلاتر
+                تطبيق
               </button>
               <button
                 type="button"
                 onClick={() => {
                   resetFilters()
                 }}
-                className="py-2.5 px-4 rounded-xl bg-gray-100 text-sm font-medium text-gray-800"
+                className="rounded-xl bg-gray-100 px-4 py-3 text-sm font-medium text-gray-800 dark:bg-slate-800 dark:text-slate-200"
               >
-                إعادة ضبط
+                مسح الفلاتر
               </button>
             </div>
           </div>
-        )}
+        </Sheet>
 
         <p className="text-sm text-gray-600 font-medium">
           {loading && results.length === 0 ? 'جاري البحث...' : `تم العثور على ${total} مزاد`}
@@ -420,14 +449,15 @@ export default function SearchPage() {
         ) : results.length === 0 && !loading ? (
           <div className="rounded-2xl border border-gray-100 bg-white shadow-sm">
             <EmptyState
-              icon={<MagnifyingGlass className="h-14 w-14" weight="duotone" />}
-              title="لا توجد نتائج مطابقة"
-              subtitle="جرّب تغيير كلمة البحث أو الفلاتر"
+              icon={<MagnifyingGlass className="h-10 w-10" weight="duotone" />}
+              title="لم نجد ما تبحث عنه"
+              description="جرّب كلمات أخرى أو تصفّح الفئات الشائعة."
+              action={{ label: 'تصفح الفئات', href: '/categories' }}
             />
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 gap-3">
+            <div className={view === 'grid' ? 'grid grid-cols-2 gap-3' : 'flex flex-col gap-3'}>
               {results.map((a) => {
                 const parts = auctionCountdownParts(a.ends_at, a.status)
                 const label = parts.ended
@@ -439,30 +469,40 @@ export default function SearchPage() {
                   <Link
                     key={a.id}
                     href={'/auction/' + a.id}
-                    className="bg-white rounded-xl overflow-hidden shadow-md border border-gray-100/80 relative group hover:shadow-lg transition-shadow duration-200"
+                    prefetch
+                    className={
+                      'relative overflow-hidden rounded-xl border border-gray-100/80 bg-white shadow-md transition-shadow hover:shadow-lg ' +
+                      (view === 'grid' ? '' : 'flex gap-3 p-3')
+                    }
                   >
-                    <div className="absolute top-2 left-2 z-10">
+                    <div className="absolute end-2 top-2 z-10">
                       <FavoriteHeart auctionId={a.id} userId={userId} />
                     </div>
-                    <div className="relative aspect-square w-full bg-gray-100 overflow-hidden rounded-t-lg">
+                    <div
+                      className={
+                        view === 'grid'
+                          ? 'relative aspect-square w-full overflow-hidden rounded-t-lg bg-gray-100'
+                          : 'relative h-24 w-24 shrink-0 overflow-hidden rounded-lg bg-gray-100'
+                      }
+                    >
                       <AuctionListingThumb src={firstImg} />
                     </div>
-                    <div className="p-3">
-                      <h3 className="font-medium text-sm truncate leading-snug">{a.title}</h3>
-                      <p className="text-[#1B7F7A] font-bold mt-1">
-                        {Number(a.current_bid).toLocaleString()} ر.س
+                    <div className={view === 'grid' ? 'p-3' : 'min-w-0 flex-1 pt-1'}>
+                      <h3 className="truncate text-sm font-medium leading-snug">{a.title}</h3>
+                      <p className="mt-1 font-bold text-[#1B7F7A]">
+                        {formatSARFromRiyalInteger(Math.round(Number(a.current_bid)))}
                       </p>
-                      <div className="flex items-center justify-between mt-2 text-xs text-gray-500">
+                      <div className="mt-2 flex items-center justify-between text-xs text-gray-500">
                         <span>{a.city || 'غير محدد'}</span>
                         <span
                           className={
-                            parts.ended ? 'text-red-600 font-semibold bg-red-50 px-2 py-0.5 rounded-md' : ''
+                            parts.ended ? 'rounded-md bg-red-50 px-2 py-0.5 font-semibold text-red-600' : ''
                           }
                         >
                           {label}
                         </span>
                       </div>
-                      <p className="text-xs text-gray-400 mt-1">{a.bid_count} مزايدة</p>
+                      <p className="mt-1 text-xs text-gray-400">{a.bid_count} مزايدة</p>
                     </div>
                   </Link>
                 )

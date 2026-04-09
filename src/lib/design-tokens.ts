@@ -2,10 +2,13 @@
 
 export const tokens = {
   colors: {
-    primary: '#1B7F7A',
+    primary: { DEFAULT: '#1B7F7A', dark: '#14605C', light: '#E6F5F4' },
+    accent: { DEFAULT: '#FF8C42', dark: '#E67A35', light: '#FFF3EB' },
+    /** أسماء مسطّحة للتوافق مع الكود السابق */
+    primaryFlat: '#1B7F7A',
     primaryDark: '#14605C',
     primaryLight: '#E6F5F4',
-    accent: '#FF8C42',
+    accentFlat: '#FF8C42',
     accentDark: '#E67A35',
     accentLight: '#FFF3EB',
     success: '#22C55E',

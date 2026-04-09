@@ -6,11 +6,13 @@ import { CheckCircle, ShieldCheck, XCircle } from '@phosphor-icons/react'
 import { useParams, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BottomNav } from '@/components/BottomNav'
+import { DealStepper, type DealStep } from '@/components/deal/DealStepper'
 import { ShippingTracker } from '@/components/deal/ShippingTracker'
 import { OrderStatusTracker } from '@/components/OrderStatusTracker'
 import { useToast } from '@/components/Toast'
 import { normalizeAuctionImages } from '@/lib/auction-images'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
+import { formatSAR } from '@/lib/utils/currency'
 import { format } from 'date-fns'
 import { arSA } from 'date-fns/locale'
 
@@ -46,6 +48,15 @@ type OrderDetail = {
   auction: AuctionDetailEmbed
   seller_profile: ProfileSeller
   buyer_profile: ProfileBuyer
+}
+
+function orderToDealStep(status: string): DealStep {
+  const st = status.toLowerCase()
+  if (st === 'pending' || st === 'awaiting_payment' || st === 'pending_payment') return 'won'
+  if (st === 'paid' || st === 'processing' || st === 'awaiting_shipment') return 'shipping'
+  if (st === 'shipped' || st === 'in_transit') return 'inspection'
+  if (st === 'delivered' || st === 'completed' || st === 'closed') return 'completed'
+  return 'payment'
 }
 
 type EscrowRow = {
@@ -315,12 +326,23 @@ export default function OrderDetailPage() {
 
       {!loading && order && (
         <div className="px-4 mt-4 space-y-3">
+          <DealStepper currentStep={orderToDealStep(order.status)} />
           {order.tracking_number?.trim() ? (
             <ShippingTracker
               provider={order.shipping_provider ?? 'other'}
               trackingNumber={order.tracking_number}
+              statusHint={order.status === 'shipped' ? 'في الطريق إلى عنوانك' : undefined}
             />
-          ) : null}
+          ) : (
+            <ShippingTracker
+              waitingForSeller={['paid', 'processing', 'awaiting_shipment'].includes(
+                order.status.toLowerCase()
+              )}
+              onOpenDispute={
+                userId === order.buyer_id && escrow?.id ? () => void submitDispute() : undefined
+              }
+            />
+          )}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="relative h-48 w-full bg-gray-100">
               {thumb ? (
@@ -353,27 +375,27 @@ export default function OrderDetailPage() {
             <h3 className="font-bold text-gray-900 mb-2">تفاصيل السعر</h3>
             <div className="flex justify-between text-sm text-gray-700">
               <span>سعر المنتج</span>
-              <span>{Number(order.product_amount).toLocaleString()} ر.س</span>
+              <span>{formatSAR(Number(order.product_amount), false)}</span>
             </div>
             <div className="flex justify-between text-sm text-gray-700">
               <span>العمولة (5%)</span>
-              <span>{Number(order.commission_amount).toLocaleString()} ر.س</span>
+              <span>{formatSAR(Number(order.commission_amount), false)}</span>
             </div>
             <div className="flex justify-between text-sm text-gray-700">
               <span>ضريبة القيمة المضافة (15% على العمولة)</span>
-              <span>{Number(order.vat_amount).toLocaleString()} ر.س</span>
+              <span>{formatSAR(Number(order.vat_amount), false)}</span>
             </div>
             {Number(order.shipping_amount ?? 0) > 0 && (
               <div className="flex justify-between text-sm text-gray-700">
                 <span>الشحن</span>
-                <span>{Number(order.shipping_amount).toLocaleString()} ر.س</span>
+                <span>{formatSAR(Number(order.shipping_amount), false)}</span>
               </div>
             )}
             <hr className="border-gray-200 my-2" />
             <div className="flex justify-between items-baseline">
               <span className="font-bold text-gray-900">الإجمالي</span>
               <span className="text-xl font-extrabold text-[#1B7F7A]">
-                {Number(order.total_amount).toLocaleString()} ر.س
+                {formatSAR(Number(order.total_amount), false)}
               </span>
             </div>
           </div>
@@ -395,7 +417,7 @@ export default function OrderDetailPage() {
                   </div>
                   <div className="flex justify-between text-sm text-gray-700">
                     <span>المبلغ المدفوع</span>
-                    <span>{paymentInfo.amount.toLocaleString()} ر.س</span>
+                    <span>{formatSAR(Number(paymentInfo.amount), false)}</span>
                   </div>
                   <div className="flex justify-between text-sm text-gray-700">
                     <span>رقم المعاملة</span>

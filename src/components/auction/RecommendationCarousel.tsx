@@ -4,6 +4,7 @@ import { Gavel, Timer } from '@phosphor-icons/react'
 import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { auctionCountdownParts } from '@/lib/time'
+import { formatSARFromRiyalInteger } from '@/lib/utils/currency'
 import type { AuctionRecommendation } from '@/lib/types/recommendations'
 
 type Props = {
@@ -106,7 +107,7 @@ export function RecommendationCarousel({ title, type, auctionId, userId }: Props
                   {a.title}
                 </p>
                 <p className="text-sm font-extrabold tabular-nums text-[#1B7F7A] dark:text-slate-100">
-                  {a.currentPrice.toLocaleString('ar-SA')} ر.س
+                  {formatSARFromRiyalInteger(Math.round(a.currentPrice))}
                 </p>
                 <div className="flex items-center justify-between gap-1 text-[10px] text-gray-500 dark:text-slate-400">
                   <span className="inline-flex items-center gap-0.5 font-semibold text-[#1B7F7A]">

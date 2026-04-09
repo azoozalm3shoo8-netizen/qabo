@@ -70,6 +70,9 @@ export async function GET(req: NextRequest) {
       case 'expensive':
         qb = qb.order('current_bid', { ascending: false })
         break
+      case 'popular':
+        qb = qb.order('bid_count', { ascending: false })
+        break
       case 'ending_soon':
         qb = qb.order('ends_at', { ascending: true })
         break

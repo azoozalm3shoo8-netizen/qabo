@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { formatSAR } from '@/lib/utils/currency'
 
 const baseUrl = () =>
   typeof window !== 'undefined' ? window.location.origin : process.env.NEXT_PUBLIC_APP_URL || 'https://qabboo.com'
@@ -16,8 +17,8 @@ export function ShareButton({
 }) {
   const [copied, setCopied] = useState(false)
   const url = `${baseUrl()}/auction/${auctionId}`
-  const price = (currentBidHalalas / 100).toLocaleString('ar-SA')
-  const text = `مزاد: ${title}\nالسعر الحالي: ${price} ر.س\nزايد الآن:`
+  const price = formatSAR(currentBidHalalas, true)
+  const text = `مزاد: ${title}\nالسعر الحالي: ${price}\nزايد الآن:`
 
   const handleNativeShare = async () => {
     if (typeof navigator !== 'undefined' && navigator.share) {

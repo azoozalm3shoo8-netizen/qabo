@@ -1,29 +1,18 @@
 'use client'
 
-import {
-  ArrowLeft,
-  Book,
-  Car,
-  Couch,
-  DeviceMobile,
-  Funnel,
-  Gavel,
-  GridFour,
-  House,
-  MagnifyingGlass,
-  MapPin,
-  Package,
-  SoccerBall,
-  TShirt,
-  Watch,
-} from '@phosphor-icons/react'
+import { ArrowLeft, Funnel, Gavel, MagnifyingGlass, MapPin } from '@phosphor-icons/react'
 import { motion } from 'framer-motion'
 import Image from 'next/image'
 import Link from 'next/link'
-import { memo, useCallback, useEffect, useState, type ReactNode } from 'react'
+import { memo, useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { AuctionListingHotBadge } from '@/components/auction/AuctionListingHotBadge'
 import { RecommendationCarousel } from '@/components/auction/RecommendationCarousel'
+import { BuyerProtectionBanner } from '@/components/home/BuyerProtectionBanner'
+import { CategoryBar } from '@/components/home/CategoryBar'
+import { EndingSoonSection } from '@/components/home/EndingSoonSection'
+import { HotAuctionsSection } from '@/components/home/HotAuctionsSection'
+import { NewlyAddedSection } from '@/components/home/NewlyAddedSection'
 import { AppHeader } from '@/components/AppHeader'
 import { BottomNav } from '@/components/BottomNav'
 import { EmptyState } from '@/components/EmptyState'
@@ -37,22 +26,9 @@ import { CATEGORY_OPTIONS } from '@/lib/category-labels'
 import { useLocale } from '@/lib/locale-context'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { ACTIVE_CITY } from '@/lib/region-lock'
-import { supabase } from '@/lib/supabase/client'
+import { formatSARFromRiyalInteger } from '@/lib/utils/currency'
 import { auctionCountdownParts } from '@/lib/time'
 import type { TranslationKey } from '@/lib/translations'
-
-const CAT_ICONS: Record<TranslationKey, ReactNode> = {
-  cat_all: <GridFour className="h-7 w-7" weight="bold" />,
-  cat_electronics: <DeviceMobile className="h-7 w-7" weight="bold" />,
-  cat_cars: <Car className="h-7 w-7" weight="bold" />,
-  cat_realestate: <House className="h-7 w-7" weight="bold" />,
-  cat_fashion: <TShirt className="h-7 w-7" weight="bold" />,
-  cat_watches: <Watch className="h-7 w-7" weight="bold" />,
-  cat_furniture: <Couch className="h-7 w-7" weight="bold" />,
-  cat_sports: <SoccerBall className="h-7 w-7" weight="bold" />,
-  cat_books: <Book className="h-7 w-7" weight="bold" />,
-  cat_other: <Package className="h-7 w-7" weight="bold" />,
-}
 
 function AuctionListingThumb({ src }: { src: string | null }) {
   const [failed, setFailed] = useState(false)
@@ -145,8 +121,7 @@ const HomeAuctionCard = memo(function HomeAuctionCard({
             {a.title}
           </h3>
           <p className="mt-2 text-xl font-extrabold tabular-nums text-[#1B7F7A] dark:text-slate-100">
-            {Number(a.current_bid).toLocaleString()}{' '}
-            <span className="text-sm font-bold">{t('common_currency')}</span>
+            {formatSARFromRiyalInteger(Math.round(Number(a.current_bid)))}
           </p>
           <div className="mt-2 flex flex-1 flex-col justify-end gap-2">
             <div className="flex items-center justify-between gap-1 text-xs text-gray-500 dark:text-slate-400">
@@ -211,13 +186,6 @@ export default function HomePage() {
     name?: string
   } | null>(null)
   const [tick, setTick] = useState(0)
-  const [hotAuctions, setHotAuctions] = useState<
-    { id: string; title: string; current_bid: number; bid_count: number; images?: unknown; ends_at: string }[]
-  >([])
-  const [endingSoon, setEndingSoon] = useState<
-    { id: string; title: string; current_bid: number; bid_count: number; images?: unknown; ends_at: string }[]
-  >([])
-
   const buildUrl = useCallback(() => {
     const p = new URLSearchParams()
     if (category !== 'الكل') p.set('category', category)
@@ -234,28 +202,8 @@ export default function HomePage() {
       if (Array.isArray(data)) setAuctions(data)
       else setAuctions([])
 
-      const { data: hot } = await supabase
-        .from('auctions')
-        .select('id, title, current_bid, bid_count, images, ends_at')
-        .eq('status', 'active')
-        .eq('city', ACTIVE_CITY)
-        .order('bid_count', { ascending: false })
-        .limit(6)
-      if (hot) setHotAuctions(hot)
-
-      const { data: ending } = await supabase
-        .from('auctions')
-        .select('id, title, current_bid, bid_count, images, ends_at')
-        .eq('status', 'active')
-        .eq('city', ACTIVE_CITY)
-        .gt('ends_at', new Date().toISOString())
-        .order('ends_at', { ascending: true })
-        .limit(6)
-      if (ending) setEndingSoon(ending)
     } catch {
       setAuctions([])
-      setHotAuctions([])
-      setEndingSoon([])
     } finally {
       setLoading(false)
     }
@@ -344,31 +292,15 @@ export default function HomePage() {
             <p className="mb-3 text-xs font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400">
               {t('home_popularCategories')}
             </p>
-            <div className="grid grid-cols-5 gap-2 sm:grid-cols-5">
-              {CATEGORY_OPTIONS.map(({ api, key }) => (
-                <button
-                  key={api}
-                  type="button"
-                  onClick={() => setCategory(api)}
-                  className="flex flex-col items-center gap-1.5"
-                >
-                  <span
-                    className={
-                      'flex h-16 w-16 items-center justify-center rounded-full border-2 border-teal-200/90 bg-teal-50 shadow-md transition-transform dark:border-slate-600 dark:bg-slate-700 ' +
-                      (category === api
-                        ? 'scale-105 border-[#FF8C42] text-[#1B7F7A] dark:text-slate-100'
-                        : 'text-[#1B7F7A] hover:scale-105 dark:text-slate-100')
-                    }
-                  >
-                    {CAT_ICONS[key]}
-                  </span>
-                  <span className="line-clamp-2 text-center text-[10px] font-semibold leading-tight text-[#1F2937] dark:text-slate-200">
-                    {t(key)}
-                  </span>
-                </button>
-              ))}
-            </div>
+            <CategoryBar selected={category} onSelect={setCategory} />
           </div>
+        </div>
+
+        <div className="mt-4 flex flex-col gap-6 px-0">
+          <BuyerProtectionBanner />
+          <EndingSoonSection />
+          <HotAuctionsSection />
+          <NewlyAddedSection />
         </div>
 
         {!user && (
@@ -393,100 +325,6 @@ export default function HomePage() {
           ))}
         </div>
       </div>
-        )}
-
-        {hotAuctions.length > 0 && (
-          <section className="mt-6 px-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">🔥 الأكثر مزايدة</h2>
-              <Link href="/search?sort=popular" className="text-xs text-[#1B7F7A] dark:text-slate-300">
-                عرض الكل
-              </Link>
-            </div>
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-              {hotAuctions.map((a) => {
-                const imgs = normalizeAuctionImages(a.images)
-                return (
-                  <Link
-                    key={a.id}
-                    href={'/auction/' + a.id}
-                    className="min-w-[160px] max-w-[160px] shrink-0 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800"
-                  >
-                    <div className="relative h-28 w-full bg-gray-100 dark:bg-slate-700">
-                      {imgs[0] ? (
-                        <img
-                          src={imgs[0]}
-                          alt={a.title}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-gray-400">📷</div>
-                      )}
-                      <span className="absolute bottom-1 right-1 rounded-full bg-black/60 px-2 py-0.5 text-[10px] text-white">
-                        {a.bid_count} مزايدة
-                      </span>
-                    </div>
-                    <div className="p-2">
-                      <p className="truncate text-xs font-bold text-gray-900 dark:text-slate-100">{a.title}</p>
-                      <p className="text-xs font-bold text-[#1B7F7A]">
-                        {Number(a.current_bid).toLocaleString()} ر.س
-                      </p>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          </section>
-        )}
-
-        {endingSoon.length > 0 && (
-          <section className="mt-6 px-4">
-            <div className="mb-3 flex items-center justify-between">
-              <h2 className="text-lg font-bold text-gray-900 dark:text-slate-100">⏰ ينتهي قريباً</h2>
-              <Link href="/search?sort=ending" className="text-xs text-[#1B7F7A] dark:text-slate-300">
-                عرض الكل
-              </Link>
-            </div>
-            <div className="flex gap-3 overflow-x-auto pb-2 scrollbar-hide">
-              {endingSoon.map((a) => {
-                const imgs = normalizeAuctionImages(a.images)
-                const parts = auctionCountdownParts(a.ends_at, 'active')
-                const timeStr = !parts.ended
-                  ? `${String(parts.hours).padStart(2, '0')}:${String(parts.minutes).padStart(2, '0')}:${String(parts.seconds).padStart(2, '0')}`
-                  : null
-                return (
-                  <Link
-                    key={a.id}
-                    href={'/auction/' + a.id}
-                    className="min-w-[160px] max-w-[160px] shrink-0 overflow-hidden rounded-xl border border-red-200 bg-white shadow-sm dark:border-red-900/40 dark:bg-slate-800"
-                  >
-                    <div className="relative h-28 w-full bg-gray-100 dark:bg-slate-700">
-                      {imgs[0] ? (
-                        <img
-                          src={imgs[0]}
-                          alt={a.title}
-                          className="h-full w-full object-cover"
-                          loading="lazy"
-                        />
-                      ) : (
-                        <div className="flex h-full items-center justify-center text-gray-400">📷</div>
-                      )}
-                      <span className="absolute bottom-1 right-1 rounded-full bg-red-600 px-2 py-0.5 text-[10px] font-bold text-white">
-                        {timeStr ?? 'انتهى'}
-                      </span>
-                    </div>
-                    <div className="p-2">
-                      <p className="truncate text-xs font-bold text-gray-900 dark:text-slate-100">{a.title}</p>
-                      <p className="text-xs font-bold text-[#1B7F7A]">
-                        {Number(a.current_bid).toLocaleString()} ر.س
-                      </p>
-                    </div>
-                  </Link>
-                )
-              })}
-            </div>
-          </section>
         )}
 
         <div className="mt-6 px-4">

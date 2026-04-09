@@ -17,14 +17,44 @@ const providerLabels: Record<string, string> = {
 export function ShippingTracker({
   provider,
   trackingNumber,
+  waitingForSeller,
+  onOpenDispute,
+  statusHint,
 }: {
-  provider: string | null | undefined
-  trackingNumber: string | null | undefined
+  provider?: string | null
+  trackingNumber?: string | null
+  /** البائع لم يُدخل رقم تتبع بعد */
+  waitingForSeller?: boolean
+  onOpenDispute?: () => void
+  statusHint?: string
 }) {
-  const p = (provider || 'other').toLowerCase()
   const num = (trackingNumber || '').trim()
-  if (!num) return null
+  if (!num) {
+    if (!waitingForSeller) return null
+    return (
+      <div
+        className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm dark:border-amber-900/50 dark:bg-amber-950/30"
+        dir="rtl"
+      >
+        <p className="font-bold text-amber-900 dark:text-amber-200">في انتظار شحن البائع</p>
+        <p className="mt-1 text-amber-800/90 dark:text-amber-300/90">
+          لدى البائع حتى 3 أيام عادةً لإرسال الشحنة. ستصلك إشعاراً عند التحديث.
+        </p>
+        {statusHint ? <p className="mt-2 text-xs text-gray-600 dark:text-slate-400">{statusHint}</p> : null}
+        {onOpenDispute ? (
+          <button
+            type="button"
+            onClick={onOpenDispute}
+            className="mt-3 text-sm font-bold text-red-600 underline dark:text-red-400"
+          >
+            فتح نزاع — تأخر الشحن
+          </button>
+        ) : null}
+      </div>
+    )
+  }
 
+  const p = (provider || 'other').toLowerCase()
   const href = (trackingUrls[p] ?? trackingUrls.other)(num)
   const label = providerLabels[p] ?? provider ?? 'الشحن'
 
@@ -34,6 +64,7 @@ export function ShippingTracker({
       <p className="mt-1 text-gray-600 dark:text-slate-300">
         {label} — <span dir="ltr" className="font-mono">{num}</span>
       </p>
+      {statusHint ? <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">{statusHint}</p> : null}
       {href !== '#' ? (
         <a
           href={href}

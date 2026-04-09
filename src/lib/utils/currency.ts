@@ -1,6 +1,5 @@
 /**
- * المبالغ في قاعدة البيانات والـ API يُفضَّل اعتبارها **هللات** (100 = 1 ر.س) للمنطق الجديد.
- * بعض الحقول القديمة (مثل current_bid في جدول auctions) قد تُخزَّن بالريال — راجع الاستعلام قبل العرض.
+ * المبالغ في قاعدة البيانات: غالباً **هللات** لجدول `bids.amount`، و**ريال** (عدد صحيح) لـ `auctions.current_bid` / `start_price` في هذا المشروع.
  */
 
 export function toHalala(riyal: number): number {
@@ -11,9 +10,13 @@ export function toRiyal(halala: number): number {
   return halala / 100
 }
 
-/** تنسيق مبلغ مُخزَّن بالهللات */
-export function formatSAR(halala: number, locale: string = 'ar-SA'): string {
-  const riyal = toRiyal(halala)
+/**
+ * @param amount القيمة الرقمية
+ * @param isHalala إذا true يُعامل `amount` كهللات؛ إذا false كريال
+ * @param locale لغة التنسيق
+ */
+export function formatSAR(amount: number, isHalala: boolean = true, locale: string = 'ar-SA'): string {
+  const riyal = isHalala ? toRiyal(amount) : amount
   return new Intl.NumberFormat(locale, {
     style: 'currency',
     currency: 'SAR',
@@ -22,15 +25,15 @@ export function formatSAR(halala: number, locale: string = 'ar-SA'): string {
   }).format(riyal)
 }
 
-/** عرض مختصر للبطاقات */
+/** عرض مختصر للبطاقات (مبلغ بالهللات) */
 export function formatCompact(halala: number): string {
   const riyal = toRiyal(halala)
   if (riyal >= 1_000_000) return `${(riyal / 1_000_000).toFixed(1)}M ر.س`
   if (riyal >= 1000) return `${(riyal / 1000).toFixed(1)}K ر.س`
-  return formatSAR(halala)
+  return formatSAR(halala, true)
 }
 
-/** عندما يكون الرقم في DB بالريال (عدد صحيح) وتحتاج عرضاً موحّداً بالهللات */
+/** عندما يكون الرقم بالريال (عدد صحيح من العمود) */
 export function formatSARFromRiyalInteger(riyalInteger: number, locale?: string): string {
-  return formatSAR(toHalala(riyalInteger), locale)
+  return formatSAR(riyalInteger, false, locale ?? 'ar-SA')
 }

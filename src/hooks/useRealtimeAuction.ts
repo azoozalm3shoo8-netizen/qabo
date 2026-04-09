@@ -28,7 +28,8 @@ export function useRealtimeAuction(
   initialCurrentBid: number,
   initialBidCount: number,
   initialHighestBidderId?: string | null,
-  viewerUserId?: string | null
+  viewerUserId?: string | null,
+  enabled: boolean = true
 ) {
   const [currentBid, setCurrentBid] = useState(initialCurrentBid)
   const [bidCount, setBidCount] = useState(initialBidCount)
@@ -48,7 +49,7 @@ export function useRealtimeAuction(
   }, [initialCurrentBid, initialBidCount, auctionId])
 
   useEffect(() => {
-    if (!auctionId) return
+    if (!enabled || !auctionId) return
 
     isFirstLoad.current = true
     setHighestBidderId(initialHighestBidderId ?? null)
@@ -184,7 +185,17 @@ export function useRealtimeAuction(
       cancelled = true
       void supabase.removeChannel(channel)
     }
-  }, [auctionId, initialHighestBidderId, viewerUserId])
+  }, [auctionId, initialHighestBidderId, viewerUserId, enabled])
 
-  return { currentBid, bidCount, recentBids, isLive, highestBidderId, watcherCount, lastExtendedAt }
+  return {
+    currentBid,
+    setCurrentBid,
+    bidCount,
+    setBidCount,
+    recentBids,
+    isLive,
+    highestBidderId,
+    watcherCount,
+    lastExtendedAt,
+  }
 }

@@ -10,15 +10,21 @@ import {
   Robot,
   ShieldCheck,
   Star,
-  UserCircle,
   X,
 } from '@phosphor-icons/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import { AuctionCountdown } from '@/components/AuctionCountdown'
+import { AuctionLivePrice } from '@/components/auction/AuctionLivePrice'
+import { AuctionStatusStrip } from '@/components/auction/AuctionStatusStrip'
+import { BidHistory } from '@/components/auction/BidHistory'
+import { ProxyBidDrawer } from '@/components/auction/ProxyBidDrawer'
 import { RecommendationCarousel } from '@/components/auction/RecommendationCarousel'
+import { SellerInfoCard } from '@/components/auction/SellerInfoCard'
 import { SocialProofBadge } from '@/components/auction/SocialProofBadge'
+import { StickyBidBar } from '@/components/auction/StickyBidBar'
+import { TrustBadgeBar } from '@/components/shared/TrustBadgeBar'
 import { AuctionQA } from '@/components/AuctionQA'
 import { LiveBidPanel } from '@/components/LiveBidPanel'
 import { AuctionImageGallery } from '@/components/AuctionImageGallery'
@@ -36,7 +42,9 @@ import { useLocale } from '@/lib/locale-context'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import type { ResponsivenessData } from '@/lib/types/seller-responsiveness'
 import type { CI360Hotspot, Defect } from '@/lib/video360-types'
+import { AuctionRealtimeProvider } from '@/contexts/AuctionRealtimeContext'
 import { supabase } from '@/lib/supabase/client'
+import { formatSARFromRiyalInteger } from '@/lib/utils/currency'
 
 type Seller = {
   full_name: string
@@ -101,7 +109,9 @@ export default function AuctionDetailPage() {
   const [reportError, setReportError] = useState('')
   const [auctionOrder, setAuctionOrder] = useState<AuctionOrderRow | null>(null)
   const [hasAutobid, setHasAutobid] = useState(false)
+  const [autobidMaxRiyal, setAutobidMaxRiyal] = useState<number | null>(null)
   const [showAutobidModal, setShowAutobidModal] = useState(false)
+  const [showProxyBid, setShowProxyBid] = useState(false)
   const [autobidMax, setAutobidMax] = useState('')
   const [autobidLoading, setAutobidLoading] = useState(false)
   const [autobidError, setAutobidError] = useState('')
@@ -243,8 +253,12 @@ export default function AuctionDetailPage() {
         encodeURIComponent(auction.id)
     )
       .then((r) => r.json())
-      .then((d: { has_autobid?: boolean }) => {
-        if (!cancelled) setHasAutobid(Boolean(d?.has_autobid))
+      .then((d: { has_autobid?: boolean; max_amount?: number | null }) => {
+        if (!cancelled) {
+          const ha = Boolean(d?.has_autobid)
+          setHasAutobid(ha)
+          setAutobidMaxRiyal(ha && typeof d?.max_amount === 'number' ? d.max_amount : null)
+        }
       })
       .catch(() => {
         if (!cancelled) setHasAutobid(false)
@@ -498,7 +512,7 @@ export default function AuctionDetailPage() {
   const pulseBid = msLeft > 0 && msLeft < 3600000
 
   return (
-    <div className="min-h-screen bg-[#F3F4F6] pb-28 dark:bg-slate-900" dir={dir}>
+    <div className="min-h-screen bg-[#F3F4F6] pb-44 dark:bg-slate-900" dir={dir}>
       <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-gray-200 bg-white/90 px-4 py-3 backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/90">
         <Link
           href="/"
@@ -575,61 +589,83 @@ export default function AuctionDetailPage() {
             ) : null}
           </div>
 
-          <div className="px-4 mt-3 space-y-3">
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-              <div className="flex items-start justify-between gap-2">
-                <h1 className="min-w-0 flex-1 text-xl font-bold text-gray-900 dark:text-slate-100">
-                  {auction.title}
-                </h1>
-                <div className="shrink-0">
-                  <ShareButton
-                    auctionId={auction.id}
-                    title={auction.title}
-                    currentBidHalalas={Math.round(Number(auction.current_bid) * 100)}
+          <AuctionRealtimeProvider
+            auctionId={auction.id}
+            initialCurrentBid={Number(auction.current_bid)}
+            initialBidCount={Number(auction.bid_count)}
+            initialHighestBidderId={auction.highest_bidder_id}
+            viewerUserId={user?.user_id ?? null}
+          >
+            <div className="px-4 mt-3 space-y-3">
+              <div className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:flex-row sm:items-start sm:justify-between">
+                <div className="min-w-0 flex-1">
+                  <AuctionCountdown
+                    endsAt={auction.ends_at}
+                    status={auction.status}
+                    onEndedChange={handleEndedChange}
                   />
                 </div>
+                <AuctionStatusStrip viewCount={views > 0 ? views : undefined} />
               </div>
-              <div className="mt-3 flex flex-wrap gap-2 text-sm text-[#1F2937]">
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#F3F4F6] px-3 py-1.5 dark:bg-slate-700 dark:text-slate-100">
-                  <Folder className="h-4 w-4 text-[#1B7F7A]" weight="bold" />
-                  {auction.category}
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#F3F4F6] px-3 py-1.5 dark:bg-slate-700 dark:text-slate-100">
-                  <Star className="h-4 w-4 text-[#1B7F7A]" weight="fill" />
-                  {auction.condition}
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#F3F4F6] px-3 py-1.5 dark:bg-slate-700 dark:text-slate-100">
-                  <MapPin className="h-4 w-4 text-[#1B7F7A]" weight="bold" />
-                  {auction.city || t('common_undefinedCity')}
-                </span>
+
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                <div className="flex items-start justify-between gap-2">
+                  <h1 className="min-w-0 flex-1 text-xl font-bold text-gray-900 dark:text-slate-100">
+                    {auction.title}
+                  </h1>
+                  <div className="shrink-0">
+                    <ShareButton
+                      auctionId={auction.id}
+                      title={auction.title}
+                      currentBidHalalas={Math.round(Number(auction.current_bid) * 100)}
+                    />
+                  </div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2 text-sm text-[#1F2937]">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#F3F4F6] px-3 py-1.5 dark:bg-slate-700 dark:text-slate-100">
+                    <Folder className="h-4 w-4 text-[#1B7F7A]" weight="bold" />
+                    {auction.category}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#F3F4F6] px-3 py-1.5 dark:bg-slate-700 dark:text-slate-100">
+                    <Star className="h-4 w-4 text-[#1B7F7A]" weight="fill" />
+                    {auction.condition}
+                  </span>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-[#F3F4F6] px-3 py-1.5 dark:bg-slate-700 dark:text-slate-100">
+                    <MapPin className="h-4 w-4 text-[#1B7F7A]" weight="bold" />
+                    {auction.city || t('common_undefinedCity')}
+                  </span>
+                </div>
               </div>
-            </div>
 
-            <AuctionCountdown
-              endsAt={auction.ends_at}
-              status={auction.status}
-              onEndedChange={handleEndedChange}
-            />
-
-            {auction.status === 'active' && !ended ? (
-              <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                <SocialProofBadge auctionId={auction.id} />
+              <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                <p className="text-sm text-gray-500 dark:text-slate-400">السعر الحالي</p>
+                <AuctionLivePrice />
+                <p className="mt-1 text-xs text-gray-500 line-through dark:text-slate-500">
+                  سعر البداية: {formatSARFromRiyalInteger(Math.round(Number(auction.start_price)))}
+                </p>
               </div>
-            ) : null}
 
-            <LiveBidPanel
-              auctionId={auction.id}
-              bidIncrement={Number(auction.bid_increment)}
-              isOwner={isSeller}
-              biddingOpen={auction.status === 'active' && !ended}
-              userId={user?.user_id ?? null}
-              initialCurrentBid={Number(auction.current_bid)}
-              initialBidCount={Number(auction.bid_count)}
-              viewCount={views > 0 ? views : undefined}
-              pulseEnding={pulseBid && !isSeller}
-              onBidPlaced={() => void loadAuction()}
-              highestBidderId={auction.highest_bidder_id}
-            />
+              <TrustBadgeBar />
+
+              {auction.status === 'active' && !ended ? (
+                <div className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800">
+                  <SocialProofBadge auctionId={auction.id} />
+                </div>
+              ) : null}
+
+              <LiveBidPanel
+                auctionId={auction.id}
+                bidIncrement={Number(auction.bid_increment)}
+                isOwner={isSeller}
+                biddingOpen={auction.status === 'active' && !ended}
+                userId={user?.user_id ?? null}
+                initialCurrentBid={Number(auction.current_bid)}
+                initialBidCount={Number(auction.bid_count)}
+                viewCount={views > 0 ? views : undefined}
+                pulseEnding={pulseBid && !isSeller}
+                onBidPlaced={() => void loadAuction()}
+                highestBidderId={auction.highest_bidder_id}
+              />
 
             {user && !isSeller && !auctionClosed && (
               <div className="flex flex-col gap-2">
@@ -645,11 +681,7 @@ export default function AuctionDetailPage() {
                 ) : (
                   <button
                     type="button"
-                    onClick={() => {
-                      setAutobidError('')
-                      setAutobidMax(String(minBid))
-                      setShowAutobidModal(true)
-                    }}
+                    onClick={() => setShowProxyBid(true)}
                     className="flex w-full items-center justify-center gap-2 rounded-2xl border-2 border-[#1B7F7A] bg-[#E6F4F3] py-3 text-sm font-bold text-[#1B7F7A] transition-transform active:scale-95 dark:border-[#1B7F7A] dark:bg-[#134e4a]/50 dark:text-slate-100"
                   >
                     <Robot className="h-5 w-5" weight="bold" />
@@ -659,65 +691,57 @@ export default function AuctionDetailPage() {
               </div>
             )}
 
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-              <h3 className="mb-2 font-bold text-[#1F2937] dark:text-slate-100">{t('auction_description')}</h3>
-              <p className="text-sm leading-relaxed whitespace-pre-wrap text-gray-600 dark:text-slate-300">
+            <details className="group rounded-2xl border border-gray-100 bg-white p-4 shadow-sm open:pb-4 dark:border-slate-700 dark:bg-slate-800">
+              <summary className="cursor-pointer list-none font-bold text-[#1F2937] dark:text-slate-100 [&::-webkit-details-marker]:hidden">
+                {t('auction_description')}
+                <span className="ms-2 text-sm font-normal text-[#1B7F7A] group-open:hidden dark:text-teal-300">
+                  — عرض المزيد
+                </span>
+              </summary>
+              <p className="mt-3 line-clamp-3 text-sm leading-relaxed text-gray-600 group-open:line-clamp-none dark:text-slate-300 whitespace-pre-wrap">
                 {auction.description || t('common_noDescription')}
               </p>
+              <p className="mt-2 text-xs text-gray-500 dark:text-slate-400">
+                الحالة: {auction.condition} · التسليم والاستلام حسب اتفاق البائع والمشتري عبر المنصة.
+              </p>
+            </details>
+
+            <div className="space-y-3">
+              <SellerInfoCard
+                seller={{
+                  name: sellerDisplayName,
+                  avatar_url: null,
+                  rating: auction.seller.rating,
+                  total_reviews: null,
+                  auctions_count: null,
+                  is_verified: false,
+                }}
+              />
+              <div className="flex justify-end">
+                <SellerResponsivenessBadge data={auction.seller_responsiveness} />
+              </div>
+              {user && !isSeller && (
+                <button
+                  type="button"
+                  onClick={() => void openSellerChat()}
+                  disabled={msgLoading}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1B7F7A] py-3 font-bold text-[#1B7F7A] transition-transform active:scale-95 disabled:opacity-50 dark:border-[#1B7F7A] dark:text-slate-100"
+                >
+                  <ChatCircle className="h-5 w-5" weight="bold" />
+                  {msgLoading ? t('auction_openingChat') : t('auction_chatSellerBtn')}
+                </button>
+              )}
+              {!user && (
+                <p className="text-center text-sm text-gray-500 dark:text-slate-400">
+                  <Link href="/auth/login" className="font-semibold text-[#1B7F7A] dark:text-slate-200">
+                    {t('auction_loginChatLead')}
+                  </Link>{' '}
+                  {t('auction_loginChatTail')}
+                </p>
+              )}
             </div>
 
-            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-                <h3 className="mb-3 font-bold text-[#1F2937] dark:text-slate-100">{t('auction_seller')}</h3>
-                <div className="flex items-center gap-3">
-                  <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#E6F4F3] text-[#1B7F7A] dark:bg-teal-900/40">
-                    <UserCircle className="h-9 w-9" weight="fill" />
-                  </div>
-                  <div className="min-w-0 flex-1 text-right">
-                    <div className="flex flex-wrap items-center justify-end gap-2">
-                      <p className="break-words text-base font-semibold leading-snug text-gray-900 dark:text-slate-100">
-                        {sellerDisplayName}
-                      </p>
-                      <SellerResponsivenessBadge data={auction.seller_responsiveness} />
-                    </div>
-                    <p className="mt-0.5 flex flex-wrap items-center justify-end gap-1 text-sm text-gray-500">
-                      {auction.seller.city ? (
-                        <span className="inline-flex items-center gap-0.5">
-                          <MapPin className="h-3.5 w-3.5" />
-                          {auction.seller.city}
-                        </span>
-                      ) : null}
-                      {auction.seller.city ? <span>·</span> : null}
-                      <span className="inline-flex items-center gap-0.5 text-[#FF8C42]">
-                        <Star className="h-3.5 w-3.5" weight="fill" />
-                        {auction.seller.rating != null
-                          ? Number(auction.seller.rating).toFixed(1)
-                          : '—'}
-                      </span>
-                    </p>
-                  </div>
-                </div>
-
-                {user && !isSeller && (
-                  <button
-                    type="button"
-                    onClick={() => void openSellerChat()}
-                    disabled={msgLoading}
-                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border-2 border-[#1B7F7A] py-3 font-bold text-[#1B7F7A] transition-transform active:scale-95 disabled:opacity-50 dark:border-[#1B7F7A] dark:text-slate-100"
-                  >
-                    <ChatCircle className="h-5 w-5" weight="bold" />
-                    {msgLoading ? t('auction_openingChat') : t('auction_chatSellerBtn')}
-                  </button>
-                )}
-
-                {!user && (
-                  <p className="mt-3 text-center text-sm text-gray-500 dark:text-slate-400">
-                    <Link href="/auth/login" className="font-semibold text-[#1B7F7A] dark:text-slate-200">
-                      {t('auction_loginChatLead')}
-                    </Link>{' '}
-                    {t('auction_loginChatTail')}
-                  </p>
-                )}
-              </div>
+            <BidHistory auctionId={auction.id} />
 
             {auctionClosed && isWinner && (
               <div className="rounded-2xl bg-gradient-to-br from-[#1B7F7A] to-[#134e4a] p-4 text-center text-white shadow-md">
@@ -726,8 +750,7 @@ export default function AuctionDetailPage() {
                   {t('auction_youWon')}
                 </p>
                 <p className="mb-3 text-sm text-white/90">
-                  {t('auction_winPrice')}: {Number(auction.current_bid).toLocaleString()}{' '}
-                  {t('common_currency')}
+                  {t('auction_winPrice')}: {formatSARFromRiyalInteger(Math.round(Number(auction.current_bid)))}
                 </p>
                 <button
                   type="button"
@@ -792,8 +815,7 @@ export default function AuctionDetailPage() {
                     {auction.highest_bidder.full_name}
                   </p>
                   <p className="mt-1 text-sm text-gray-600 dark:text-slate-400">
-                    {t('auction_salePriceLabel')}: {Number(auction.current_bid).toLocaleString()}{' '}
-                    {t('common_currency')}
+                    {t('auction_salePriceLabel')}: {formatSARFromRiyalInteger(Math.round(Number(auction.current_bid)))}
                   </p>
                   {auction.highest_bidder_id ? (
                     <button
@@ -873,8 +895,56 @@ export default function AuctionDetailPage() {
             {auction.status === 'active' && (
               <RecommendationCarousel title="مزادات مشابهة" type="similar" auctionId={auction.id} />
             )}
-          </div>
+            </div>
+            {!isSeller && auction.status === 'active' && !ended ? (
+              <StickyBidBar
+                auctionId={auction.id}
+                bidIncrementRiyal={Number(auction.bid_increment)}
+                userId={user?.user_id ?? null}
+                biddingOpen
+                pulseEnding={pulseBid}
+                onBidPlaced={() => void loadAuction()}
+                highestBidderId={auction.highest_bidder_id}
+                onOpenProxy={() => {
+                  if (user?.user_id) setShowProxyBid(true)
+                  else window.location.href = '/auth/login'
+                }}
+              />
+            ) : null}
+          </AuctionRealtimeProvider>
         </>
+      )}
+
+      {auction && user && !isSeller && !auctionClosed && (
+        <ProxyBidDrawer
+          open={showProxyBid}
+          onClose={() => setShowProxyBid(false)}
+          auctionId={auction.id}
+          userId={user.user_id}
+          currentBidRiyal={Number(auction.current_bid)}
+          bidIncrementRiyal={Number(auction.bid_increment)}
+          hasAutobid={hasAutobid}
+          autobidMaxRiyal={autobidMaxRiyal}
+          onSuccess={() => {
+            setHasAutobid(true)
+            void fetch(
+              '/api/autobid?user_id=' +
+                encodeURIComponent(user.user_id) +
+                '&auction_id=' +
+                encodeURIComponent(auction.id)
+            )
+              .then((r) => r.json())
+              .then((d: { max_amount?: number }) => {
+                if (typeof d?.max_amount === 'number') setAutobidMaxRiyal(d.max_amount)
+              })
+              .catch(() => {})
+            void loadAuction()
+          }}
+          onCancelAutobid={async () => {
+            await stopAutobid()
+            setAutobidMaxRiyal(null)
+          }}
+        />
       )}
 
       {auction && user && (
