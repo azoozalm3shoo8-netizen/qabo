@@ -7,6 +7,7 @@ import { BottomNav } from '@/components/BottomNav'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { useLocale } from '@/lib/locale-context'
 import { supabase } from '@/lib/supabase/client'
+import { formatSAR } from '@/lib/utils/currency'
 
 interface AuctionItem {
   id: string
@@ -172,7 +173,7 @@ export default function MyAuctionsPage() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-bold text-[#1F2937] dark:text-slate-100">{a.title}</p>
                   <p className="text-xs text-gray-500 dark:text-slate-400">
-                    {a.current_bid?.toLocaleString() || 0} ر.س · {a.bid_count || 0} مزايدة
+                    {formatSAR(Number(a.current_bid ?? 0), false)} · {a.bid_count || 0} مزايدة
                   </p>
                 </div>
                 {statusBadge(a.status)}
@@ -182,7 +183,7 @@ export default function MyAuctionsPage() {
         </div>
       )}
 
-      <BottomNav active="myauctions" />
+      <BottomNav active="profile" />
     </div>
   )
 }

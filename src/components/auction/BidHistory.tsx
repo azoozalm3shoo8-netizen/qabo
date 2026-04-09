@@ -3,6 +3,7 @@
 import { User } from '@phosphor-icons/react'
 import { formatDistanceToNow } from 'date-fns'
 import { arSA } from 'date-fns/locale'
+import { motion } from 'framer-motion'
 import { useState } from 'react'
 import { Sheet } from '@/components/ui/sheet'
 import { useAuctionRealtime } from '@/contexts/AuctionRealtimeContext'
@@ -29,7 +30,11 @@ export function BidHistory({ auctionId: _auctionId }: { auctionId: string }) {
   const topId = rows[0]?.id
 
   const Row = ({ b, highlight }: { b: BidHistoryBid; highlight: boolean }) => (
-    <li
+    <motion.li
+      layout
+      initial={{ opacity: 0, x: -20 }}
+      animate={{ opacity: 1, x: 0 }}
+      transition={{ duration: 0.25 }}
       className={
         'flex items-center gap-3 rounded-xl px-3 py-2 text-sm ' +
         (highlight ? 'bg-[#1B7F7A]/10 dark:bg-teal-900/30' : 'bg-gray-50 dark:bg-slate-900/80')
@@ -47,7 +52,7 @@ export function BidHistory({ auctionId: _auctionId }: { auctionId: string }) {
       <span className="shrink-0 font-mono font-bold text-[#1B7F7A] dark:text-teal-300">
         {formatSAR(b.amount, true)}
       </span>
-    </li>
+    </motion.li>
   )
 
   return (

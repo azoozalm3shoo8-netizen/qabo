@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { format } from 'date-fns'
 import { arSA } from 'date-fns/locale'
 import { normalizeAuctionImages } from '@/lib/auction-images'
+import { formatSAR } from '@/lib/utils/currency'
 
 type Auction = Record<string, unknown> & {
   id: string
@@ -171,7 +172,7 @@ export function AdminAuctions({ userId }: { userId: string }) {
                 <div className="min-w-0 flex-1">
                   <p className="line-clamp-2 font-bold text-gray-900 dark:text-white">{a.title}</p>
                   <p className="text-xs text-gray-500">{a.seller_full_name}</p>
-                  <p className="text-sm font-bold text-[#1B7F7A]">{Number(a.current_bid).toLocaleString()} ر.س</p>
+                  <p className="text-sm font-bold text-[#1B7F7A]">{formatSAR(Number(a.current_bid), false)}</p>
                   <span
                     className={
                       'mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-bold ' +

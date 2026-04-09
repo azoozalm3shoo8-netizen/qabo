@@ -13,6 +13,7 @@ import 'server-only'
 import { broadcastAuctionPayload } from '@/lib/server/auction-realtime-broadcast'
 import { insertFinancialNotification } from '@/lib/server/financial-notifications'
 import { createClient } from '@/lib/supabase-server'
+import { createNotification } from '@/lib/services/notification-service'
 import {
   checkAndExtendAuction,
   notifyBiddersAuctionExtended,
@@ -96,6 +97,57 @@ export async function onAuctionClosed(auctionId: string, ctx?: AuctionClosedCont
       })
     })
   }
+
+  await runSafe('notify_auction_losers', async () => {
+    if (!ctx?.winnerId) return
+    const supabase = createClient()
+    const { data: auction } = await supabase.from('auctions').select('title').eq('id', auctionId).maybeSingle()
+    const title = String(auction?.title ?? 'مزاد')
+    const { data: bidRows } = await supabase.from('bids').select('bidder_id').eq('auction_id', auctionId)
+    const losers = [...new Set((bidRows ?? []).map((b) => String(b.bidder_id)).filter(Boolean))].filter(
+      (id) => id !== ctx.winnerId
+    )
+    for (const lid of losers) {
+      await createNotification({
+        userId: lid,
+        type: 'system',
+        title: `انتهى مزاد «${title.slice(0, 60)}»`,
+        body: 'لم تفز هذه المرة — تصفح مزادات أخرى',
+        link: `/auction/${auctionId}`,
+        auctionId,
+      })
+    }
+  })
+}
+
+/** TODO: ربط من مسار الدفع بعد التأكيد (Moyasar/Tap) */
+export async function onPaymentReceivedOrchestration(_data: {
+  sellerId: string
+  dealId: string
+  auctionId?: string
+}): Promise<void> {
+  // await notifyPaymentReceived(_data.sellerId, _data.dealId, _data.auctionId)
+}
+
+/** TODO: ربط من PATCH الطلب عند mark_shipped */
+export async function onShipmentConfirmedOrchestration(_data: {
+  buyerId: string
+  dealId: string
+  trackingNumber: string
+  auctionId?: string
+}): Promise<void> {
+  // await notifyShipped(...)
+}
+
+/** TODO: ربط من مسار إكمال الفحص */
+export async function onInspectionCompleteOrchestration(_dealId: string): Promise<void> {
+  void _dealId
+}
+
+/** TODO: ربط من مسار النزاع */
+export async function onDisputeOpenedOrchestration(_dealId: string, _targetUserId: string): Promise<void> {
+  void _dealId
+  void _targetUserId
 }
 
 /**

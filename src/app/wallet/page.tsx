@@ -6,6 +6,7 @@ import { BottomNav } from '@/components/BottomNav'
 import { format } from 'date-fns'
 import { arSA } from 'date-fns/locale'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
+import { formatSAR } from '@/lib/utils/currency'
 
 type Tx = {
   id: string
@@ -211,9 +212,7 @@ export default function WalletPage() {
           {loading ? (
             <div className="h-10 w-40 bg-white/20 rounded-lg animate-pulse mt-2" />
           ) : (
-            <p className="text-3xl font-extrabold tabular-nums">
-              ر.س {available.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-            </p>
+            <p className="text-3xl font-extrabold tabular-nums">{formatSAR(available, false)}</p>
           )}
         </div>
 
@@ -331,7 +330,7 @@ export default function WalletPage() {
                       </div>
                       <span className={'font-bold tabular-nums shrink-0 ' + txColor(t.type)}>
                         {['withdraw', 'payment', 'freeze'].includes(t.type.toLowerCase()) ? '-' : '+'}
-                        {Number(t.amount).toLocaleString()} ر.س
+                        {formatSAR(Number(t.amount), false)}
                       </span>
                     </div>
                   </li>

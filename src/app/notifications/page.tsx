@@ -124,7 +124,7 @@ export default function NotificationsPage() {
         )}
       </div>
 
-      <BottomNav active="home" />
+      <BottomNav active="notifications" />
     </div>
   )
 }

@@ -10,7 +10,7 @@ const supabase = createClient(
   process.env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-const ALLOWED_DURATIONS = new Set([1, 3, 6, 12, 24, 48, 72])
+const ALLOWED_DURATIONS = new Set([1, 3, 6, 12, 24, 48, 72, 120, 168])
 
 export async function GET(req: NextRequest) {
   await closeExpiredAuctions(supabase)
@@ -111,13 +111,13 @@ export async function POST(req: NextRequest) {
   const dh = Number(duration_hours)
   if (!ALLOWED_DURATIONS.has(dh)) {
     return NextResponse.json(
-      { error: 'مدة المزاد غير مسموحة. اختر: 1، 3، 6، 12، 24، 48، أو 72 ساعة' },
+      { error: 'مدة المزاد غير مسموحة. اختر مدة صالحة من القائمة' },
       { status: 400 }
     )
   }
 
   const images = Array.isArray(rawImages)
-    ? rawImages.filter((x: unknown) => typeof x === 'string' && x.length > 0).slice(0, 5)
+    ? rawImages.filter((x: unknown) => typeof x === 'string' && x.length > 0).slice(0, 10)
     : []
   if (images.length < 1) {
     return NextResponse.json({ error: 'يجب رفع صورة واحدة على الأقل' }, { status: 400 })

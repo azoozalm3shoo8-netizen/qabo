@@ -2,6 +2,8 @@
 
 import { Trophy } from '@phosphor-icons/react'
 import { useEffect, useState } from 'react'
+
+type XpPeriod = 'week' | 'month' | 'all'
 import { AppHeader } from '@/components/AppHeader'
 import { BottomNav } from '@/components/BottomNav'
 import {
@@ -33,6 +35,7 @@ export default function LeaderboardPage() {
   } | null>(null)
   const [loading, setLoading] = useState(true)
   const [err, setErr] = useState('')
+  const [xpPeriod, setXpPeriod] = useState<XpPeriod>('all')
 
   useEffect(() => {
     const u = readQaboUserFromStorage()
@@ -90,9 +93,37 @@ export default function LeaderboardPage() {
         ) : (
           <>
             <section className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
-              <h2 className="mb-4 flex items-center gap-2 text-lg font-bold text-[#1F2937] dark:text-slate-100">
+              <h2 className="mb-3 flex items-center gap-2 text-lg font-bold text-[#1F2937] dark:text-slate-100">
                 أفضل المزايدين 🏆
               </h2>
+              <div className="mb-3 flex flex-wrap gap-2">
+                {(
+                  [
+                    { id: 'week' as const, label: 'أسبوعي' },
+                    { id: 'month' as const, label: 'شهري' },
+                    { id: 'all' as const, label: 'كل الأوقات' },
+                  ] as const
+                ).map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setXpPeriod(t.id)}
+                    className={
+                      'min-h-[40px] rounded-full px-4 py-2 text-xs font-bold transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1B7F7A] ' +
+                      (xpPeriod === t.id
+                        ? 'bg-[#1B7F7A] text-white'
+                        : 'bg-gray-100 text-gray-700 dark:bg-slate-700 dark:text-slate-200')
+                    }
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+              {xpPeriod !== 'all' ? (
+                <p className="mb-3 text-xs text-gray-500 dark:text-slate-400">
+                  التصنيف الزمني قيد التطوير — يُعرض حالياً ترتيب كل الأوقات.
+                </p>
+              ) : null}
               {viewerBidder && !viewerBidder.in_top_10 ? (
                 <p className="mb-3 rounded-xl bg-[#E6F4F3] p-3 text-sm text-[#1B7F7A] dark:bg-[#134e4a]/40 dark:text-teal-100">
                   ترتيبك الحالي: <strong>#{viewerBidder.rank}</strong> — لديك{' '}

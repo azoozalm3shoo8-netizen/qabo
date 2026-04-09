@@ -14,8 +14,9 @@ import { EndingSoonSection } from '@/components/home/EndingSoonSection'
 import { HotAuctionsSection } from '@/components/home/HotAuctionsSection'
 import { NewlyAddedSection } from '@/components/home/NewlyAddedSection'
 import { AppHeader } from '@/components/AppHeader'
+import { OnboardingFlow } from '@/components/onboarding/OnboardingFlow'
 import { BottomNav } from '@/components/BottomNav'
-import { EmptyState } from '@/components/EmptyState'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { FavoriteHeart } from '@/components/FavoriteHeart'
 import { PullToRefresh } from '@/components/PullToRefresh'
 import { PushPermissionBanner } from '@/components/PushPermissionBanner'
@@ -352,10 +353,13 @@ export default function HomePage() {
                   </div>
                 }
                 title={t('home_noAuctions')}
-                subtitle={t('home_noAuctionsHint')}
-                actionLabel={t('home_addAuctionCta')}
-                onAction={() => router.push('/create')}
-                actionClassName="bg-gradient-to-r from-[#1B7F7A] to-[#156661] shadow-lg hover:opacity-95"
+                description={t('home_noAuctionsHint')}
+                action={{
+                  label: t('home_addAuctionCta'),
+                  onClick: () => router.push('/create'),
+                  className:
+                    'inline-flex rounded-xl bg-gradient-to-r from-[#1B7F7A] to-[#156661] px-5 py-2.5 text-sm font-bold text-white shadow-lg transition hover:opacity-95 active:scale-[0.98]',
+                }}
               />
             </div>
           ) : (
@@ -424,6 +428,7 @@ export default function HomePage() {
         </footer>
 
         <BottomNav active="home" />
+        <OnboardingFlow hasUser={Boolean(user)} />
       </div>
     </PullToRefresh>
   )

@@ -1,5 +1,6 @@
 'use client'
 
+import { motion } from 'framer-motion'
 import { formatSAR, toRiyal } from '@/lib/utils/currency'
 
 /** currentBid بالهللات — onBid يستقبل المبلغ الإجمالي الجديد بالريال (لـ /api/bids) */
@@ -25,18 +26,19 @@ export function QuickBidButtons({
       {targets.map((halalas, i) => {
         const riyalTotal = Math.ceil(toRiyal(halalas) * 100) / 100
         return (
-          <button
+          <motion.button
             key={i}
             type="button"
             disabled={disabled}
+            whileTap={{ scale: 0.9 }}
             onClick={() => onBid(riyalTotal)}
-            className="flex min-h-[44px] min-w-0 flex-1 flex-col items-center justify-center rounded-full border-2 border-[#1B7F7A]/40 bg-white px-3 py-2 text-xs font-bold text-[#1B7F7A] transition-transform active:scale-95 disabled:opacity-50 dark:border-teal-600 dark:bg-slate-800 dark:text-teal-300"
+            className="flex min-h-[44px] min-w-0 flex-1 flex-col items-center justify-center rounded-full border-2 border-[#1B7F7A]/40 bg-white px-3 py-2 text-xs font-bold text-[#1B7F7A] transition-transform disabled:opacity-50 dark:border-teal-600 dark:bg-slate-800 dark:text-teal-300"
           >
             <span>+{formatSAR(inc * (i === 0 ? 1 : i === 1 ? 2 : 5), true)}</span>
             <span className="mt-0.5 text-[10px] font-semibold text-gray-600 dark:text-slate-400">
               = {formatSAR(halalas, true)}
             </span>
-          </button>
+          </motion.button>
         )
       })}
     </div>

@@ -6,7 +6,9 @@ import { CheckCircle, ShieldCheck, XCircle } from '@phosphor-icons/react'
 import { useParams, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BottomNav } from '@/components/BottomNav'
+import { DealCheckout, type DealCheckoutDeal } from '@/components/deal/DealCheckout'
 import { DealStepper, type DealStep } from '@/components/deal/DealStepper'
+import { InspectionPhase } from '@/components/deal/InspectionPhase'
 import { ShippingTracker } from '@/components/deal/ShippingTracker'
 import { OrderStatusTracker } from '@/components/OrderStatusTracker'
 import { useToast } from '@/components/Toast'
@@ -179,6 +181,39 @@ export default function OrderDetailPage() {
   const isBuyer = Boolean(order && userId && order.buyer_id === userId)
   const isSeller = Boolean(order && userId && order.seller_id === userId)
   const st = order ? order.status.toLowerCase() : ''
+
+  const needsDealCheckout =
+    Boolean(isBuyer && ['pending', 'pending_payment', 'awaiting_payment', 'won'].includes(st))
+
+  const showInspectionPhase = Boolean(isBuyer && st === 'shipped' && escrow?.status === 'held')
+
+  const inspectionEndsAt = useMemo(() => {
+    if (!order) return ''
+    const base = new Date(order.updated_at || order.created_at)
+    return new Date(base.getTime() + 3 * 86400000).toISOString()
+  }, [order])
+
+  const checkoutDeal: DealCheckoutDeal | null = useMemo(() => {
+    if (!order) return null
+    const imgs = normalizeAuctionImages(order.auction?.images)
+    const imageUrl = imgs[0] ?? null
+    const product = Number(order.product_amount)
+    const commission = Number(order.commission_amount)
+    const vat = Number(order.vat_amount)
+    const ship = Number(order.shipping_amount ?? 0)
+    const total = Number(order.total_amount)
+    const buyerProtectionRiyal = Math.max(0, total - product - commission - vat - ship)
+    return {
+      id: order.id,
+      title: order.auction?.title || 'مزاد',
+      imageUrl,
+      winningBidRiyal: product,
+      commissionRiyal: commission,
+      buyerProtectionRiyal,
+      vatRiyal: vat,
+      totalRiyal: total,
+    }
+  }, [order])
 
   const daysSinceOrder = useMemo(() => {
     if (!order) return 0
@@ -565,17 +600,7 @@ export default function OrderDetailPage() {
             </p>
           </div>
 
-          {isBuyer && st === 'pending' && (
-            <button
-              type="button"
-              onClick={() => router.push('/checkout/' + order.auction_id)}
-              className="w-full py-3.5 rounded-2xl bg-[#FF8C42] text-white font-bold shadow-md hover:bg-[#E87A35]"
-            >
-              ادفع الآن
-            </button>
-          )}
-
-          {isBuyer && st === 'shipped' && (
+          {isBuyer && st === 'shipped' && !showInspectionPhase && (
             <button
               type="button"
               disabled={actionLoading}
@@ -586,7 +611,7 @@ export default function OrderDetailPage() {
             </button>
           )}
 
-          {canDispute && (
+          {canDispute && !showInspectionPhase && (
             <button
               type="button"
               disabled={actionLoading}

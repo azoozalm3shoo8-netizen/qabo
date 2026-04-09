@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { PostAuctionReportCard } from '@/components/seller/PostAuctionReportCard'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
+import { formatSAR } from '@/lib/utils/currency'
 
 type AuctionRow = {
   id: string
@@ -80,7 +81,7 @@ export default function DashboardAuctionsPage() {
                     >
                       <span className="font-semibold text-gray-900 dark:text-slate-100">{a.title}</span>
                       <span className="mt-1 block text-xs text-[#1B7F7A]">
-                        {Number(a.current_bid ?? 0).toLocaleString('ar-SA')} ر.س — {a.status}
+                        {formatSAR(Number(a.current_bid ?? 0), false)} — {a.status}
                       </span>
                     </Link>
                   </li>

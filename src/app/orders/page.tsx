@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { Package, PlusCircle, ShieldCheck } from '@phosphor-icons/react'
 import { BottomNav } from '@/components/BottomNav'
-import { EmptyState } from '@/components/EmptyState'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { OrderStatusTracker } from '@/components/OrderStatusTracker'
 import { PullToRefresh } from '@/components/PullToRefresh'
 import { useToast } from '@/components/Toast'
@@ -240,15 +240,13 @@ export default function OrdersPage() {
                 <EmptyState
                   icon={<Package className="h-14 w-14" weight="duotone" />}
                   title="لم تفز بأي مزاد بعد"
-                  actionLabel="تصفح المزادات"
-                  actionHref="/"
+                  action={{ label: 'تصفح المزادات', href: '/' }}
                 />
               ) : (
                 <EmptyState
                   icon={<PlusCircle className="h-14 w-14" weight="duotone" />}
                   title="لم تبع شيئاً بعد"
-                  actionLabel="أنشئ مزادك الأول"
-                  actionHref="/create"
+                  action={{ label: 'أنشئ مزادك الأول', href: '/create' }}
                 />
               )}
             </div>

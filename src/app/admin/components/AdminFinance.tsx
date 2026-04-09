@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { formatSAR } from '@/lib/utils/currency'
 import { format } from 'date-fns'
 import { arSA } from 'date-fns/locale'
 
@@ -68,10 +69,10 @@ export function AdminFinance({ userId }: { userId: string }) {
     <div className="space-y-5">
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
-          { l: 'إجمالي الإيرادات', v: data.total_revenue.toLocaleString('ar-SA') + ' ر.س' },
+          { l: 'إجمالي الإيرادات', v: formatSAR(data.total_revenue, false) },
           { l: 'معاملات مكتملة', v: data.completed_transactions },
-          { l: 'متوسط قيمة مزاد', v: data.avg_auction_value.toLocaleString('ar-SA') },
-          { l: 'تقدير عمولات', v: data.total_commissions_estimate.toLocaleString('ar-SA') },
+          { l: 'متوسط قيمة مزاد', v: formatSAR(data.avg_auction_value, false) },
+          { l: 'تقدير عمولات', v: formatSAR(data.total_commissions_estimate, false) },
         ].map((c) => (
           <div key={c.l} className="rounded-xl border border-gray-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
             <p className="text-lg font-bold text-gray-900 dark:text-white">{c.v}</p>

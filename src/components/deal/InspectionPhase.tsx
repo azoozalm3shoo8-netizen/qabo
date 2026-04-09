@@ -7,6 +7,8 @@ type Props = {
   onAccept: () => void
   onDispute: () => void
   loading?: boolean
+  /** مرجع اختياري للصفقة (لتوسعة العرض لاحقاً) */
+  deal?: { id: string }
 }
 
 export function InspectionPhase({ inspectionEndsAt, onAccept, onDispute, loading }: Props) {

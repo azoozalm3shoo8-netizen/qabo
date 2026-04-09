@@ -14,7 +14,32 @@ const providerLabels: Record<string, string> = {
   other: 'أخرى',
 }
 
-export function ShippingTracker({
+export type ShippingTrackerDealLike = {
+  status: string
+  tracking_number?: string | null
+  shipping_provider?: string | null
+}
+
+type BaseProps = {
+  onOpenDispute?: () => void
+  statusHint?: string
+}
+
+type ShippingTrackerProps =
+  | (BaseProps & {
+      deal: ShippingTrackerDealLike
+      provider?: never
+      trackingNumber?: never
+      waitingForSeller?: never
+    })
+  | (BaseProps & {
+      deal?: undefined
+      provider?: string | null
+      trackingNumber?: string | null
+      waitingForSeller?: boolean
+    })
+
+function ShippingTrackerView({
   provider,
   trackingNumber,
   waitingForSeller,
@@ -23,7 +48,6 @@ export function ShippingTracker({
 }: {
   provider?: string | null
   trackingNumber?: string | null
-  /** البائع لم يُدخل رقم تتبع بعد */
   waitingForSeller?: boolean
   onOpenDispute?: () => void
   statusHint?: string
@@ -76,5 +100,36 @@ export function ShippingTracker({
         </a>
       ) : null}
     </div>
+  )
+}
+
+export function ShippingTracker(props: ShippingTrackerProps) {
+  if ('deal' in props && props.deal) {
+    const d = props.deal
+    const st = d.status.toLowerCase()
+    const num = (d.tracking_number || '').trim()
+    const waitingForSeller =
+      !num && ['paid', 'processing', 'awaiting_shipment', 'captured'].includes(st)
+    const statusHint =
+      props.statusHint ?? (st === 'shipped' || st === 'in_transit' ? 'في الطريق إلى عنوانك' : undefined)
+    return (
+      <ShippingTrackerView
+        provider={d.shipping_provider}
+        trackingNumber={d.tracking_number}
+        waitingForSeller={waitingForSeller}
+        onOpenDispute={props.onOpenDispute}
+        statusHint={statusHint}
+      />
+    )
+  }
+  const { provider, trackingNumber, waitingForSeller, onOpenDispute, statusHint } = props
+  return (
+    <ShippingTrackerView
+      provider={provider}
+      trackingNumber={trackingNumber}
+      waitingForSeller={waitingForSeller}
+      onOpenDispute={onOpenDispute}
+      statusHint={statusHint}
+    />
   )
 }

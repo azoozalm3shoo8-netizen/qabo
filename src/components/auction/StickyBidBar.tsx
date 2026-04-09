@@ -99,7 +99,10 @@ export function StickyBidBar({
   if (!biddingOpen) return null
 
   return (
-    <div
+    <motion.div
+      initial={{ y: 100 }}
+      animate={{ y: 0 }}
+      transition={{ type: 'spring', damping: 20 }}
       className="fixed start-0 end-0 z-[45] border-t border-gray-200 bg-white/95 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-3 shadow-[0_-8px_30px_rgba(0,0,0,0.12)] backdrop-blur-md dark:border-slate-700 dark:bg-slate-900/95"
       style={{ bottom: 'calc(4.5rem + env(safe-area-inset-bottom, 0px))' }}
       dir="rtl"
@@ -181,6 +184,6 @@ export function StickyBidBar({
           </motion.div>
         </AnimatePresence>
       </div>
-    </div>
+    </motion.div>
   )
 }

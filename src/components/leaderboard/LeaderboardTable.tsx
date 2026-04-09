@@ -62,7 +62,9 @@ export function LeaderboardBiddersTable({ rows }: { rows: LeaderboardBidderRow[]
           className={
             'rounded-2xl border-2 p-3 shadow-sm transition md:grid md:grid-cols-[48px_1fr_100px_100px_100px] md:items-center md:gap-3 md:border md:p-3 ' +
             rankAccent(row.rank) +
-            (row.is_viewer ? ' ring-2 ring-[#1B7F7A] ring-offset-2 dark:ring-offset-slate-900' : '')
+            (row.is_viewer
+              ? ' bg-[#1B7F7A]/5 ring-2 ring-[#1B7F7A] ring-offset-2 dark:bg-[#1B7F7A]/10 dark:ring-offset-slate-900'
+              : '')
           }
         >
           <div className="mb-2 flex items-center justify-between md:mb-0 md:justify-center">

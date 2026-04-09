@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { formatSAR } from '@/lib/utils/currency'
 import Link from 'next/link'
 import { format } from 'date-fns'
 import { arSA } from 'date-fns/locale'
@@ -151,7 +152,7 @@ export function AdminDashboard({
           { label: 'منتهية', value: stats.ended_auctions },
           { label: 'المستخدمين', value: stats.total_users },
           { label: 'الطلبات', value: stats.total_orders },
-          { label: 'الإيرادات (ر.س)', value: stats.total_revenue.toLocaleString('ar-SA') },
+          { label: 'الإيرادات (ر.س)', value: formatSAR(stats.total_revenue, false) },
           { label: 'بلاغات معلّقة', value: stats.pending_reports ?? 0 },
           { label: 'مستخدمون جدد اليوم', value: stats.new_users_today ?? 0 },
         ].map((c) => (

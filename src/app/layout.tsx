@@ -24,11 +24,10 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: {
-    default: 'قبو Qabboo — منصة المزادات الذكية',
+    default: 'قبو — منصة المزادات الأولى',
     template: '%s — قبو Qabboo',
   },
-  description:
-    'منصة مزادات سعودية في السعودية. زايد، اربح، واستلم بأمان. متاح حالياً في الرياض.',
+  description: 'اكتشف مزادات فريدة، زايد بأمان، واحمِ أموالك حتى تستلم قطعتك.',
   keywords: ['مزاد', 'مزادات', 'قبو', 'Qabboo', 'auction', 'السعودية', 'الرياض', 'بيع', 'شراء'],
   manifest: '/manifest.json',
   appleWebApp: {

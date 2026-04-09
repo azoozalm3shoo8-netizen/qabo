@@ -4,9 +4,9 @@ import Link from 'next/link'
 import { useEffect, useState } from 'react'
 import { Bell, GlobeSimple, ShieldStar, Trophy, UserCircle } from '@phosphor-icons/react'
 import { FreePeriodBanner } from '@/components/info/FreePeriodBanner'
+import { useNotificationUI } from '@/components/notifications/NotificationUIProvider'
 import { QabbooLogo } from '@/components/QabbooLogo'
 import { ThemeToggle } from '@/components/ThemeToggle'
-import { useRealtimeNotifications } from '@/hooks/useRealtimeNotifications'
 import { isAdminUserId } from '@/lib/admin-ids'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
 import { useLocale } from '@/lib/locale-context'
@@ -23,39 +23,16 @@ export function AppHeader({
   variant?: 'default' | 'hero'
 }) {
   const { t, locale, setLocale, dir } = useLocale()
-  const [pollUnread, setPollUnread] = useState(0)
-  const [headerUserId, setHeaderUserId] = useState<string | null>(null)
   const [hasUser, setHasUser] = useState(false)
   const [isAdmin, setIsAdmin] = useState(false)
   const [shakeBell, setShakeBell] = useState(false)
-  const { realtimeUnread, resetUnread } = useRealtimeNotifications(headerUserId)
+  const { openNotifications, unreadCount: totalUnread } = useNotificationUI()
 
   useEffect(() => {
     const u = readQaboUserFromStorage()
-    setHeaderUserId(u?.user_id ?? null)
     setHasUser(Boolean(u?.user_id))
     setIsAdmin(isAdminUserId(u?.user_id ?? null))
   }, [])
-
-  useEffect(() => {
-    if (!headerUserId) return
-    const load = () => {
-      fetch('/api/notifications?user_id=' + encodeURIComponent(headerUserId))
-        .then((r) => r.json())
-        .then((d: { unread_count?: number }) => {
-          if (typeof d.unread_count === 'number') {
-            setPollUnread(d.unread_count)
-            resetUnread()
-          }
-        })
-        .catch(() => {})
-    }
-    load()
-    const t = setInterval(load, 60000)
-    return () => clearInterval(t)
-  }, [headerUserId, resetUnread])
-
-  const totalUnread = pollUnread + realtimeUnread
 
   useEffect(() => {
     if (totalUnread <= 0) return
@@ -156,10 +133,11 @@ export function AppHeader({
             <GlobeSimple className="h-5 w-5" weight="bold" />
           </button>
           <ThemeToggle tone={hero ? 'light' : 'solid'} />
-          <Link
-            href="/notifications"
+          <button
+            type="button"
+            onClick={() => openNotifications()}
             className={
-              'relative flex h-9 w-9 items-center justify-center rounded-full transition-colors ' +
+              'relative flex h-9 min-h-[44px] min-w-[44px] items-center justify-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1B7F7A] focus-visible:ring-offset-2 ' +
               (hero
                 ? 'bg-white/15 text-white hover:bg-white/25 '
                 : 'bg-gray-100 text-[#1B7F7A] hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600 ') +
@@ -173,7 +151,7 @@ export function AppHeader({
                 {totalUnread > 99 ? '99+' : totalUnread}
               </span>
             )}
-          </Link>
+          </button>
         </div>
       </div>
     </header>

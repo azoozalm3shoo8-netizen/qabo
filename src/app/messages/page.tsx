@@ -4,7 +4,7 @@ import { ChatCircle, UserCircle } from '@phosphor-icons/react'
 import Link from 'next/link'
 import { useCallback, useEffect, useState } from 'react'
 import { BottomNav } from '@/components/BottomNav'
-import { EmptyState } from '@/components/EmptyState'
+import { EmptyState } from '@/components/ui/EmptyState'
 import { formatDistanceToNow } from 'date-fns'
 import { arSA } from 'date-fns/locale'
 import { readQaboUserFromStorage } from '@/lib/qabo-user'
@@ -74,9 +74,8 @@ export default function MessagesPage() {
             <EmptyState
               icon={<ChatCircle className="h-14 w-14 text-[#1B7F7A]" weight="duotone" />}
               title="لا محادثات بعد"
-              subtitle="تواصل مع البائع من صفحة المزاد"
-              actionLabel="تصفح المزادات"
-              actionHref="/"
+              description="تواصل مع البائع من صفحة المزاد"
+              action={{ label: 'تصفح المزادات', href: '/' }}
             />
           </div>
         ) : (

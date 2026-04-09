@@ -6,11 +6,14 @@ import type { ReactNode } from 'react'
 export type EmptyStateProps = {
   icon: ReactNode
   title: string
-  description: string
-  action?: { label: string; href?: string; onClick?: () => void }
+  description?: string
+  action?: { label: string; href?: string; onClick?: () => void; className?: string }
 }
 
-export function EmptyState({ icon, title, description, action }: EmptyStateProps) {
+const defaultActionClass =
+  'inline-flex rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-bold text-white shadow-md transition hover:opacity-95 active:scale-[0.98]'
+
+export function EmptyState({ icon, title, description = '', action }: EmptyStateProps) {
   return (
     <div
       className="flex flex-col items-center justify-center px-6 py-12 text-center"
@@ -21,21 +24,20 @@ export function EmptyState({ icon, title, description, action }: EmptyStateProps
         {icon}
       </div>
       <h2 className="text-lg font-bold text-[var(--foreground)]">{title}</h2>
-      <p className="mt-2 max-w-sm text-sm text-gray-600 dark:text-slate-400">{description}</p>
+      {description ? (
+        <p className="mt-2 max-w-sm text-sm text-gray-600 dark:text-slate-400">{description}</p>
+      ) : null}
       {action ? (
         <div className="mt-6">
           {action.href ? (
-            <Link
-              href={action.href}
-              className="inline-flex rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-bold text-white shadow-md transition hover:opacity-95 active:scale-[0.98]"
-            >
+            <Link href={action.href} className={action.className ?? defaultActionClass}>
               {action.label}
             </Link>
           ) : (
             <button
               type="button"
               onClick={action.onClick}
-              className="inline-flex rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-bold text-white shadow-md transition hover:opacity-95 active:scale-[0.98]"
+              className={action.className ?? defaultActionClass}
             >
               {action.label}
             </button>

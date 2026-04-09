@@ -43,7 +43,12 @@ export function AuctionCountdownMini({ endsAt }: { endsAt: string | Date }) {
   }, [endsAt])
 
   return (
-    <span className={'text-xs font-semibold tabular-nums ' + className} role="timer" aria-live="polite">
+    <span
+      className={'text-xs font-semibold tabular-nums ' + className}
+      role="timer"
+      aria-live="polite"
+      aria-label={'الوقت المتبقي للمزاد: ' + label}
+    >
       {label}
     </span>
   )

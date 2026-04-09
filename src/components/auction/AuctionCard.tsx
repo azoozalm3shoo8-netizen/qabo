@@ -33,7 +33,12 @@ export function AuctionCard({
   const src = imgs[0] ?? null
 
   return (
-    <motion.div whileHover={{ y: -2 }} whileTap={{ scale: 0.98 }} transition={{ duration: 0.2 }} className="h-full">
+    <motion.div
+      whileHover={{ y: -4, boxShadow: '0 8px 25px rgba(0,0,0,0.1)' }}
+      whileTap={{ scale: 0.97 }}
+      transition={{ duration: 0.2, ease: 'easeOut' }}
+      className="h-full"
+    >
       <Link
         href={'/auction/' + a.id}
         className="group flex h-full flex-col overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-md dark:border-slate-700 dark:bg-slate-800"
