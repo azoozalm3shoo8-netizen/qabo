@@ -1,3 +1,4 @@
+import { broadcastAuctionPayload } from '@/lib/server/auction-realtime-broadcast'
 import { insertFinancialNotification } from '@/lib/server/financial-notifications'
 import { createClient } from '@/lib/supabase-server'
 import { createAuthorization, voidPayment } from '@/lib/moyasar-client'
@@ -7,6 +8,12 @@ import { notifySellerAuctionActivityOnNewBid } from '@/lib/services/smart-notifi
 import type { BidRow } from '@/lib/types/financial-types'
 
 const APP_URL = () => process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000'
+
+export type PlaceBidOptions = {
+  /** مزايدة نيابية من محرك المزايدة التلقائية — لا يُعاد تشغيل السلسلة داخلياً */
+  fromAutoBidEngine?: boolean
+  skipAutoBidChain?: boolean
+}
 
 /** السعر الحالي بالهللات — يدعم current_price (هللات) أو current_bid (ريال كعدد صحيح) */
 export function auctionCurrentHalalas(auction: Record<string, unknown>): number {
@@ -25,12 +32,274 @@ function minBidStepHalalas(auction: Record<string, unknown>): number {
   return Math.max(100, Math.round(inc * 100))
 }
 
+/**
+ * max_amount في auto_bids يُخزَّن تاريخياً بالريال (مثل واجهة autobid).
+ * إذا كان الرقم كبيراً جداً نفترض أنه بالهللات مسبقاً.
+ */
+function autoBidMaxToHalalas(stored: number): number {
+  if (!Number.isFinite(stored) || stored <= 0) return 0
+  if (stored >= 50_000_000) return Math.round(stored)
+  return Math.round(stored * 100)
+}
+
+function anonymizeBidderForBroadcast(userId: string): string {
+  const c = userId.replace(/-/g, '')
+  if (c.length < 4) return 'مزايد'
+  return `م***${c.slice(-2)}`
+}
+
+/**
+ * سلسلة مزايدات تلقائية بعد مزايدة بشرية أو خطوة سابقة في السلسلة.
+ */
+async function processAutoBidChain(auctionId: string): Promise<void> {
+  const maxRounds = 14
+  for (let round = 0; round < maxRounds; round++) {
+    const supabase = createClient()
+    let auction: Record<string, unknown> | null = null
+    try {
+      const { data, error } = await supabase.from('auctions').select('*').eq('id', auctionId).maybeSingle()
+      if (error || !data) return
+      auction = data as Record<string, unknown>
+    } catch {
+      return
+    }
+    if (String(auction.status) !== 'active') return
+    if (new Date(String(auction.ends_at)) <= new Date()) return
+
+    const currentH = auctionCurrentHalalas(auction)
+    const step = minBidStepHalalas(auction)
+    const highestId = (auction.highest_bidder_id as string | null) ?? null
+
+    let autoRows: { user_id: string; max_amount: number | string }[] = []
+    try {
+      const { data, error } = await supabase
+        .from('auto_bids')
+        .select('user_id, max_amount')
+        .eq('auction_id', auctionId)
+        .eq('is_active', true)
+      if (error || !data?.length) return
+      autoRows = data as { user_id: string; max_amount: number | string }[]
+    } catch {
+      return
+    }
+
+    const candidates = autoRows
+      .map((row) => ({
+        user_id: String(row.user_id),
+        maxHalalas: autoBidMaxToHalalas(Number(row.max_amount)),
+      }))
+      .filter(
+        (r) =>
+          r.user_id !== String(auction!.seller_id) &&
+          r.maxHalalas >= currentH + step &&
+          r.user_id !== highestId
+      )
+      .sort((a, b) => b.maxHalalas - a.maxHalalas)
+
+    if (!candidates.length) return
+
+    const top = candidates[0]
+    const second = candidates[1]
+
+    let newAmt: number
+    if (second) {
+      newAmt = Math.max(currentH + step, Math.min(second.maxHalalas + step, top.maxHalalas))
+    } else {
+      newAmt = Math.min(currentH + step, top.maxHalalas)
+    }
+
+    if (newAmt > top.maxHalalas) newAmt = top.maxHalalas
+    if (newAmt <= currentH) return
+
+    let token: string | null = null
+    try {
+      const { data: card } = await supabase
+        .from('saved_cards')
+        .select('moyasar_token')
+        .eq('user_id', top.user_id)
+        .eq('is_verified', true)
+        .order('is_default', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+      token = (card?.moyasar_token as string | null) ?? null
+    } catch {
+      token = null
+    }
+
+    if (!token) {
+      try {
+        await supabase
+          .from('auto_bids')
+          .update({ is_active: false })
+          .eq('auction_id', auctionId)
+          .eq('user_id', top.user_id)
+      } catch {
+        /* ignore */
+      }
+      continue
+    }
+
+    try {
+      await placeBid(auctionId, top.user_id, newAmt, token, undefined, { fromAutoBidEngine: true })
+    } catch (e) {
+      console.error('[processAutoBidChain placeBid]', e)
+      return
+    }
+
+    try {
+      if (newAmt >= top.maxHalalas) {
+        await supabase
+          .from('auto_bids')
+          .update({ is_active: false })
+          .eq('auction_id', auctionId)
+          .eq('user_id', top.user_id)
+      }
+    } catch {
+      /* ignore */
+    }
+
+    try {
+      await insertFinancialNotification(supabase, {
+        user_id: top.user_id,
+        type: 'auto_bid_executed',
+        title: 'تمت مزايدة تلقائية',
+        body: `تمت المزايدة نيابةً عنك بمبلغ ${(newAmt / 100).toLocaleString('ar-SA')} ر.س`,
+        auction_id: auctionId,
+      })
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
+/**
+ * تسجيل مزايدة بدون ضمان Moyasar (مسار الواجهة القديم /api/bids).
+ * amountHalalas بالهللات؛ يُحدّث المزاد ويُشغّل المزايدة التلقائية.
+ */
+export async function recordSimpleBid(
+  auctionId: string,
+  bidderId: string,
+  amountHalalas: number
+): Promise<{
+  bid: BidRow
+  auctionExtended?: boolean
+  newEndsAt?: string
+  extensionCount?: number
+}> {
+  const supabase = createClient()
+
+  const { data: auction, error: aErr } = await supabase.from('auctions').select('*').eq('id', auctionId).maybeSingle()
+  if (aErr || !auction) throw new Error('المزاد غير موجود')
+  if (auction.seller_id === bidderId) throw new Error('لا يمكنك المزايدة على مزادك')
+  if (auction.status !== 'active') throw new Error('المزاد غير نشط')
+  if (new Date(String(auction.ends_at)) <= new Date()) throw new Error('انتهى المزاد')
+
+  const currentH = auctionCurrentHalalas(auction as Record<string, unknown>)
+  const step = minBidStepHalalas(auction as Record<string, unknown>)
+  if (amountHalalas <= currentH || amountHalalas < currentH + step) {
+    throw new Error(`المزايدة أقل من الحد الأدنى (${currentH + step} هللة)`)
+  }
+
+  const maxBidHalalas = currentH * 10
+  if (amountHalalas > maxBidHalalas) {
+    throw new Error('المزايدة تتجاوز الحد المسموح (10× السعر الحالي)')
+  }
+
+  const bidRow: Record<string, unknown> = {
+    auction_id: auctionId,
+    listing_id: auctionId,
+    bidder_id: bidderId,
+    amount: amountHalalas,
+    is_winning: true,
+    is_auto_bid: false,
+  }
+
+  const { data: bid, error: bErr } = await supabase.from('bids').insert(bidRow).select().single()
+  if (bErr) {
+    console.error('[recordSimpleBid insert]', bErr.message)
+    throw new Error(bErr.message)
+  }
+
+  await supabase.from('bids').update({ is_winning: false }).eq('auction_id', auctionId).neq('id', bid.id)
+
+  const patch: Record<string, unknown> = {
+    current_bid: Math.round(amountHalalas / 100),
+    highest_bidder_id: bidderId,
+  }
+  if (typeof auction.bid_count === 'number') patch.bid_count = auction.bid_count + 1
+  if (typeof auction.total_bids === 'number') patch.total_bids = auction.total_bids + 1
+
+  await supabase.from('auctions').update(patch).eq('id', auctionId)
+
+  const bidTime = new Date()
+  const orch = await onBidPlaced(auctionId, bidderId, bidTime)
+
+  const newTotalBids =
+    typeof patch.bid_count === 'number'
+      ? (patch.bid_count as number)
+      : typeof auction.bid_count === 'number'
+        ? auction.bid_count + 1
+        : 1
+
+  const currentBidRiyals = Math.round(amountHalalas / 100)
+  void broadcastAuctionPayload(auctionId, 'new_bid', {
+    auction_id: auctionId,
+    current_bid_riyals: currentBidRiyals,
+    bid_amount_halalas: amountHalalas,
+    bidder_display: anonymizeBidderForBroadcast(bidderId),
+    bid_count: newTotalBids,
+    is_auto_bid: false,
+    timestamp: new Date().toISOString(),
+  })
+
+  await notifySellerAuctionActivityOnNewBid({
+    auctionId,
+    sellerId: auction.seller_id as string,
+    title: String(auction.title ?? 'مزاد'),
+    newTotalBids,
+  })
+
+  const prev = auction.highest_bidder_id as string | undefined
+  const sellerId = auction.seller_id as string
+  await insertFinancialNotification(supabase, {
+    user_id: sellerId,
+    type: 'new_bid',
+    title: 'مزايدة جديدة',
+    body: `مزايدة جديدة على: ${String(auction.title ?? '')}`,
+    auction_id: auctionId,
+  })
+
+  if (prev && prev !== bidderId) {
+    await insertFinancialNotification(supabase, {
+      user_id: prev,
+      type: 'outbid',
+      title: 'تم تجاوز مزايدتك',
+      body: `تم تجاوز مزايدتك في المزاد: ${String(auction.title ?? '')}`,
+      auction_id: auctionId,
+    })
+  }
+
+  try {
+    await processAutoBidChain(auctionId)
+  } catch (e) {
+    console.error('[recordSimpleBid processAutoBidChain]', e)
+  }
+
+  return {
+    bid: bid as BidRow,
+    auctionExtended: orch.extended,
+    newEndsAt: orch.newEndTime,
+    extensionCount: orch.extensionCount,
+  }
+}
+
 export async function placeBid(
   auctionId: string,
   bidderId: string,
   amount: number,
   cardToken: string,
-  maxAutoBid?: number
+  maxAutoBid?: number,
+  options?: PlaceBidOptions
 ): Promise<{
   bid: BidRow
   guaranteePaymentId: string
@@ -114,7 +383,7 @@ export async function placeBid(
     guarantee_payment_id: payment.id,
     guarantee_status: gStatus,
     is_winning: true,
-    is_auto_bid: Boolean(maxAutoBid),
+    is_auto_bid: Boolean(options?.fromAutoBidEngine || maxAutoBid),
     max_auto_bid: maxAutoBid ?? null,
   }
 
@@ -144,6 +413,18 @@ export async function placeBid(
       : typeof auction.bid_count === 'number'
         ? auction.bid_count + 1
         : 1
+
+  const currentBidRiyals = Math.round(amount / 100)
+
+  void broadcastAuctionPayload(auctionId, 'new_bid', {
+    auction_id: auctionId,
+    current_bid_riyals: currentBidRiyals,
+    bid_amount_halalas: amount,
+    bidder_display: anonymizeBidderForBroadcast(bidderId),
+    bid_count: newTotalBids,
+    is_auto_bid: Boolean(options?.fromAutoBidEngine),
+    timestamp: new Date().toISOString(),
+  })
 
   await notifySellerAuctionActivityOnNewBid({
     auctionId,
@@ -182,6 +463,14 @@ export async function placeBid(
       body: `تم تجاوز مزايدتك في المزاد: ${String(auction.title ?? '')}`,
       auction_id: auctionId,
     })
+  }
+
+  if (!options?.fromAutoBidEngine && !options?.skipAutoBidChain) {
+    try {
+      await processAutoBidChain(auctionId)
+    } catch (e) {
+      console.error('[placeBid processAutoBidChain]', e)
+    }
   }
 
   return {
@@ -259,7 +548,7 @@ export async function handleAuctionEnd(auctionId: string): Promise<void> {
   const winnerId = top.bidder_id as string
   await releaseLosingBidGuarantees(auctionId, winnerId)
 
-  const { data: deal } = await createDeal(auctionId, winnerId, top.id as string)
+  const { data: dealRow } = await createDeal(auctionId, winnerId, top.id as string)
 
   await supabase
     .from('auctions')
@@ -277,7 +566,7 @@ export async function handleAuctionEnd(auctionId: string): Promise<void> {
     title: 'مبروك! لديك 48 ساعة لإتمام الدفع',
     body: `فزت بالمزاد: ${String(auction.title ?? '')}. أكمل الدفع من صفحة الصفقات.`,
     auction_id: auctionId,
-    deal_id: deal.id,
+    deal_id: dealRow.id,
   })
   await insertFinancialNotification(supabase, {
     user_id: auction.seller_id as string,
@@ -285,7 +574,7 @@ export async function handleAuctionEnd(auctionId: string): Promise<void> {
     title: 'تم بيع منتجك!',
     body: `تم بيع مزادك: ${String(auction.title ?? '')}`,
     auction_id: auctionId,
-    deal_id: deal.id,
+    deal_id: dealRow.id,
   })
 
   await onAuctionClosed(auctionId, {

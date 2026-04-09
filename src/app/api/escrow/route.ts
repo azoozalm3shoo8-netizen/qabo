@@ -1,3 +1,7 @@
+/**
+ * @deprecated مسار escrow/orders القديم («درع الصفقة»). الصفقات المالية الحديثة تمر عبر جدول deals و Moyasar.
+ * يُبقى للتوافق مع واجهات قديمة؛ تفضيل توحيد العرض مع مسار الصفقات الجديد عند التطوير.
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { isValidUserId } from '@/lib/server/require-user'

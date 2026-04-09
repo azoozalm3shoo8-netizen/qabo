@@ -1,104 +1,44 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { ensurePendingOrderForAuction } from '@/lib/server/ensure-order-for-auction'
+import { handleAuctionEnd } from '@/lib/services/bidding-service'
 
-/** Only touches this auction row — use on detail GET instead of scanning all auctions */
+/**
+ * عند انتهاء المزاد أثناء الجلب — نفس مسار الإغلاق الموحّد (صفقة + إشعارات مالية).
+ */
 export async function closeAuctionIfExpiredForId(supabase: SupabaseClient, auctionId: string) {
   const now = new Date().toISOString()
-  const { data: updated, error } = await supabase
-    .from('auctions')
-    .update({ status: 'ended' })
-    .eq('id', auctionId)
-    .eq('status', 'active')
-    .lt('ends_at', now)
-    .select('id, seller_id, highest_bidder_id, title, current_bid')
-    .maybeSingle()
-
-  if (error || !updated) return
-
-  const notifications: {
-    user_id: string
-    type: string
-    title: string
-    message: string
-    auction_id: string
-  }[] = [
-    {
-      user_id: updated.seller_id,
-      type: 'auction_ended',
-      title: 'انتهى المزاد',
-      message: `انتهى مزادك: ${updated.title}`,
-      auction_id: updated.id,
-    },
-  ]
-  if (updated.highest_bidder_id) {
-    notifications.push({
-      user_id: updated.highest_bidder_id,
-      type: 'auction_won',
-      title: 'فزت بالمزاد',
-      message: `تهانينا! فزت بالمزاد: ${updated.title}`,
-      auction_id: updated.id,
-    })
+  try {
+    const { data: row, error } = await supabase
+      .from('auctions')
+      .select('id, status, ends_at')
+      .eq('id', auctionId)
+      .maybeSingle()
+    if (error || !row) return
+    if (String(row.status) !== 'active') return
+    if (new Date(String(row.ends_at)) > new Date(now)) return
+    await handleAuctionEnd(auctionId)
+  } catch (e) {
+    console.error('[closeAuctionIfExpiredForId]', e)
   }
-  const { error: nErr } = await supabase.from('notifications').insert(notifications)
-  if (nErr) console.error('closeAuctionIfExpiredForId notifications:', nErr.message)
-
-  await ensurePendingOrderForAuction(supabase, {
-    id: updated.id,
-    seller_id: updated.seller_id,
-    highest_bidder_id: updated.highest_bidder_id,
-    current_bid: updated.current_bid,
-  })
 }
 
+/** إغلاق دفعي لكل المزادات المنتهية — يمر عبر handleAuctionEnd (لا يُحدّث ended فقط). */
 export async function closeExpiredAuctions(supabase: SupabaseClient) {
   const now = new Date().toISOString()
-  const { data: ended, error } = await supabase
-    .from('auctions')
-    .update({ status: 'ended' })
-    .eq('status', 'active')
-    .lt('ends_at', now)
-    .select('id, seller_id, highest_bidder_id, title, current_bid')
-
-  if (error || !ended?.length) return
-
-  const notifications: {
-    user_id: string
-    type: string
-    title: string
-    message: string
-    auction_id: string
-  }[] = []
-
-  for (const a of ended) {
-    notifications.push({
-      user_id: a.seller_id,
-      type: 'auction_ended',
-      title: 'انتهى المزاد',
-      message: `انتهى مزادك: ${a.title}`,
-      auction_id: a.id,
-    })
-    if (a.highest_bidder_id) {
-      notifications.push({
-        user_id: a.highest_bidder_id,
-        type: 'auction_won',
-        title: 'فزت بالمزاد',
-        message: `تهانينا! فزت بالمزاد: ${a.title}`,
-        auction_id: a.id,
-      })
+  try {
+    const { data: rows, error } = await supabase
+      .from('auctions')
+      .select('id')
+      .eq('status', 'active')
+      .lt('ends_at', now)
+    if (error || !rows?.length) return
+    for (const r of rows) {
+      try {
+        await handleAuctionEnd(r.id as string)
+      } catch (e) {
+        console.error('[closeExpiredAuctions]', r.id, e)
+      }
     }
-  }
-
-  if (notifications.length) {
-    const { error: nErr } = await supabase.from('notifications').insert(notifications)
-    if (nErr) console.error('closeExpiredAuctions notifications:', nErr.message)
-  }
-
-  for (const a of ended) {
-    await ensurePendingOrderForAuction(supabase, {
-      id: a.id,
-      seller_id: a.seller_id,
-      highest_bidder_id: a.highest_bidder_id,
-      current_bid: a.current_bid,
-    })
+  } catch (e) {
+    console.error('[closeExpiredAuctions]', e)
   }
 }

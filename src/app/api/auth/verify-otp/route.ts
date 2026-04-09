@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { checkRateLimit } from '@/lib/server/rate-limit'
 
 const TWILIO_SID = 'ACcf0368d45556a98145a08a1569d89fa7'
 const TWILIO_TOKEN = '4a4c94cf686408487b126ce72f1d09ec'
@@ -12,6 +13,15 @@ const supabase = createClient(
 
 export async function POST(req: NextRequest) {
   try {
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const rl = checkRateLimit(`verify-otp:${ip}`, 300_000, 5)
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'طلبات كثيرة. حاول بعد قليل.', retryAfter: rl.retryAfter },
+        { status: 429 }
+      )
+    }
+
     const { phone, code } = await req.json()
     if (!phone || !code) return NextResponse.json({ error: 'missing data' }, { status: 400 })
 

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { checkRateLimit } from '@/lib/server/rate-limit'
 
 /**
  * GoTrue email OTP expects the anon key on the Auth API (not the service role),
@@ -10,6 +11,15 @@ export async function POST(req: NextRequest) {
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
   if (!url || !anon) {
     return NextResponse.json({ error: 'إعدادات Supabase غير مكتملة' }, { status: 500 })
+  }
+
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const rl = checkRateLimit(`email-otp-send:${ip}`, 300_000, 3)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'طلبات كثيرة. حاول بعد قليل.', retryAfter: rl.retryAfter },
+      { status: 429 }
+    )
   }
 
   let body: { email?: string }

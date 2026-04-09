@@ -41,8 +41,15 @@ export function LiveBidPanel({
 }: Props) {
   const { t } = useLocale()
   const { show } = useToast()
-  const { currentBid, bidCount, recentBids, isLive, highestBidderId: realtimeHighestBidderId } =
-    useRealtimeAuction(auctionId, initialCurrentBid, initialBidCount, highestBidderId)
+  const {
+    currentBid,
+    bidCount,
+    recentBids,
+    isLive,
+    highestBidderId: realtimeHighestBidderId,
+    watcherCount,
+    lastExtendedAt,
+  } = useRealtimeAuction(auctionId, initialCurrentBid, initialBidCount, highestBidderId, userId)
   const liveHighestBidder = realtimeHighestBidderId || highestBidderId
   const userHasBid = Boolean(
     userId && recentBids.some((b) => sameUserId(b.bidder_id, userId))
@@ -64,9 +71,19 @@ export function LiveBidPanel({
     }
     prevBidRef.current = currentBid
   }, [currentBid])
+
+  const prevExtRef = useRef<string | null>(null)
+  useEffect(() => {
+    if (!lastExtendedAt) return
+    if (prevExtRef.current === lastExtendedAt) return
+    prevExtRef.current = lastExtendedAt
+    show('تم تمديد المزاد بعد مزايدة قرب النهاية', 'info')
+  }, [lastExtendedAt, show])
   const [custom, setCustom] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [showLog, setShowLog] = useState(false)
+  const [optimisticBid, setOptimisticBid] = useState<number | null>(null)
+  const prevBidBeforeOptimistic = useRef<number | null>(null)
 
   const minNext = useMemo(
     () => Math.max(0, Number(currentBid) + Number(bidIncrement)),
@@ -92,6 +109,9 @@ export function LiveBidPanel({
       const confirmed = window.confirm('أنت بالفعل أعلى مزايد! هل تريد رفع مزايدتك؟')
       if (!confirmed) return
     }
+    prevBidBeforeOptimistic.current = currentBid
+    setOptimisticBid(amount)
+    setBidCount((c) => c + 1)
     setSubmitting(true)
     try {
       const res = await fetch('/api/bids', {
@@ -107,8 +127,13 @@ export function LiveBidPanel({
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || t('auction_bidFailed'))
       show(t('auction_bidSuccess'), 'success')
+      setOptimisticBid(null)
       onBidPlaced()
     } catch (e: unknown) {
+      setOptimisticBid(null)
+      if (prevBidBeforeOptimistic.current != null) {
+        setBidCount((c) => Math.max(0, c - 1))
+      }
       show(e instanceof Error ? e.message : t('common_error'), 'error')
     } finally {
       setSubmitting(false)
@@ -164,7 +189,8 @@ export function LiveBidPanel({
           <span>
             {bidCount} {t('auction_bids')}
           </span>
-          {viewCount != null && viewCount > 0 ? <span>👁 {viewCount} مشاهدة</span> : null}
+          {watcherCount > 0 ? <span>👁 {watcherCount} يشاهدون الآن</span> : null}
+        {viewCount != null && viewCount > 0 ? <span>👁 {viewCount} مشاهدة</span> : null}
         </span>
       </div>
 
@@ -172,17 +198,20 @@ export function LiveBidPanel({
         <p className="text-xs text-gray-500 dark:text-slate-400">{t('auction_currentPrice')}</p>
         <AnimatePresence mode="wait">
           <motion.p
-            key={currentBid}
+            key={optimisticBid ?? currentBid}
             initial={{ y: 8, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
+            animate={{ y: 0, opacity: optimisticBid ? 0.65 : 1 }}
             exit={{ y: -8, opacity: 0 }}
             transition={{ duration: 0.2 }}
             className="text-4xl font-extrabold text-[#1B7F7A] dark:text-slate-100"
           >
-            {Number(currentBid).toLocaleString()}{' '}
+            {Number(optimisticBid ?? currentBid).toLocaleString()}{' '}
             <span className="text-xl font-bold text-[#156661] dark:text-slate-300">
               {t('common_currency')}
             </span>
+            {optimisticBid ? (
+              <span className="mr-2 inline-block h-4 w-4 animate-spin rounded-full border-2 border-[#1B7F7A] border-t-transparent align-middle" />
+            ) : null}
           </motion.p>
         </AnimatePresence>
         <p className="mt-1 text-xs text-gray-500 dark:text-slate-400">

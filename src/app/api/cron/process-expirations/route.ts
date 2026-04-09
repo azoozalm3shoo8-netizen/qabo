@@ -3,7 +3,7 @@ import { createClient } from '@/lib/supabase-server'
 import { insertFinancialNotification } from '@/lib/server/financial-notifications'
 import { handleAuctionEnd } from '@/lib/services/bidding-service'
 import { autoAcceptExpiredInspections } from '@/lib/services/deal-service'
-import { autoEscalateExpiredLevel1 } from '@/lib/services/dispute-service'
+import { autoEscalateExpiredLevel1, processDisputesPastSellerDeadline } from '@/lib/services/dispute-service'
 import { getFreePeriodInfo } from '@/lib/services/free-period-service'
 import { processSmartNotifications } from '@/lib/services/smart-notification-service'
 
@@ -16,6 +16,11 @@ export async function GET(req: NextRequest) {
 
   const supabase = createClient()
   await autoAcceptExpiredInspections()
+  try {
+    await processDisputesPastSellerDeadline()
+  } catch (e) {
+    console.error('[cron processDisputesPastSellerDeadline]', e)
+  }
   await autoEscalateExpiredLevel1()
 
   try {

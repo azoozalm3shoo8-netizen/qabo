@@ -9,6 +9,7 @@ import { DeliveryMethodPicker } from '@/components/DeliveryMethodPicker'
 import { ImageUploader } from '@/components/ImageUploader'
 import { PriceEstimator } from '@/components/PriceEstimator'
 import { Video360Upload } from '@/components/Video360Upload'
+import { analyzeListing } from '@/lib/services/ai-listing-assistant'
 import { suggestCategoryFromTitle } from '@/lib/ai-classifier'
 import { CATEGORY_CHECKLISTS } from '@/lib/category-checklists'
 import { CATEGORY_CATALOG } from '@/lib/constants'
@@ -106,6 +107,8 @@ export default function CreatePage() {
   const [freePeriod, setFreePeriod] = useState<{ isActive: boolean; endsAt: string | null } | null>(null)
   const [enhancedPricing, setEnhancedPricing] = useState<EnhancedSuggestion | null>(null)
   const [enhancedPricingLoading, setEnhancedPricingLoading] = useState(false)
+  const [sellerWatermarkName, setSellerWatermarkName] = useState('')
+  const [listingTips, setListingTips] = useState<string[]>([])
 
   useEffect(() => {
     void fetch('/api/platform/free-period')
@@ -123,7 +126,31 @@ export default function CreatePage() {
       return
     }
     setUser(u)
+    void fetch('/api/profile?user_id=' + encodeURIComponent(u.user_id))
+      .then((r) => r.json())
+      .then((j: { full_name?: string; phone?: string }) => {
+        const n = typeof j.full_name === 'string' && j.full_name.trim() ? j.full_name.trim() : ''
+        setSellerWatermarkName(n || (typeof j.phone === 'string' ? j.phone : '') || '')
+      })
+      .catch(() => setSellerWatermarkName(''))
   }, [])
+
+  useEffect(() => {
+    const h = window.setTimeout(() => {
+      const startHalalas = Math.round((Number(startPrice) || 0) * 100)
+      const fb = analyzeListing({
+        title,
+        description,
+        category,
+        condition: resolveListingCondition(checklistResponses, condition),
+        photoCount: imageUrls.filter(Boolean).length,
+        hasVideo360: Boolean(video360JobId),
+        startingBidHalalas: startHalalas,
+      })
+      setListingTips(fb.tips)
+    }, 500)
+    return () => window.clearTimeout(h)
+  }, [title, description, category, condition, checklistResponses, imageUrls, video360JobId, startPrice])
 
   useEffect(() => {
     const id = window.setTimeout(() => {
@@ -354,7 +381,18 @@ export default function CreatePage() {
             initialUrls={imageUrls}
             onImagesChange={setImageUrls}
             onBusyChange={setImagesUploading}
+            watermarkSellerLabel={sellerWatermarkName}
           />
+          {listingTips.length > 0 ? (
+            <div className="rounded-xl border border-[#1B7F7A]/20 bg-[#E6F4F3]/60 p-3 text-sm text-[#1F2937] dark:border-teal-800 dark:bg-teal-950/30 dark:text-slate-200">
+              <p className="mb-1 font-bold text-[#1B7F7A] dark:text-teal-400">اقتراحات لإعلان أقوى</p>
+              <ul className="list-inside list-disc space-y-1">
+                {listingTips.map((tip, i) => (
+                  <li key={i}>{tip}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <div className="mt-6 rounded-2xl border border-gray-100 bg-white p-4 shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <h3 className="mb-1 font-bold text-[#1F2937] dark:text-slate-100">عرض 360° تفاعلي (اختياري)</h3>
             <p className="mb-3 text-sm text-gray-500 dark:text-slate-400">

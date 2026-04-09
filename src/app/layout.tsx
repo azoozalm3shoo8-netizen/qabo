@@ -4,6 +4,7 @@ import { Cairo, Inter } from 'next/font/google'
 import { AppProviders } from '@/components/AppProviders'
 import { NotificationSetup } from '@/components/NotificationSetup'
 import { PageFade } from '@/components/PageFade'
+import { InstallPrompt } from '@/components/pwa/InstallPrompt'
 import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister'
 import { ToastProvider } from '@/components/Toast'
 import './globals.css'
@@ -80,6 +81,7 @@ export default function RootLayout({
           <ServiceWorkerRegister />
           <ToastProvider>
             <PageFade>{children}</PageFade>
+            <InstallPrompt />
             <NotificationSetup />
           </ToastProvider>
         </AppProviders>

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { SNIPE_WINDOW_MS, formatTimeLeft } from '@/lib/anti-snipe'
 import { useLocale } from '@/lib/locale-context'
+import { playCountdownTickOnce } from '@/lib/sound'
 
 type Props = {
   endsAt: string
@@ -61,8 +62,29 @@ export function AuctionCountdown({ endsAt, status, onEndedChange }: Props) {
 
   const showTimer = !ended && status === 'active'
   const msLeft = showTimer ? new Date(endsAt).getTime() - Date.now() : 0
+  const totalSecondsLeft = showTimer && msLeft > 0 ? Math.floor(msLeft / 1000) : 0
   const urgent = showTimer && msLeft > 0 && msLeft <= SNIPE_WINDOW_MS
   const formatted = formatTimeLeft(endsAt)
+
+  const tick30Ref = useRef(false)
+  useEffect(() => {
+    if (!showTimer || msLeft <= 0) {
+      tick30Ref.current = false
+      return
+    }
+    if (totalSecondsLeft === 30 && !tick30Ref.current) {
+      tick30Ref.current = true
+      playCountdownTickOnce()
+    }
+    if (totalSecondsLeft > 32) tick30Ref.current = false
+  }, [showTimer, msLeft, totalSecondsLeft])
+
+  const urgencyTextClass =
+    totalSecondsLeft > 3600
+      ? 'text-emerald-600 dark:text-emerald-400'
+      : totalSecondsLeft > 300
+        ? 'text-amber-500 dark:text-amber-400'
+        : 'text-red-600 animate-pulse dark:text-red-400'
 
   const units = [
     { val: timeLeft.days, label: t('countdown_day') },
@@ -79,6 +101,8 @@ export function AuctionCountdown({ endsAt, status, onEndedChange }: Props) {
           ? 'border-red-400/60 animate-pulse dark:border-red-500/50'
           : 'border-gray-100 dark:border-slate-700')
       }
+      role="region"
+      aria-label="الوقت المتبقي للمزاد"
     >
       <p className="mb-2 text-center text-sm text-gray-500 dark:text-slate-400">
         {ended || status !== 'active' ? t('countdown_ended') : t('countdown_remaining')}
@@ -86,11 +110,11 @@ export function AuctionCountdown({ endsAt, status, onEndedChange }: Props) {
       {showTimer ? (
         <>
           <p
-            className={
-              'mb-2 text-center text-2xl font-extrabold tabular-nums ' +
-              (urgent ? 'text-red-600 dark:text-red-400' : 'text-[#1B7F7A] dark:text-slate-100')
-            }
+            className={'mb-2 text-center text-2xl font-extrabold tabular-nums ' + urgencyTextClass}
             dir="ltr"
+            role="timer"
+            aria-live={totalSecondsLeft < 60 ? 'assertive' : 'polite'}
+            aria-label={`متبقي ${timeLeft.days} يوم ${timeLeft.hours} ساعة ${timeLeft.minutes} دقيقة`}
           >
             {formatted}
           </p>

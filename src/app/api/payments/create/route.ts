@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { checkRateLimit } from '@/lib/server/rate-limit'
 import { isValidUserId } from '@/lib/server/require-user'
 
 const supabase = createClient(
@@ -15,6 +16,15 @@ export async function POST(req: NextRequest) {
     body = await req.json()
   } catch {
     return NextResponse.json({ error: 'جسم الطلب غير صالح' }, { status: 400 })
+  }
+
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const rl = checkRateLimit(`payments-create:${ip}`, 600_000, 5)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'طلبات كثيرة. حاول بعد قليل.', retryAfter: rl.retryAfter },
+      { status: 429 }
+    )
   }
 
   const payment_id = typeof body.payment_id === 'string' ? body.payment_id.trim() : ''

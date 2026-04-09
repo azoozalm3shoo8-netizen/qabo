@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
+import { checkRateLimit } from '@/lib/server/rate-limit'
 import { isValidUserId } from '@/lib/server/require-user'
 import { paymentBreakdown } from '@/lib/payment-breakdown'
 
@@ -14,6 +15,15 @@ export async function POST(req: NextRequest) {
   const secret = process.env.TAP_SECRET_KEY
   if (!secret) {
     return NextResponse.json({ error: 'TAP_SECRET_KEY غير مُعرّف' }, { status: 500 })
+  }
+
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+  const rl = checkRateLimit(`payments-create-charge:${ip}`, 600_000, 5)
+  if (!rl.allowed) {
+    return NextResponse.json(
+      { error: 'طلبات كثيرة. حاول بعد قليل.', retryAfter: rl.retryAfter },
+      { status: 429 }
+    )
   }
 
   let body: { auction_id?: string; buyer_id?: string; amount?: number }

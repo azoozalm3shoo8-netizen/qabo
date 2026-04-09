@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { baseProfileRowForUpsert } from '@/lib/server/profile-defaults'
+import { checkRateLimit } from '@/lib/server/rate-limit'
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,6 +11,15 @@ export async function POST(req: NextRequest) {
 
     if (!url || !anon || !serviceKey) {
       return NextResponse.json({ error: 'إعدادات Supabase غير مكتملة' }, { status: 500 })
+    }
+
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || 'unknown'
+    const rl = checkRateLimit(`email-otp-verify:${ip}`, 300_000, 10)
+    if (!rl.allowed) {
+      return NextResponse.json(
+        { error: 'طلبات كثيرة. حاول بعد قليل.', retryAfter: rl.retryAfter },
+        { status: 429 }
+      )
     }
 
     let body: { email?: string; token?: string }

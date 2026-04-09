@@ -1,5 +1,6 @@
 import 'server-only'
 
+import { broadcastAuctionPayload } from '@/lib/server/auction-realtime-broadcast'
 import { insertFinancialNotification } from '@/lib/server/financial-notifications'
 import { createClient } from '@/lib/supabase-server'
 import {
@@ -46,6 +47,11 @@ export async function onBidPlaced(
     if (r.extended) {
       const supabase = createClient()
       await notifyBiddersAuctionExtended(supabase, auctionId)
+      void broadcastAuctionPayload(auctionId, 'auction_extended', {
+        auction_id: auctionId,
+        new_ends_at: r.newEndTime?.toISOString(),
+        extension_number: r.extensionCount,
+      })
     }
   })
 

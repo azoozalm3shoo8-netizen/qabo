@@ -24,3 +24,21 @@ export function playBidSound() {
     // silent fallback
   }
 }
+
+/** نغمة خفيفة لمرة واحدة (يُفضّل استدعاؤها من مكوّن مع حارس useRef) */
+export function playCountdownTickOnce() {
+  try {
+    if (!audioCtx) audioCtx = new AudioContext()
+    const osc = audioCtx.createOscillator()
+    const gain = audioCtx.createGain()
+    osc.connect(gain)
+    gain.connect(audioCtx.destination)
+    osc.frequency.setValueAtTime(660, audioCtx.currentTime)
+    gain.gain.setValueAtTime(0.12, audioCtx.currentTime)
+    gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.12)
+    osc.start(audioCtx.currentTime)
+    osc.stop(audioCtx.currentTime + 0.15)
+  } catch {
+    /* ignore */
+  }
+}

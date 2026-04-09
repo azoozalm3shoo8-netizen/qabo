@@ -6,6 +6,7 @@ import { CheckCircle, ShieldCheck, XCircle } from '@phosphor-icons/react'
 import { useParams, useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { BottomNav } from '@/components/BottomNav'
+import { ShippingTracker } from '@/components/deal/ShippingTracker'
 import { OrderStatusTracker } from '@/components/OrderStatusTracker'
 import { useToast } from '@/components/Toast'
 import { normalizeAuctionImages } from '@/lib/auction-images'
@@ -39,6 +40,7 @@ type OrderDetail = {
   tap_charge_id?: string | null
   status: string
   tracking_number?: string | null
+  shipping_provider?: string | null
   created_at: string
   updated_at?: string
   auction: AuctionDetailEmbed
@@ -313,6 +315,12 @@ export default function OrderDetailPage() {
 
       {!loading && order && (
         <div className="px-4 mt-4 space-y-3">
+          {order.tracking_number?.trim() ? (
+            <ShippingTracker
+              provider={order.shipping_provider ?? 'other'}
+              trackingNumber={order.tracking_number}
+            />
+          ) : null}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
             <div className="relative h-48 w-full bg-gray-100">
               {thumb ? (

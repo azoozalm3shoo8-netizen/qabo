@@ -47,7 +47,23 @@ export async function compressImage(
   })
 }
 
-export async function addWatermark(file: File | Blob, text = 'qabboo'): Promise<Blob> {
+export type WatermarkOpts = {
+  label: string
+  /** درجات؛ سالب = عكس اتجاه الساعة */
+  angleDeg?: number
+  centerOpacity?: number
+}
+
+export async function addWatermark(
+  file: File | Blob,
+  textOrOpts: string | WatermarkOpts = 'قبو'
+): Promise<Blob> {
+  const opts: WatermarkOpts =
+    typeof textOrOpts === 'string' ? { label: textOrOpts } : textOrOpts
+  const label = (opts.label || 'قبو').trim() || 'قبو'
+  const angleDeg = opts.angleDeg ?? -30
+  const centerOpacity = opts.centerOpacity ?? 0.15
+
   const img = await loadImageFromBlob(file)
   const w = img.naturalWidth || img.width
   const h = img.naturalHeight || img.height
@@ -57,20 +73,34 @@ export async function addWatermark(file: File | Blob, text = 'qabboo'): Promise<
   const ctx = canvas.getContext('2d')
   if (!ctx) throw new Error('no canvas context')
   ctx.drawImage(img, 0, 0)
-  const fontSize = 20
-  ctx.font = `bold ${fontSize}px Cairo, var(--font-cairo), system-ui, sans-serif`
-  ctx.globalAlpha = 0.3
+
+  const fontCorner = Math.max(14, Math.round(Math.min(w, h) * 0.035))
+  ctx.font = `bold ${fontCorner}px Cairo, var(--font-cairo), system-ui, sans-serif`
+  ctx.globalAlpha = 0.32
   ctx.fillStyle = '#ffffff'
   ctx.shadowColor = 'rgba(0,0,0,0.65)'
   ctx.shadowBlur = 6
   ctx.shadowOffsetX = 1
   ctx.shadowOffsetY = 1
   const pad = 12
-  const x = pad
-  const y = h - pad
   ctx.textBaseline = 'bottom'
-  ctx.fillText(text, x, y)
+  ctx.fillText(label, pad, h - pad)
   ctx.shadowBlur = 0
+
+  const cx = w / 2
+  const cy = h / 2
+  const fontCenter = Math.max(28, Math.round(Math.min(w, h) * 0.12))
+  ctx.save()
+  ctx.translate(cx, cy)
+  ctx.rotate((angleDeg * Math.PI) / 180)
+  ctx.font = `bold ${fontCenter}px Cairo, var(--font-cairo), system-ui, sans-serif`
+  ctx.globalAlpha = centerOpacity
+  ctx.fillStyle = '#ffffff'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText(label, 0, 0)
+  ctx.restore()
+
   ctx.globalAlpha = 1
   return new Promise((resolve, reject) => {
     canvas.toBlob(

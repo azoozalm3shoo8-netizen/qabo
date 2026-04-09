@@ -16,6 +16,7 @@ import {
   fetchPayment,
   voidPayment,
 } from '@/lib/moyasar-client'
+import { analyzeDispute } from '@/lib/services/ai-dispute-assistant'
 import { onDealCompleted } from '@/lib/services/platform-orchestrator'
 import type { DealRow } from '@/lib/types/financial-types'
 
@@ -250,6 +251,50 @@ export async function rejectDeal(
     })
     .eq('id', dealId)
 
+  try {
+    const { data: auction } = await supabase
+      .from('auctions')
+      .select('condition')
+      .eq('id', deal.auction_id as string)
+      .maybeSingle()
+    const { data: sp } = await supabase
+      .from('seller_profiles')
+      .select('trust_score, successful_sales')
+      .eq('user_id', deal.seller_id as string)
+      .maybeSingle()
+    const analysis = analyzeDispute({
+      disputeReason: reason,
+      hasPhotos: evidenceUrls.length > 0,
+      photoCount: evidenceUrls.length,
+      dealAmountHalalas: Math.round(Number(deal.sale_price)),
+      sellerTrustScore: Number(sp?.trust_score ?? 50),
+      sellerCompletedDeals: Number(sp?.successful_sales ?? 0),
+      buyerCompletedDeals: 0,
+      timeSinceDeliveryHours: 0,
+      sellerResponded: false,
+      sellerResponseTimeHours: null,
+      itemConditionClaimed: String(auction?.condition ?? 'good'),
+      itemConditionDisputed: 'poor',
+    })
+    const deadline = new Date(Date.now() + 48 * 3600000).toISOString()
+    const { error: dispErr } = await supabase.from('disputes').upsert(
+      {
+        deal_id: dealId,
+        status: 'open',
+        level: 1,
+        buyer_opened_reason: reason,
+        seller_response_deadline: deadline,
+        ai_suggested_resolution: `${analysis.suggestedResolution}: ${analysis.reason_ar}`,
+        ai_confidence: analysis.confidence,
+        updated_at: new Date().toISOString(),
+      },
+      { onConflict: 'deal_id' }
+    )
+    if (dispErr) console.error('[rejectDeal disputes]', dispErr.message)
+  } catch (e) {
+    console.error('[rejectDeal dispute ai]', e)
+  }
+
   return { ok: true }
 }
 
@@ -258,7 +303,7 @@ export async function autoAcceptExpiredInspections(): Promise<void> {
   const now = new Date().toISOString()
   const { data: deals, error } = await supabase
     .from('deals')
-    .select('id, full_payment_id, seller_payout_id, inspection_ends_at, buyer_accepted_at')
+    .select('id, full_payment_id, seller_payout_id, inspection_ends_at, buyer_accepted_at, status, total_buyer_charge')
     .not('inspection_ends_at', 'is', null)
     .lt('inspection_ends_at', now)
     .is('buyer_accepted_at', null)
@@ -270,12 +315,37 @@ export async function autoAcceptExpiredInspections(): Promise<void> {
 
   for (const d of deals ?? []) {
     if (!d.full_payment_id) continue
+    if (String(d.status ?? '').toLowerCase() === 'cancelled') continue
     try {
+      const { data: openDisp } = await supabase
+        .from('disputes')
+        .select('id')
+        .eq('deal_id', d.id as string)
+        .eq('status', 'open')
+        .maybeSingle()
+      if (openDisp) continue
+
+      const { data: fullDeal } = await supabase.from('deals').select('*').eq('id', d.id as string).maybeSingle()
+      if (!fullDeal?.full_payment_id) continue
+
+      try {
+        const pay = await fetchPayment(fullDeal.full_payment_id as string)
+        if (pay.status === 'authorized') {
+          await capturePayment(
+            fullDeal.full_payment_id as string,
+            Math.round(Number(fullDeal.total_buyer_charge))
+          )
+        }
+      } catch (e) {
+        console.error('[autoAcceptExpiredInspections capture]', d.id, e)
+      }
+
       await supabase
         .from('deals')
         .update({
           buyer_accepted_at: now,
           inspection_status: 'auto_accepted',
+          delivery_status: 'completed',
           updated_at: now,
         })
         .eq('id', d.id)

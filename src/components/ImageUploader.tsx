@@ -42,10 +42,13 @@ export function ImageUploader({
   initialUrls,
   onImagesChange,
   onBusyChange,
+  watermarkSellerLabel,
 }: {
   initialUrls?: string[]
   onImagesChange: (urls: string[]) => void
   onBusyChange?: (busy: boolean) => void
+  /** يُعرض في العلامة المائية: «قبو | الاسم» */
+  watermarkSellerLabel?: string
 }) {
   const { t } = useLocale()
   const { show } = useToast()
@@ -99,7 +102,14 @@ export function ImageUploader({
           break
         }
       }
-      const watermarked = await addWatermark(compressed, 'qabboo')
+      const wmLabel = watermarkSellerLabel?.trim()
+        ? `قبو | ${watermarkSellerLabel.trim()}`
+        : 'قبو'
+      const watermarked = await addWatermark(compressed, {
+        label: wmLabel,
+        angleDeg: -30,
+        centerOpacity: 0.15,
+      })
       const jpegFile = await blobToJpegFile(watermarked, file.name)
       const url = await uploadImage(jpegFile, path, { skipCompression: true })
       if (url) {
@@ -132,7 +142,7 @@ export function ImageUploader({
     setSlots((prev) =>
       prev.map((s) => (s.id === slotId ? { ...s, uploading: false, error: true, removingBg: false } : s))
     )
-  }, [show])
+  }, [show, watermarkSellerLabel])
 
   const handleFile = useCallback(
     async (file: File) => {
@@ -244,7 +254,14 @@ export function ImageUploader({
         )
       })
       const jpeg = await compressImage(cutout, 1200, 0.9)
-      const watermarked = await addWatermark(jpeg, 'qabboo')
+      const wmLabel = watermarkSellerLabel?.trim()
+        ? `قبو | ${watermarkSellerLabel.trim()}`
+        : 'قبو'
+      const watermarked = await addWatermark(jpeg, {
+        label: wmLabel,
+        angleDeg: -30,
+        centerOpacity: 0.15,
+      })
       const nextFile = await blobToJpegFile(watermarked, base.name)
       const newPreview = URL.createObjectURL(watermarked)
       setSlots((prev) =>

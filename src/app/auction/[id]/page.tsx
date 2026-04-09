@@ -8,7 +8,6 @@ import {
   Folder,
   MapPin,
   Robot,
-  ShareNetwork,
   ShieldCheck,
   Star,
   UserCircle,
@@ -29,6 +28,7 @@ import { FavoriteHeart } from '@/components/FavoriteHeart'
 import { OrderStatusTracker } from '@/components/OrderStatusTracker'
 import { ReviewModal } from '@/components/ReviewModal'
 import { SellerResponsivenessBadge } from '@/components/seller/SellerResponsivenessBadge'
+import { AuctionJsonLd } from '@/components/seo/AuctionJsonLd'
 import { useToast } from '@/components/Toast'
 import { normalizeAuctionImages } from '@/lib/auction-images'
 import { sameUserId } from '@/lib/ids'
@@ -536,6 +536,20 @@ export default function AuctionDetailPage() {
 
       {!loading && auction && (
         <>
+          <AuctionJsonLd
+            auction={{
+              id: auction.id,
+              title: auction.title,
+              description: auction.description,
+              current_bid_halalas: Math.round(Number(auction.current_bid) * 100),
+              starting_bid_halalas: Math.round(Number(auction.start_price) * 100),
+              bid_count: auction.bid_count,
+              ends_at: auction.ends_at,
+              images: auction.images ?? undefined,
+              category: auction.category,
+              seller_name: auction.seller?.full_name ?? null,
+            }}
+          />
           <div className="relative bg-white dark:bg-slate-900">
             <div className="absolute top-3 left-3 z-10 flex gap-2 rounded-full bg-white/95 p-1 shadow-md ring-1 ring-white/80">
               <FavoriteHeart auctionId={auction.id} userId={user?.user_id ?? null} />
@@ -567,25 +581,13 @@ export default function AuctionDetailPage() {
                 <h1 className="min-w-0 flex-1 text-xl font-bold text-gray-900 dark:text-slate-100">
                   {auction.title}
                 </h1>
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (navigator.share) {
-                      void navigator.share({
-                        title: auction.title,
-                        text: auction.title + ' - مزاد على قبو',
-                        url: window.location.href,
-                      })
-                    } else {
-                      void navigator.clipboard.writeText(window.location.href)
-                      show('تم نسخ الرابط', 'success')
-                    }
-                  }}
-                  className="shrink-0 rounded-lg bg-gray-100 p-2 text-gray-600 transition hover:bg-gray-200 dark:bg-slate-700 dark:text-slate-300"
-                  aria-label="مشاركة"
-                >
-                  <ShareNetwork className="h-5 w-5" weight="bold" />
-                </button>
+                <div className="shrink-0">
+                  <ShareButton
+                    auctionId={auction.id}
+                    title={auction.title}
+                    currentBidHalalas={Math.round(Number(auction.current_bid) * 100)}
+                  />
+                </div>
               </div>
               <div className="mt-3 flex flex-wrap gap-2 text-sm text-[#1F2937]">
                 <span className="inline-flex items-center gap-1 rounded-full bg-[#F3F4F6] px-3 py-1.5 dark:bg-slate-700 dark:text-slate-100">

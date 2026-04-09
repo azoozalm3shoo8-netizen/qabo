@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase-server'
 import { addTrustBadge } from '@/lib/image-trust-badge'
 import { isValidUserId } from '@/lib/server/require-user'
+import { assessImageQuality } from '@/lib/services/ai-image-quality-gate'
 
 export const runtime = 'nodejs'
 export const maxDuration = 180
@@ -65,6 +66,22 @@ export async function POST(req: NextRequest) {
       }
 
       let buf: Buffer = Buffer.from(await f.arrayBuffer())
+      try {
+        const quality = await assessImageQuality(buf)
+        if (!quality.isAcceptable) {
+          return NextResponse.json(
+            {
+              success: false,
+              error: 'جودة الصورة غير كافية',
+              quality,
+            },
+            { status: 400 }
+          )
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : 'فشل فحص الجودة'
+        return NextResponse.json({ success: false, error: msg }, { status: 400 })
+      }
       const originalSize = buf.length
       const appliedSteps: string[] = []
       let thumbhash: string | undefined
