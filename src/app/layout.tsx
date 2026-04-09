@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from 'next'
 import Script from 'next/script'
-import { Cairo, Inter } from 'next/font/google'
+import { Inter, Noto_Sans_Arabic } from 'next/font/google'
 import { AppProviders } from '@/components/AppProviders'
 import { NotificationSetup } from '@/components/NotificationSetup'
 import { PageFade } from '@/components/PageFade'
@@ -9,15 +9,17 @@ import { ServiceWorkerRegister } from '@/components/ServiceWorkerRegister'
 import { ToastProvider } from '@/components/Toast'
 import './globals.css'
 
-const cairo = Cairo({
-  subsets: ['arabic', 'latin'],
-  variable: '--font-cairo',
-  weight: ['400', '600', '700', '800'],
+const notoArabic = Noto_Sans_Arabic({
+  subsets: ['arabic'],
+  variable: '--font-arabic',
+  display: 'swap',
+  weight: ['400', '500', '600', '700'],
 })
 
 const inter = Inter({
   subsets: ['latin'],
   variable: '--font-inter',
+  display: 'swap',
 })
 
 export const metadata: Metadata = {
@@ -70,7 +72,7 @@ export default function RootLayout({
     <html
       lang="ar"
       dir="rtl"
-      className={`${cairo.variable} ${inter.variable} h-full antialiased`}
+      className={`${notoArabic.variable} ${inter.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-[#F3F4F6] font-sans dark:bg-slate-900">

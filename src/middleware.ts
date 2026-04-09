@@ -20,7 +20,7 @@ export function middleware(req: NextRequest) {
 
   const csp = [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.moyasar.com https://*.googleapis.com",
+    "script-src 'self' 'unsafe-inline' https://cdn.moyasar.com https://*.googleapis.com",
     "style-src 'self' 'unsafe-inline' https://cdn.moyasar.com",
     "img-src 'self' data: blob: https: http:",
     "font-src 'self' https: data:",
@@ -47,15 +47,29 @@ export function middleware(req: NextRequest) {
     req.headers.get('x-real-ip') ||
     'unknown'
 
-  const rules: { prefix: string; max: number; windowMs: number }[] = [
-    { prefix: '/api/auth/email-otp/send', max: 3, windowMs: 300_000 },
-    { prefix: '/api/auth/email-otp/verify', max: 10, windowMs: 300_000 },
-    { prefix: '/api/auth/verify-otp', max: 5, windowMs: 300_000 },
+  if (path.startsWith('/api/auth/')) {
+    if (!checkMwLimit(`mw:api-auth:${ip}`, 5, 900_000)) {
+      return NextResponse.json(
+        { error: 'طلبات كثيرة. حاول بعد قليل.', error_en: 'Too many requests' },
+        { status: 429 }
+      )
+    }
+  }
+
+  if (req.method === 'POST' && path === '/api/bids') {
+    if (!checkMwLimit(`mw:api-bids-post:${ip}`, 10, 60_000)) {
+      return NextResponse.json(
+        { error: 'طلبات كثيرة. حاول بعد قليل.', error_en: 'Too many requests' },
+        { status: 429 }
+      )
+    }
+  }
+
+  const payRules: { prefix: string; max: number; windowMs: number }[] = [
     { prefix: '/api/payments/create', max: 5, windowMs: 600_000 },
     { prefix: '/api/payments/create-charge', max: 5, windowMs: 600_000 },
   ]
-
-  for (const r of rules) {
+  for (const r of payRules) {
     if (path === r.prefix || path.startsWith(r.prefix + '/')) {
       if (!checkMwLimit(`mw:${r.prefix}:${ip}`, r.max, r.windowMs)) {
         return NextResponse.json(

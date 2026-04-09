@@ -3,7 +3,11 @@
 import { MapPin, Package, Shield } from '@phosphor-icons/react'
 import type { ReactNode } from 'react'
 
-export function DeliveryMethodPicker({
+/**
+ * عرض ثابت لطرق التسليم في سياق الصفقة (ليس منتقي إدخال).
+ * لمنتج اختيار طريقة الاستلام أثناء الإنشاء استخدم `DeliveryMethodPicker` من الجذر.
+ */
+export function DealDeliveryMethodsInfo({
   methods,
 }: {
   methods: ('pickup' | 'shipping' | 'safe_zone')[]

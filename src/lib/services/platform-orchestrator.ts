@@ -1,3 +1,13 @@
+/**
+ * منسّق أحداث المنصة (جانب الخادم).
+ *
+ * الهدف طويل المدى (مرجع للتوسعة):
+ * - `onBidPlaced`: سلسلة auto-bid، anti-snipe، بث realtime، إشعارات (تجاوز/بائع)، awardXP، شارات social proof.
+ * - `onAuctionClosed`: فائز، deal، إشعارات (فائز/خاسرين/بائع)، تحرير ودائع، awardXP، تسعير، تقرير ما بعد المزاد، بث `auction_closed`.
+ * - دفع/شحن/فحص/نزاع: ربط Moyasar capture، مؤقتات الشحن والفحص، فتح نزاع تلقائي عند الرفض.
+ *
+ * التنفيذ الحالي يغطي جزءاً من ذلك؛ توسّعه تدريجياً دون كسر المسارات الحرجة.
+ */
 import 'server-only'
 
 import { broadcastAuctionPayload } from '@/lib/server/auction-realtime-broadcast'

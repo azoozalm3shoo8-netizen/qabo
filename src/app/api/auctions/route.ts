@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { closeExpiredAuctions } from '@/lib/server/close-expired-auctions'
+import { checkRateLimit } from '@/lib/server/rate-limit'
 import { isValidUserId, unauthorized } from '@/lib/server/require-user'
 import { isFreePeriodActive } from '@/lib/services/free-period-service'
 
@@ -77,6 +78,14 @@ export async function POST(req: NextRequest) {
   if (!isValidUserId(user_id)) return unauthorized()
   if (!isValidUserId(seller_id) || seller_id !== user_id) {
     return NextResponse.json({ error: 'معرّف البائع غير صالح' }, { status: 403 })
+  }
+
+  const createRl = checkRateLimit(`auction-create:${seller_id}`, 3_600_000, 3)
+  if (!createRl.allowed) {
+    return NextResponse.json(
+      { error: 'تجاوزت حد إنشاء المزادات في الساعة. حاول لاحقاً.', retryAfter: createRl.retryAfter },
+      { status: 429 }
+    )
   }
 
   const title = typeof rawTitle === 'string' ? rawTitle.trim().slice(0, 100) : ''

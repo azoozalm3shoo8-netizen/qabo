@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { closeExpiredAuctions } from '@/lib/server/close-expired-auctions'
-import { syncPendingOrdersForEndedAuctions } from '@/lib/server/ensure-order-for-auction'
 
+/**
+ * Cron خفيف لإغلاق المزادات المنتهية فقط — يمر عبر handleAuctionEnd (صفقة + إشعارات).
+ * المهام الأخرى (فحص، نزاعات، إشعارات ذكية) تبقى في GET /api/cron/process-expirations.
+ */
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
   process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -22,7 +25,6 @@ export async function GET(req: NextRequest) {
   }
 
   await closeExpiredAuctions(supabase)
-  await syncPendingOrdersForEndedAuctions(supabase)
 
   return NextResponse.json({
     success: true,

@@ -75,7 +75,7 @@ export async function addWatermark(
   ctx.drawImage(img, 0, 0)
 
   const fontCorner = Math.max(14, Math.round(Math.min(w, h) * 0.035))
-  ctx.font = `bold ${fontCorner}px Cairo, var(--font-cairo), system-ui, sans-serif`
+  ctx.font = `bold ${fontCorner}px "Noto Sans Arabic", var(--font-arabic), system-ui, sans-serif`
   ctx.globalAlpha = 0.32
   ctx.fillStyle = '#ffffff'
   ctx.shadowColor = 'rgba(0,0,0,0.65)'
@@ -93,7 +93,7 @@ export async function addWatermark(
   ctx.save()
   ctx.translate(cx, cy)
   ctx.rotate((angleDeg * Math.PI) / 180)
-  ctx.font = `bold ${fontCenter}px Cairo, var(--font-cairo), system-ui, sans-serif`
+  ctx.font = `bold ${fontCenter}px "Noto Sans Arabic", var(--font-arabic), system-ui, sans-serif`
   ctx.globalAlpha = centerOpacity
   ctx.fillStyle = '#ffffff'
   ctx.textAlign = 'center'

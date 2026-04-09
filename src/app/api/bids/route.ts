@@ -1,3 +1,7 @@
+/**
+ * مسار المزايدة الذي تستدعيه الواجهة (`LiveBidPanel` وغيرها).
+ * المبالغ في الطلب بالريال؛ التخزين في `bids.amount` بالهللات.
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@supabase/supabase-js'
 import { checkRateLimit } from '@/lib/server/rate-limit'
@@ -31,10 +35,18 @@ export async function POST(req: NextRequest) {
     /** الواجهة ترسل الريال؛ التخزين بالهللات */
     const amountHalalas = Math.round(amtRiyals * 100)
 
-    const rl = checkRateLimit(`bid:${auction_id}:${bidder_id}`, 5000, 1)
-    if (!rl.allowed) {
+    const rlMin = checkRateLimit(`bid:${auction_id}:${bidder_id}`, 5000, 1)
+    if (!rlMin.allowed) {
       return NextResponse.json(
-        { error: 'يرجى الانتظار قبل مزايدة جديدة', retryAfter: rl.retryAfter },
+        { error: 'يرجى الانتظار قبل مزايدة جديدة', retryAfter: rlMin.retryAfter },
+        { status: 429 }
+      )
+    }
+
+    const rlBurst = checkRateLimit(`bids-post-user:${bidder_id}`, 60_000, 10)
+    if (!rlBurst.allowed) {
+      return NextResponse.json(
+        { error: 'عدد مزايدات كبير في دقيقة واحدة. انتظر قليلاً.', retryAfter: rlBurst.retryAfter },
         { status: 429 }
       )
     }

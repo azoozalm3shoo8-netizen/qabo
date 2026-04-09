@@ -1,3 +1,9 @@
+/**
+ * مزايدة مع تفويض ضمان عبر Moyasar وبطاقة محفوظة.
+ *
+ * @deprecated للواجهة الحالية: المزايدة السريعة تمر عبر `POST /api/bids` (بدون بطاقة في نفس الطلب).
+ * احتفظ بهذا المسار لتطبيقات تتطلب ضمان Moyasar حتى يتم دمج المسارين في واجهة واحدة.
+ */
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase-server'
